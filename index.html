@@ -20,7 +20,7 @@
             border-radius: 12px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             width: 100%;
-            max-width: 420px;
+            max-width: 460px;
             overflow: hidden;
         }
         .login-header {
@@ -29,46 +29,10 @@
             padding: 30px;
             text-align: center;
         }
-        .login-header h1 {
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
-        .login-header p {
-            color: #999;
-            font-size: 14px;
-        }
-        .login-body {
-            padding: 30px;
-        }
-        .tabs {
-            display: flex;
-            border-bottom: 2px solid #e0e0e0;
-            margin-bottom: 25px;
-        }
-        .tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            color: #999;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.3s;
-            background: none;
-            border-top: none;
-            border-left: none;
-            border-right: none;
-        }
-        .tab:hover { color: #333; }
-        .tab.active {
-            color: #2a6fb8;
-            border-bottom-color: #2a6fb8;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
+        .login-header h1 { font-size: 24px; margin-bottom: 5px; }
+        .login-header p { color: #999; font-size: 14px; }
+        .login-body { padding: 30px; }
+        .form-group { margin-bottom: 20px; }
         .form-group label {
             display: block;
             font-size: 13px;
@@ -89,6 +53,13 @@
             border-color: #2a6fb8;
             box-shadow: 0 0 0 3px rgba(42, 111, 184, 0.1);
         }
+        .form-group .hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+        .form-group .hint a { color: #2a6fb8; }
         .btn-login {
             width: 100%;
             padding: 14px;
@@ -102,10 +73,7 @@
             transition: background 0.3s;
         }
         .btn-login:hover { background: #1e5290; }
-        .btn-login:disabled {
-            background: #999;
-            cursor: not-allowed;
-        }
+        .btn-login:disabled { background: #999; cursor: not-allowed; }
         .error-msg {
             background: #fde8e8;
             color: #d32f2f;
@@ -124,8 +92,6 @@
             margin-bottom: 15px;
             display: none;
         }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
         .footer-text {
             text-align: center;
             padding: 15px 30px 25px;
@@ -135,11 +101,10 @@
         .loading {
             display: none;
             text-align: center;
-            padding: 20px;
+            padding: 40px;
         }
         .spinner {
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             border: 3px solid #e0e0e0;
             border-top-color: #2a6fb8;
             border-radius: 50%;
@@ -147,13 +112,36 @@
             margin: 0 auto 10px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .steps {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #555;
+        }
+        .steps b { color: #333; }
+        .steps ol { padding-left: 20px; margin: 8px 0 0; }
+        .toggle-help {
+            background: none;
+            border: none;
+            color: #2a6fb8;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 0;
+            margin-bottom: 15px;
+        }
+        .toggle-help:hover { text-decoration: underline; }
+        .help-section { display: none; }
+        .help-section.visible { display: block; }
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="login-header">
             <h1>1C Бухгалтерия</h1>
-            <p>Облачная система учета</p>
+            <p>Облачная система учета (GitHub)</p>
         </div>
 
         <div class="loading" id="loading">
@@ -161,160 +149,102 @@
             <p>Проверка авторизации...</p>
         </div>
 
-        <div class="login-body" id="authForms">
-            <div class="tabs">
-                <button class="tab active" onclick="switchTab('login')">Вход</button>
-                <button class="tab" onclick="switchTab('register')">Регистрация</button>
+        <div class="login-body" id="authForm" style="display:none">
+            <div class="error-msg" id="errorMsg"></div>
+            <div class="success-msg" id="successMsg"></div>
+
+            <div class="form-group">
+                <label>GitHub Personal Access Token</label>
+                <input type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+                <div class="hint">
+                    Токен сохраняется только в вашем браузере и не передаётся третьим лицам.
+                </div>
             </div>
 
-            <div class="tab-content active" id="loginTab">
-                <div class="error-msg" id="loginError"></div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="loginEmail" placeholder="user@example.com" autocomplete="email">
-                </div>
-                <div class="form-group">
-                    <label>Пароль</label>
-                    <input type="password" id="loginPassword" placeholder="Введите пароль" autocomplete="current-password">
-                </div>
-                <button class="btn-login" id="loginBtn" onclick="handleLogin()">Войти</button>
-            </div>
+            <button class="btn-login" id="loginBtn" onclick="handleLogin()">Войти</button>
 
-            <div class="tab-content" id="registerTab">
-                <div class="error-msg" id="registerError"></div>
-                <div class="success-msg" id="registerSuccess"></div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="regEmail" placeholder="user@example.com" autocomplete="email">
+            <br><br>
+            <button class="toggle-help" onclick="toggleHelp()">Как получить токен? (инструкция)</button>
+
+            <div class="help-section" id="helpSection">
+                <div class="steps">
+                    <b>Как создать GitHub Token за 1 минуту:</b>
+                    <ol>
+                        <li>Откройте <a href="https://github.com/settings/tokens/new" target="_blank">github.com/settings/tokens/new</a></li>
+                        <li><b>Note:</b> введите <code>1c-accounting</code></li>
+                        <li><b>Expiration:</b> выберите <code>No expiration</code> (бессрочный)</li>
+                        <li><b>Scopes:</b> поставьте галочку на <code>repo</code> (полный доступ к репозиториям)</li>
+                        <li>Нажмите <b>"Generate token"</b> внизу страницы</li>
+                        <li>Скопируйте токен (начинается с <code>ghp_</code>) и вставьте выше</li>
+                    </ol>
+                    <p style="margin-top:8px;color:#d32f2f"><b>Важно:</b> токен показывается один раз! Сохраните его в надёжном месте.</p>
                 </div>
-                <div class="form-group">
-                    <label>Пароль (минимум 6 символов)</label>
-                    <input type="password" id="regPassword" placeholder="Придумайте пароль" autocomplete="new-password">
-                </div>
-                <div class="form-group">
-                    <label>Повторите пароль</label>
-                    <input type="password" id="regPassword2" placeholder="Повторите пароль" autocomplete="new-password">
-                </div>
-                <button class="btn-login" id="regBtn" onclick="handleRegister()">Зарегистрироваться</button>
             </div>
         </div>
 
         <div class="footer-text">
-            Данные хранятся в облаке с резервным копированием
+            Данные хранятся в GitHub с полной историей изменений
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/config.js"></script>
+    <script src="js/db-sync.js"></script>
     <script>
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        DbSync.init();
 
-        // Check if already logged in
+        // Check if already have a valid token
         (async function() {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('authForms').style.display = 'none';
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                window.location.href = 'app.html';
-                return;
+            const token = DbSync.getToken();
+            if (token) {
+                document.getElementById('loading').style.display = 'block';
+                const user = await DbSync.validateToken(token);
+                if (user) {
+                    window.location.href = 'app.html';
+                    return;
+                }
+                // Token expired/invalid
+                DbSync.clearToken();
             }
             document.getElementById('loading').style.display = 'none';
-            document.getElementById('authForms').style.display = 'block';
+            document.getElementById('authForm').style.display = 'block';
         })();
 
-        function switchTab(tab) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            if (tab === 'login') {
-                document.querySelectorAll('.tab')[0].classList.add('active');
-                document.getElementById('loginTab').classList.add('active');
-            } else {
-                document.querySelectorAll('.tab')[1].classList.add('active');
-                document.getElementById('registerTab').classList.add('active');
-            }
-        }
-
         async function handleLogin() {
-            const email = document.getElementById('loginEmail').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            const errEl = document.getElementById('loginError');
+            const token = document.getElementById('tokenInput').value.trim();
+            const errEl = document.getElementById('errorMsg');
             const btn = document.getElementById('loginBtn');
 
-            if (!email || !password) {
-                errEl.textContent = 'Заполните все поля';
+            errEl.style.display = 'none';
+
+            if (!token) {
+                errEl.textContent = 'Введите GitHub токен';
                 errEl.style.display = 'block';
                 return;
             }
 
             btn.disabled = true;
-            btn.textContent = 'Вход...';
-            errEl.style.display = 'none';
+            btn.textContent = 'Проверка...';
 
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            const user = await DbSync.validateToken(token);
 
-            if (error) {
-                errEl.textContent = error.message === 'Invalid login credentials'
-                    ? 'Неверный email или пароль'
-                    : error.message;
+            if (!user) {
+                errEl.textContent = 'Неверный токен. Проверьте правильность и попробуйте снова.';
                 errEl.style.display = 'block';
                 btn.disabled = false;
                 btn.textContent = 'Войти';
                 return;
             }
 
+            DbSync.setToken(token);
             window.location.href = 'app.html';
         }
 
-        async function handleRegister() {
-            const email = document.getElementById('regEmail').value.trim();
-            const password = document.getElementById('regPassword').value;
-            const password2 = document.getElementById('regPassword2').value;
-            const errEl = document.getElementById('registerError');
-            const successEl = document.getElementById('registerSuccess');
-            const btn = document.getElementById('regBtn');
-
-            errEl.style.display = 'none';
-            successEl.style.display = 'none';
-
-            if (!email || !password) {
-                errEl.textContent = 'Заполните все поля';
-                errEl.style.display = 'block';
-                return;
-            }
-            if (password.length < 6) {
-                errEl.textContent = 'Пароль должен быть не менее 6 символов';
-                errEl.style.display = 'block';
-                return;
-            }
-            if (password !== password2) {
-                errEl.textContent = 'Пароли не совпадают';
-                errEl.style.display = 'block';
-                return;
-            }
-
-            btn.disabled = true;
-            btn.textContent = 'Регистрация...';
-
-            const { error } = await supabase.auth.signUp({ email, password });
-
-            if (error) {
-                errEl.textContent = error.message;
-                errEl.style.display = 'block';
-                btn.disabled = false;
-                btn.textContent = 'Зарегистрироваться';
-                return;
-            }
-
-            successEl.textContent = 'Регистрация успешна! Войдите в систему.';
-            successEl.style.display = 'block';
-            btn.disabled = false;
-            btn.textContent = 'Зарегистрироваться';
-            setTimeout(() => switchTab('login'), 2000);
+        function toggleHelp() {
+            document.getElementById('helpSection').classList.toggle('visible');
         }
 
-        // Enter key support
-        document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
-        document.getElementById('regPassword2').addEventListener('keydown', e => { if (e.key === 'Enter') handleRegister(); });
+        document.getElementById('tokenInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') handleLogin();
+        });
     </script>
 </body>
 </html>

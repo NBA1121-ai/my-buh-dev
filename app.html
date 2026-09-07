@@ -994,8 +994,6 @@
 
     <div class="toast" id="toast"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/config.js"></script>
     <script src="js/db-sync.js"></script>
     <script>
         // ==================== DATA ====================
@@ -1013,17 +1011,19 @@
         let editingId = null;
 
         // ==================== INITIALIZATION ====================
-        const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        DbSync.init(_supabase);
+        DbSync.init();
 
         async function init() {
-            // Check auth
-            const session = await DbSync.checkAuth();
-            if (!session) return;
+            // Check auth - redirect to login if no token
+            const token = DbSync.getToken();
+            if (!token) { window.location.href = 'index.html'; return; }
 
-            // Show user email
+            const user = await DbSync.validateToken(token);
+            if (!user) { DbSync.clearToken(); window.location.href = 'index.html'; return; }
+
+            // Show username
             const emailEl = document.getElementById('userEmail');
-            if (emailEl) emailEl.textContent = session.user.email;
+            if (emailEl) emailEl.textContent = user.login;
 
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('docDate').value = today;
@@ -1039,8 +1039,8 @@
 
             renderPage();
 
-            // Subscribe to real-time changes for multi-device sync
-            DbSync.subscribeToChanges((newData) => {
+            // Poll for changes from other devices (every 30 sec)
+            DbSync.startPolling((newData) => {
                 Object.keys(db).forEach(k => delete db[k]);
                 Object.assign(db, newData);
                 renderPage();
@@ -1060,7 +1060,7 @@
         }
 
         function saveData() {
-            // Schedule cloud save (debounced)
+            // Schedule GitHub save (debounced)
             DbSync.scheduleSave(JSON.parse(JSON.stringify(db)));
         }
 
@@ -1518,36 +1518,31 @@
                     <p style="margin-top:12px;color:#666;font-size:12px">Документов сейчас: банк — ${db.bankDocuments.length}, касса — ${db.cashDocuments.length}, покупки/продажи — ${db.trade.docs.length}.</p>
                 </div>
                 <div style="padding: 20px; margin-top: 15px;" class="table-container">
-                    <h3>Облачные резервные копии</h3>
-                    <p style="margin: 15px 0; color: #666;">Создавайте резервные копии в облаке. Они хранятся отдельно от основных данных и защищены от случайного удаления.</p>
+                    <h3>История изменений (GitHub)</h3>
+                    <p style="margin: 15px 0; color: #666;">Каждое сохранение автоматически создаёт точку восстановления в GitHub. Вы можете откатиться к любому предыдущему состоянию.</p>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px">
-                        <button class="btn primary" onclick="cloudBackup()">Создать резервную копию</button>
-                        <button class="btn" onclick="showBackups()">Список резервных копий</button>
+                        <button class="btn primary" onclick="DbSync.forceSave(JSON.parse(JSON.stringify(db))).then(()=>showToast('Сохранено в GitHub'))">Сохранить сейчас</button>
+                        <button class="btn" onclick="showBackups()">Показать историю</button>
                     </div>
                     <div id="backupsList"></div>
                 </div>
             `;
         }
 
-        async function cloudBackup() {
-            const ok = await DbSync.createBackup(JSON.parse(JSON.stringify(db)));
-            if (ok) showToast('Резервная копия создана в облаке');
-            else showToast('Ошибка создания резервной копии');
-        }
-
         async function showBackups() {
-            const list = await DbSync.listBackups();
             const el = document.getElementById('backupsList');
             if (!el) return;
-            if (!list.length) { el.innerHTML = '<p style="color:#999">Резервных копий нет</p>'; return; }
-            el.innerHTML = '<table class="table-container"><thead><tr><th>Дата</th><th>Примечание</th><th>Действие</th></tr></thead><tbody>' +
-                list.map(b => '<tr><td>' + new Date(b.created_at).toLocaleString('ru-RU') + '</td><td>' + (b.note || '') + '</td><td><button class="btn" onclick="restoreFromBackup(\'' + b.id + '\')">Восстановить</button></td></tr>').join('') +
+            el.innerHTML = '<p style="color:#999">Загрузка истории...</p>';
+            const commits = await DbSync.getHistory(20);
+            if (!commits.length) { el.innerHTML = '<p style="color:#999">История пуста</p>'; return; }
+            el.innerHTML = '<table class="table-container"><thead><tr><th>Дата</th><th>Описание</th><th>Действие</th></tr></thead><tbody>' +
+                commits.map(c => '<tr><td>' + new Date(c.commit.author.date).toLocaleString('ru-RU') + '</td><td>' + (c.commit.message || '') + '</td><td><button class="btn" onclick="restoreFromCommit(\'' + c.sha + '\')">Восстановить</button></td></tr>').join('') +
                 '</tbody></table>';
         }
 
-        async function restoreFromBackup(id) {
-            if (!confirm('Восстановить данные из этой резервной копии? Текущие данные будут заменены.')) return;
-            const data = await DbSync.restoreBackup(id);
+        async function restoreFromCommit(sha) {
+            if (!confirm('Восстановить данные из этой точки? Текущие данные будут заменены.')) return;
+            const data = await DbSync.restoreFromCommit(sha);
             if (data) {
                 Object.keys(db).forEach(k => delete db[k]);
                 Object.assign(db, data);
@@ -1555,7 +1550,7 @@
                 tradeInit();
                 saveData();
                 renderPage();
-                showToast('Данные восстановлены из резервной копии');
+                showToast('Данные восстановлены');
             } else {
                 showToast('Ошибка восстановления');
             }

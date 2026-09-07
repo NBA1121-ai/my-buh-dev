@@ -1,103 +1,159 @@
 // ============================================
-// Database Synchronization Module
-// Handles Supabase data storage with auto-save,
-// conflict resolution, and offline fallback
+// GitHub API Database Synchronization Module
+// Stores data as JSON in a 'data' branch
+// Every save = git commit = automatic backup
 // ============================================
 
 const DbSync = (function() {
-    let _supabase = null;
-    let _userId = null;
+    const REPO_OWNER = 'NBA1121-ai';
+    const REPO_NAME = '1c-accounting';
+    const DATA_BRANCH = 'data';
+    const DATA_FILE = 'db.json';
+    const API_BASE = 'https://api.github.com';
+    const SAVE_DELAY = 2000;
+
+    let _token = null;
     let _saveTimer = null;
-    let _lastHash = '';
     let _saving = false;
-    let _initialized = false;
-    let _onDataLoaded = null;
-    let _channel = null;
+    let _fileSha = null;
+    let _lastHash = '';
+    let _pollTimer = null;
 
-    const SAVE_DELAY = 1500; // ms debounce before saving
-
-    function init(supabaseClient, onDataLoaded) {
-        _supabase = supabaseClient;
-        _onDataLoaded = onDataLoaded;
+    function init() {
+        _token = localStorage.getItem('gh_token');
     }
 
-    async function checkAuth() {
-        const { data: { session } } = await _supabase.auth.getSession();
-        if (!session) {
-            window.location.href = 'index.html';
+    function getToken() {
+        return _token;
+    }
+
+    function setToken(token) {
+        _token = token;
+        localStorage.setItem('gh_token', token);
+    }
+
+    function clearToken() {
+        _token = null;
+        localStorage.removeItem('gh_token');
+    }
+
+    async function validateToken(token) {
+        try {
+            const res = await fetch(API_BASE + '/user', {
+                headers: { 'Authorization': 'token ' + token }
+            });
+            if (!res.ok) return null;
+            const user = await res.json();
+            return user;
+        } catch(e) {
             return null;
         }
-        _userId = session.user.id;
-        return session;
     }
 
     async function loadData() {
-        if (!_userId) return null;
+        if (!_token) return null;
 
         try {
-            const { data, error } = await _supabase
-                .from('app_data')
-                .select('data, updated_at')
-                .eq('user_id', _userId)
-                .maybeSingle();
+            const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': 'token ' + _token,
+                    'Accept': 'application/vnd.github.v3+json'
+                },
+                cache: 'no-store'
+            });
 
-            if (error) throw error;
-
-            if (data && data.data) {
-                _lastHash = hashData(data.data);
-                _initialized = true;
-                return data.data;
+            if (!res.ok) {
+                if (res.status === 404) return null; // File doesn't exist yet
+                throw new Error('GitHub API error: ' + res.status);
             }
 
-            // No data yet - return null to use defaults
-            _initialized = true;
-            return null;
-        } catch (err) {
+            const fileData = await res.json();
+            _fileSha = fileData.sha;
+
+            const content = atob(fileData.content.replace(/\n/g, ''));
+            // Decode UTF-8 properly
+            const decoded = decodeURIComponent(escape(content));
+            const parsed = JSON.parse(decoded);
+
+            _lastHash = hashData(parsed);
+
+            // Cache locally
+            try { localStorage.setItem('db_cache', JSON.stringify(parsed)); } catch(e) {}
+
+            return parsed;
+        } catch(err) {
             console.error('Load error:', err);
-            // Try to use localStorage as fallback
-            const cached = localStorage.getItem('bankCashData_cache');
-            if (cached) {
-                try {
-                    return JSON.parse(cached);
-                } catch(e) {}
-            }
+            // Fallback to local cache
+            try {
+                const cached = localStorage.getItem('db_cache');
+                if (cached) return JSON.parse(cached);
+            } catch(e) {}
             return null;
         }
     }
 
     function scheduleSave(dbObject) {
         if (_saveTimer) clearTimeout(_saveTimer);
+        // Cache locally immediately
+        try { localStorage.setItem('db_cache', JSON.stringify(dbObject)); } catch(e) {}
         _saveTimer = setTimeout(() => saveData(dbObject), SAVE_DELAY);
-
-        // Also cache locally for offline resilience
-        try {
-            localStorage.setItem('bankCashData_cache', JSON.stringify(dbObject));
-        } catch(e) {}
     }
 
     async function saveData(dbObject) {
-        if (!_userId || _saving) return;
+        if (!_token || _saving) return;
 
         const currentHash = hashData(dbObject);
-        if (currentHash === _lastHash) return; // No changes
+        if (currentHash === _lastHash) return;
 
         _saving = true;
         showSyncStatus('saving');
 
         try {
-            const { error } = await _supabase
-                .from('app_data')
-                .upsert({
-                    user_id: _userId,
-                    data: dbObject,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id' });
+            // Encode content as base64 (handle UTF-8)
+            const jsonStr = JSON.stringify(dbObject, null, 2);
+            const utf8 = unescape(encodeURIComponent(jsonStr));
+            const base64 = btoa(utf8);
 
-            if (error) throw error;
+            const body = {
+                message: 'Update data ' + new Date().toLocaleString('ru-RU'),
+                content: base64,
+                branch: DATA_BRANCH
+            };
 
+            // Include SHA if we have it (required for updates)
+            if (_fileSha) {
+                body.sha = _fileSha;
+            }
+
+            const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}`;
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'token ' + _token,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/vnd.github.v3+json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                // SHA conflict - reload and retry
+                if (res.status === 409 || (res.status === 422 && errData.message && errData.message.includes('sha'))) {
+                    console.warn('SHA conflict, reloading...');
+                    await reloadSha();
+                    _saving = false;
+                    return saveData(dbObject);
+                }
+                throw new Error('Save failed: ' + res.status + ' ' + (errData.message || ''));
+            }
+
+            const result = await res.json();
+            _fileSha = result.content.sha;
             _lastHash = currentHash;
             showSyncStatus('saved');
-        } catch (err) {
+        } catch(err) {
             console.error('Save error:', err);
             showSyncStatus('error');
         } finally {
@@ -105,54 +161,107 @@ const DbSync = (function() {
         }
     }
 
-    // Force immediate save (for critical operations)
     async function forceSave(dbObject) {
         if (_saveTimer) clearTimeout(_saveTimer);
         await saveData(dbObject);
     }
 
-    // Subscribe to real-time changes (for multi-device sync)
-    function subscribeToChanges(callback) {
-        if (!_supabase || !_userId) return;
-
-        _channel = _supabase
-            .channel('app_data_changes')
-            .on('postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'app_data',
-                    filter: `user_id=eq.${_userId}`
+    async function reloadSha() {
+        try {
+            const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': 'token ' + _token,
+                    'Accept': 'application/vnd.github.v3+json'
                 },
-                (payload) => {
-                    if (payload.new && payload.new.data) {
-                        const newHash = hashData(payload.new.data);
-                        if (newHash !== _lastHash && !_saving) {
-                            _lastHash = newHash;
-                            callback(payload.new.data);
-                            showSyncStatus('synced');
-                        }
+                cache: 'no-store'
+            });
+            if (res.ok) {
+                const data = await res.json();
+                _fileSha = data.sha;
+            }
+        } catch(e) {}
+    }
+
+    // Poll for changes from other devices (every 30 seconds)
+    function startPolling(callback) {
+        if (_pollTimer) clearInterval(_pollTimer);
+        _pollTimer = setInterval(async () => {
+            if (_saving || !_token) return;
+            try {
+                const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;
+                const res = await fetch(url, {
+                    headers: {
+                        'Authorization': 'token ' + _token,
+                        'Accept': 'application/vnd.github.v3+json'
+                    },
+                    cache: 'no-store'
+                });
+                if (!res.ok) return;
+                const fileData = await res.json();
+
+                if (fileData.sha !== _fileSha) {
+                    _fileSha = fileData.sha;
+                    const content = atob(fileData.content.replace(/\n/g, ''));
+                    const decoded = decodeURIComponent(escape(content));
+                    const parsed = JSON.parse(decoded);
+                    const newHash = hashData(parsed);
+
+                    if (newHash !== _lastHash) {
+                        _lastHash = newHash;
+                        callback(parsed);
+                        showSyncStatus('synced');
                     }
                 }
-            )
-            .subscribe();
+            } catch(e) {}
+        }, 30000);
     }
 
-    function unsubscribe() {
-        if (_channel) {
-            _supabase.removeChannel(_channel);
-            _channel = null;
-        }
+    function stopPolling() {
+        if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
     }
 
-    async function logout() {
-        unsubscribe();
-        await _supabase.auth.signOut();
-        localStorage.removeItem('bankCashData_cache');
+    // Get commit history (backups)
+    async function getHistory(limit) {
+        if (!_token) return [];
+        try {
+            const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/commits?sha=${DATA_BRANCH}&path=${DATA_FILE}&per_page=${limit || 20}`;
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': 'token ' + _token,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            if (!res.ok) return [];
+            return await res.json();
+        } catch(e) { return []; }
+    }
+
+    // Restore from a specific commit
+    async function restoreFromCommit(commitSha) {
+        if (!_token) return null;
+        try {
+            const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${commitSha}`;
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': 'token ' + _token,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            if (!res.ok) return null;
+            const fileData = await res.json();
+            const content = atob(fileData.content.replace(/\n/g, ''));
+            const decoded = decodeURIComponent(escape(content));
+            return JSON.parse(decoded);
+        } catch(e) { return null; }
+    }
+
+    function logout() {
+        stopPolling();
+        clearToken();
         window.location.href = 'index.html';
     }
 
-    // Simple hash for change detection
     function hashData(obj) {
         const str = JSON.stringify(obj);
         let hash = 0;
@@ -164,89 +273,42 @@ const DbSync = (function() {
         return String(hash);
     }
 
-    // Sync status indicator
     function showSyncStatus(status) {
         const el = document.getElementById('syncStatus');
         if (!el) return;
-
         const states = {
             saving: { text: 'Сохранение...', color: '#ff9800' },
-            saved: { text: 'Сохранено', color: '#4caf50' },
+            saved: { text: 'Сохранено в GitHub', color: '#4caf50' },
             synced: { text: 'Синхронизировано', color: '#2196f3' },
-            error: { text: 'Ошибка сохранения', color: '#f44336' },
-            offline: { text: 'Офлайн режим', color: '#999' }
+            error: { text: 'Ошибка сохранения!', color: '#f44336' }
         };
-
         const s = states[status] || states.saved;
         el.textContent = s.text;
         el.style.color = s.color;
-
         if (status === 'saved' || status === 'synced') {
             setTimeout(() => {
                 if (el.textContent === s.text) {
-                    el.textContent = 'Облако';
+                    el.textContent = 'GitHub';
                     el.style.color = '#4caf50';
                 }
             }, 3000);
         }
     }
 
-    // Create backup
-    async function createBackup(dbObject) {
-        if (!_userId) return;
-        try {
-            await _supabase.from('backups').insert({
-                user_id: _userId,
-                data: dbObject,
-                note: 'Manual backup ' + new Date().toLocaleString('ru-RU')
-            });
-            return true;
-        } catch(e) {
-            console.error('Backup error:', e);
-            return false;
-        }
-    }
-
-    // List backups
-    async function listBackups() {
-        if (!_userId) return [];
-        try {
-            const { data } = await _supabase
-                .from('backups')
-                .select('id, created_at, note')
-                .eq('user_id', _userId)
-                .order('created_at', { ascending: false })
-                .limit(20);
-            return data || [];
-        } catch(e) { return []; }
-    }
-
-    // Restore from backup
-    async function restoreBackup(backupId) {
-        if (!_userId) return null;
-        try {
-            const { data } = await _supabase
-                .from('backups')
-                .select('data')
-                .eq('id', backupId)
-                .eq('user_id', _userId)
-                .single();
-            return data ? data.data : null;
-        } catch(e) { return null; }
-    }
-
     return {
         init,
-        checkAuth,
+        getToken,
+        setToken,
+        clearToken,
+        validateToken,
         loadData,
         scheduleSave,
         forceSave,
-        subscribeToChanges,
-        unsubscribe,
+        startPolling,
+        stopPolling,
+        getHistory,
+        restoreFromCommit,
         logout,
-        createBackup,
-        listBackups,
-        restoreBackup,
         showSyncStatus
     };
 })();
