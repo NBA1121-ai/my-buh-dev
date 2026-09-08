@@ -1018,24 +1018,33 @@
 
         async function init() {
             // Check login session
-            const session = localStorage.getItem('auth_session');
-            if (!session) { window.location.href = 'index.html'; return; }
             try {
+                const session = localStorage.getItem('auth_session');
+                if (!session) { window.location.href = 'index.html'; return; }
                 const s = JSON.parse(session);
-                if (!s.authenticated || s.expires <= Date.now()) {
+                if (!s || !s.authenticated || !s.expires || s.expires <= Date.now()) {
                     localStorage.removeItem('auth_session');
                     window.location.href = 'index.html';
                     return;
                 }
-                // Show username
                 const emailEl = document.getElementById('userEmail');
                 if (emailEl) emailEl.textContent = s.name || 'Пользователь';
-            } catch(e) { window.location.href = 'index.html'; return; }
+            } catch(e) {
+                localStorage.removeItem('auth_session');
+                window.location.href = 'index.html';
+                return;
+            }
 
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('docDate').value = today;
 
-            await loadData();
+            try {
+                await loadData();
+            } catch(e) {
+                console.error('Failed to load data:', e);
+                // Continue with defaults — data will load from local cache or be empty
+            }
+
             initializeDefaults();
             tradeInit();
             tSeedDemo(false);
@@ -1053,16 +1062,22 @@
                 renderPage();
                 showToast('Данные синхронизированы с другого устройства');
             });
+
+            // Periodic session check (every 5 min)
+            setInterval(() => {
+                try {
+                    const s = JSON.parse(localStorage.getItem('auth_session') || '{}');
+                    if (!s.authenticated || !s.expires || s.expires <= Date.now()) {
+                        window.location.href = 'index.html';
+                    }
+                } catch(e) { window.location.href = 'index.html'; }
+            }, 300000);
         }
 
         async function loadData() {
             const cloudData = await DbSync.loadData();
-            if (cloudData) {
-                try {
-                    Object.assign(db, cloudData);
-                } catch (e) {
-                    console.error('Error loading cloud data:', e);
-                }
+            if (cloudData && typeof cloudData === 'object') {
+                Object.assign(db, cloudData);
             }
         }
 

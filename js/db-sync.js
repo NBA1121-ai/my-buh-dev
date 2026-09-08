@@ -11,6 +11,7 @@ const DbSync = (function() {
     const DATA_FILE = 'db.json';
     const API_BASE = 'https://api.github.com';
     const SAVE_DELAY = 2000;
+    const MAX_RETRIES = 3;
 
     let _token = null;
     let _saveTimer = null;
@@ -18,14 +19,13 @@ const DbSync = (function() {
     let _fileSha = null;
     let _lastHash = '';
     let _pollTimer = null;
+    let _pendingSave = null; // queued save while _saving is true
 
     function init() {
         _token = localStorage.getItem('gh_token');
     }
 
-    function getToken() {
-        return _token;
-    }
+    function getToken() { return _token; }
 
     function setToken(token) {
         _token = token;
@@ -43,11 +43,30 @@ const DbSync = (function() {
                 headers: { 'Authorization': 'token ' + token }
             });
             if (!res.ok) return null;
-            const user = await res.json();
-            return user;
+            return await res.json();
         } catch(e) {
             return null;
         }
+    }
+
+    // --- UTF-8 safe base64 decode ---
+    function b64DecodeUTF8(base64) {
+        const binStr = atob(base64.replace(/[\s\n\r]/g, ''));
+        const bytes = new Uint8Array(binStr.length);
+        for (let i = 0; i < binStr.length; i++) {
+            bytes[i] = binStr.charCodeAt(i);
+        }
+        return new TextDecoder('utf-8').decode(bytes);
+    }
+
+    // --- UTF-8 safe base64 encode ---
+    function b64EncodeUTF8(str) {
+        const bytes = new TextEncoder().encode(str);
+        let binStr = '';
+        for (let i = 0; i < bytes.length; i++) {
+            binStr += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binStr);
     }
 
     async function loadData() {
@@ -58,27 +77,25 @@ const DbSync = (function() {
             const res = await fetch(url, {
                 headers: {
                     'Authorization': 'token ' + _token,
-                    'Accept': 'application/vnd.github.v3+json'
+                    'Accept': 'application/vnd.github+json'
                 },
                 cache: 'no-store'
             });
 
             if (!res.ok) {
-                if (res.status === 404) return null; // File doesn't exist yet
+                if (res.status === 404) return null;
                 throw new Error('GitHub API error: ' + res.status);
             }
 
             const fileData = await res.json();
             _fileSha = fileData.sha;
 
-            const content = atob(fileData.content.replace(/\n/g, ''));
-            // Decode UTF-8 properly
-            const decoded = decodeURIComponent(escape(content));
+            const decoded = b64DecodeUTF8(fileData.content);
             const parsed = JSON.parse(decoded);
 
             _lastHash = hashData(parsed);
 
-            // Cache locally
+            // Cache locally for offline fallback
             try { localStorage.setItem('db_cache', JSON.stringify(parsed)); } catch(e) {}
 
             return parsed;
@@ -87,7 +104,10 @@ const DbSync = (function() {
             // Fallback to local cache
             try {
                 const cached = localStorage.getItem('db_cache');
-                if (cached) return JSON.parse(cached);
+                if (cached) {
+                    showSyncStatus('offline');
+                    return JSON.parse(cached);
+                }
             } catch(e) {}
             return null;
         }
@@ -95,13 +115,24 @@ const DbSync = (function() {
 
     function scheduleSave(dbObject) {
         if (_saveTimer) clearTimeout(_saveTimer);
-        // Cache locally immediately
+        // Cache locally immediately (protection against browser close)
         try { localStorage.setItem('db_cache', JSON.stringify(dbObject)); } catch(e) {}
+
+        if (_saving) {
+            // Queue latest state — will be saved after current save finishes
+            _pendingSave = dbObject;
+            return;
+        }
         _saveTimer = setTimeout(() => saveData(dbObject), SAVE_DELAY);
     }
 
-    async function saveData(dbObject) {
-        if (!_token || _saving) return;
+    async function saveData(dbObject, retryCount) {
+        if (!_token || _saving) {
+            if (_saving) _pendingSave = dbObject;
+            return;
+        }
+
+        retryCount = retryCount || 0;
 
         const currentHash = hashData(dbObject);
         if (currentHash === _lastHash) return;
@@ -110,10 +141,13 @@ const DbSync = (function() {
         showSyncStatus('saving');
 
         try {
-            // Encode content as base64 (handle UTF-8)
+            if (!navigator.onLine) {
+                showSyncStatus('offline');
+                return;
+            }
+
             const jsonStr = JSON.stringify(dbObject, null, 2);
-            const utf8 = unescape(encodeURIComponent(jsonStr));
-            const base64 = btoa(utf8);
+            const base64 = b64EncodeUTF8(jsonStr);
 
             const body = {
                 message: 'Update data ' + new Date().toLocaleString('ru-RU'),
@@ -121,7 +155,6 @@ const DbSync = (function() {
                 branch: DATA_BRANCH
             };
 
-            // Include SHA if we have it (required for updates)
             if (_fileSha) {
                 body.sha = _fileSha;
             }
@@ -132,19 +165,21 @@ const DbSync = (function() {
                 headers: {
                     'Authorization': 'token ' + _token,
                     'Content-Type': 'application/json',
-                    'Accept': 'application/vnd.github.v3+json'
+                    'Accept': 'application/vnd.github+json'
                 },
                 body: JSON.stringify(body)
             });
 
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
-                // SHA conflict - reload and retry
-                if (res.status === 409 || (res.status === 422 && errData.message && errData.message.includes('sha'))) {
-                    console.warn('SHA conflict, reloading...');
+                // SHA conflict - reload and retry (with limit)
+                if ((res.status === 409 || (res.status === 422 && errData.message && errData.message.includes('sha'))) && retryCount < MAX_RETRIES) {
+                    console.warn('SHA conflict, retry', retryCount + 1);
                     await reloadSha();
                     _saving = false;
-                    return saveData(dbObject);
+                    // Small delay before retry
+                    await new Promise(r => setTimeout(r, 500 * (retryCount + 1)));
+                    return await saveData(dbObject, retryCount + 1);
                 }
                 throw new Error('Save failed: ' + res.status + ' ' + (errData.message || ''));
             }
@@ -158,6 +193,12 @@ const DbSync = (function() {
             showSyncStatus('error');
         } finally {
             _saving = false;
+            // Process queued save if any
+            if (_pendingSave) {
+                const queued = _pendingSave;
+                _pendingSave = null;
+                setTimeout(() => saveData(queued), 500);
+            }
         }
     }
 
@@ -172,7 +213,7 @@ const DbSync = (function() {
             const res = await fetch(url, {
                 headers: {
                     'Authorization': 'token ' + _token,
-                    'Accept': 'application/vnd.github.v3+json'
+                    'Accept': 'application/vnd.github+json'
                 },
                 cache: 'no-store'
             });
@@ -180,20 +221,22 @@ const DbSync = (function() {
                 const data = await res.json();
                 _fileSha = data.sha;
             }
-        } catch(e) {}
+        } catch(e) {
+            console.error('reloadSha error:', e);
+        }
     }
 
     // Poll for changes from other devices (every 30 seconds)
     function startPolling(callback) {
         if (_pollTimer) clearInterval(_pollTimer);
         _pollTimer = setInterval(async () => {
-            if (_saving || !_token) return;
+            if (_saving || !_token || !navigator.onLine) return;
             try {
                 const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;
                 const res = await fetch(url, {
                     headers: {
                         'Authorization': 'token ' + _token,
-                        'Accept': 'application/vnd.github.v3+json'
+                        'Accept': 'application/vnd.github+json'
                     },
                     cache: 'no-store'
                 });
@@ -202,8 +245,7 @@ const DbSync = (function() {
 
                 if (fileData.sha !== _fileSha) {
                     _fileSha = fileData.sha;
-                    const content = atob(fileData.content.replace(/\n/g, ''));
-                    const decoded = decodeURIComponent(escape(content));
+                    const decoded = b64DecodeUTF8(fileData.content);
                     const parsed = JSON.parse(decoded);
                     const newHash = hashData(parsed);
 
@@ -213,7 +255,9 @@ const DbSync = (function() {
                         showSyncStatus('synced');
                     }
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.warn('Polling error:', e);
+            }
         }, 30000);
     }
 
@@ -229,7 +273,7 @@ const DbSync = (function() {
             const res = await fetch(url, {
                 headers: {
                     'Authorization': 'token ' + _token,
-                    'Accept': 'application/vnd.github.v3+json'
+                    'Accept': 'application/vnd.github+json'
                 }
             });
             if (!res.ok) return [];
@@ -245,13 +289,12 @@ const DbSync = (function() {
             const res = await fetch(url, {
                 headers: {
                     'Authorization': 'token ' + _token,
-                    'Accept': 'application/vnd.github.v3+json'
+                    'Accept': 'application/vnd.github+json'
                 }
             });
             if (!res.ok) return null;
             const fileData = await res.json();
-            const content = atob(fileData.content.replace(/\n/g, ''));
-            const decoded = decodeURIComponent(escape(content));
+            const decoded = b64DecodeUTF8(fileData.content);
             return JSON.parse(decoded);
         } catch(e) { return null; }
     }
@@ -259,18 +302,20 @@ const DbSync = (function() {
     function logout() {
         stopPolling();
         clearToken();
+        localStorage.removeItem('auth_session');
         window.location.href = 'index.html';
     }
 
+    // FNV-1a 52-bit hash — much lower collision rate than 32-bit
     function hashData(obj) {
         const str = JSON.stringify(obj);
-        let hash = 0;
+        let h1 = 0x811c9dc5, h2 = 0x811c9dc5;
         for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash |= 0;
+            const ch = str.charCodeAt(i);
+            h1 = Math.imul(h1 ^ ch, 0x01000193);
+            h2 = Math.imul(h2 ^ (ch >>> 0), 0x00000193);
         }
-        return String(hash);
+        return h1.toString(36) + '-' + h2.toString(36);
     }
 
     function showSyncStatus(status) {
@@ -280,7 +325,8 @@ const DbSync = (function() {
             saving: { text: 'Сохранение...', color: '#ff9800' },
             saved: { text: 'Сохранено в GitHub', color: '#4caf50' },
             synced: { text: 'Синхронизировано', color: '#2196f3' },
-            error: { text: 'Ошибка сохранения!', color: '#f44336' }
+            error: { text: 'Ошибка сохранения!', color: '#f44336' },
+            offline: { text: 'Нет сети', color: '#999' }
         };
         const s = states[status] || states.saved;
         el.textContent = s.text;
@@ -296,19 +342,10 @@ const DbSync = (function() {
     }
 
     return {
-        init,
-        getToken,
-        setToken,
-        clearToken,
-        validateToken,
-        loadData,
-        scheduleSave,
-        forceSave,
-        startPolling,
-        stopPolling,
-        getHistory,
-        restoreFromCommit,
-        logout,
-        showSyncStatus
+        init, getToken, setToken, clearToken, validateToken,
+        loadData, scheduleSave, forceSave,
+        startPolling, stopPolling,
+        getHistory, restoreFromCommit,
+        logout, showSyncStatus
     };
 })();
