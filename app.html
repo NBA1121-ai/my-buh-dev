@@ -860,7 +860,7 @@
         <div class="main">
             <div class="header">
                 <button class="burger" onclick="toggleSidebar()">&#9776;</button>
-                <h1 id="pageTitle">Банковские документы</h1>
+                <h1 id="pageTitle">Главная</h1>
                 <div class="toolbar">
                     <button class="btn primary" onclick="openCreateModal()">+ Создать</button>
                     <button class="btn" onclick="exportToCSV()">📥 Экспорт</button>
@@ -1138,6 +1138,11 @@
             // Schedule GitHub save (debounced)
             DbSync.scheduleSave(JSON.parse(JSON.stringify(db)));
         }
+
+        // Save data before browser/tab close
+        window.addEventListener('beforeunload', () => {
+            try { localStorage.setItem('db_cache', JSON.stringify(db)); } catch(e) {}
+        });
 
         // Mobile sidebar functions
         function toggleSidebar() {
@@ -1599,9 +1604,9 @@
             // Recent operations (last 10)
             let recentRows = '';
             const allDocs = [];
-            (db.bankDocuments || []).forEach(d => allDocs.push({ date: d.date, type: 'Банк', desc: d.contractor || d.purpose || d.type, sum: d.sum }));
-            (db.cashDocuments || []).forEach(d => allDocs.push({ date: d.date, type: 'Касса', desc: d.contractor || d.purpose || d.type, sum: d.sum }));
-            if (db.trade && db.trade.docs) db.trade.docs.forEach(d => allDocs.push({ date: d.date, type: d.type || 'Документ', desc: d.contractor ? (tContractor(d.contractor)||{}).name||d.contractor : (d.number||''), sum: d.total || d.sum || 0 }));
+            (db.bankDocuments || []).forEach(d => allDocs.push({ date: d.date, type: 'Банк', desc: esc(d.contractor || d.purpose || d.type), sum: d.sum }));
+            (db.cashDocuments || []).forEach(d => allDocs.push({ date: d.date, type: 'Касса', desc: esc(d.contractor || d.purpose || d.type), sum: d.sum }));
+            if (db.trade && db.trade.docs) db.trade.docs.forEach(d => allDocs.push({ date: d.date, type: esc(d.type || 'Документ'), desc: esc(d.contractor ? (tContractor(d.contractor)||{}).name||d.contractor : (d.number||'')), sum: d.total || d.sum || 0 }));
             allDocs.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
             const recent = allDocs.slice(0, 10);
             if (recent.length) {
@@ -1656,10 +1661,10 @@
 
         function renderSearchResults() {
             const q = (document.getElementById('globalSearch').value || '').trim();
-            if (!_searchResults.length) return '<div class="empty-state">По запросу «' + q + '» ничего не найдено</div>';
-            return '<div style="padding:20px"><p style="margin-bottom:15px;color:#666">Найдено: ' + _searchResults.length + ' результатов по запросу «' + q + '»</p>' +
+            if (!_searchResults.length) return '<div class="empty-state">По запросу «' + esc(q) + '» ничего не найдено</div>';
+            return '<div style="padding:20px"><p style="margin-bottom:15px;color:#666">Найдено: ' + _searchResults.length + ' результатов по запросу «' + esc(q) + '»</p>' +
                 '<table class="table-container" style="width:100%"><thead><tr><th>Раздел</th><th>Номер</th><th>Дата</th><th>Описание</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' +
-                _searchResults.map(r => '<tr><td>' + r.section + '</td><td>' + (r.number||'') + '</td><td>' + (r.date||'') + '</td><td>' + (r.desc||'') + '</td><td style="text-align:right">' + (r.sum ? fmt(r.sum) : '') + '</td></tr>').join('') +
+                _searchResults.map(r => '<tr><td>' + esc(r.section) + '</td><td>' + esc(r.number||'') + '</td><td>' + esc(r.date||'') + '</td><td>' + esc(r.desc||'') + '</td><td style="text-align:right">' + (r.sum ? fmt(r.sum) : '') + '</td></tr>').join('') +
                 '</tbody></table></div>';
         }
 
@@ -1671,12 +1676,12 @@
             if (db.trade && db.trade.docs) {
                 const unpaidInvoices = db.trade.docs.filter(d => d.type === 'supplier_invoice' && d.status !== 'paid' && d.status !== 'posted');
                 unpaidInvoices.forEach(d => {
-                    notifs.push({ title: 'Неоплаченный счёт: ' + (d.number || ''), text: 'Сумма: ' + fmt(d.total || 0), time: d.date || '' });
+                    notifs.push({ title: 'Неоплаченный счёт: ' + esc(d.number || ''), text: 'Сумма: ' + fmt(d.total || 0), time: d.date || '' });
                 });
                 // Overdue customer invoices
                 const overdueCustomer = db.trade.docs.filter(d => d.type === 'customer_invoice' && d.status !== 'paid' && d.status !== 'posted' && d.date && d.date < today);
                 overdueCustomer.forEach(d => {
-                    notifs.push({ title: 'Просроченный счёт покупателю: ' + (d.number || ''), text: 'Сумма: ' + fmt(d.total || 0), time: d.date || '' });
+                    notifs.push({ title: 'Просроченный счёт покупателю: ' + esc(d.number || ''), text: 'Сумма: ' + fmt(d.total || 0), time: d.date || '' });
                 });
             }
             // Expiring contracts (within 30 days)
@@ -1684,7 +1689,7 @@
                 const in30 = new Date(Date.now() + 30*86400000).toISOString().split('T')[0];
                 db.trade.contracts.forEach(c => {
                     if (c.endDate && c.endDate <= in30 && c.endDate >= today) {
-                        notifs.push({ title: 'Истекает договор: ' + (c.name || c.number || ''), text: 'До: ' + c.endDate, time: c.endDate });
+                        notifs.push({ title: 'Истекает договор: ' + esc(c.name || c.number || ''), text: 'До: ' + c.endDate, time: c.endDate });
                     }
                 });
             }
@@ -1758,7 +1763,7 @@
             const logs = db._activityLog || [];
             if (!logs.length) return '<div class="empty-state">Журнал действий пуст</div>';
             return '<div style="padding:20px"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Дата и время</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Пользователь</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Действие</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Детали</th></tr></thead><tbody>' +
-                logs.slice(0, 200).map(l => '<tr><td style="padding:8px;border-bottom:1px solid #eee;font-size:12px">' + new Date(l.date).toLocaleString('ru-RU') + '</td><td style="padding:8px;border-bottom:1px solid #eee">' + (l.user||'') + '</td><td style="padding:8px;border-bottom:1px solid #eee">' + (l.action||'') + '</td><td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;color:#666">' + (l.details||'') + '</td></tr>').join('') +
+                logs.slice(0, 200).map(l => '<tr><td style="padding:8px;border-bottom:1px solid #eee;font-size:12px">' + new Date(l.date).toLocaleString('ru-RU') + '</td><td style="padding:8px;border-bottom:1px solid #eee">' + esc(l.user||'') + '</td><td style="padding:8px;border-bottom:1px solid #eee">' + esc(l.action||'') + '</td><td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;color:#666">' + esc(l.details||'') + '</td></tr>').join('') +
                 '</tbody></table></div>';
         }
 
@@ -1857,7 +1862,7 @@
             if (!el) return;
             if (!_usersCache.length) { el.innerHTML = '<p style="color:#999">Нет пользователей</p>'; return; }
             el.innerHTML = '<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Имя</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Роль</th><th style="padding:8px;border-bottom:2px solid #ddd">Действие</th></tr></thead><tbody>' +
-                _usersCache.map((u, i) => '<tr><td style="padding:8px;border-bottom:1px solid #eee">' + (u.name || '—') + '</td><td style="padding:8px;border-bottom:1px solid #eee">' + (u.role === 'admin' ? 'Администратор' : 'Пользователь') + '</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:center">' +
+                _usersCache.map((u, i) => '<tr><td style="padding:8px;border-bottom:1px solid #eee">' + esc(u.name || '—') + '</td><td style="padding:8px;border-bottom:1px solid #eee">' + (u.role === 'admin' ? 'Администратор' : 'Пользователь') + '</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:center">' +
                     (u.role === 'admin' && _usersCache.filter(x => x.role === 'admin').length <= 1 ? '<span style="color:#999">Основной админ</span>' : '<button class="btn danger" onclick="deleteUser(' + i + ')">Удалить</button>') +
                 '</td></tr>').join('') +
                 '</tbody></table>';
@@ -2436,7 +2441,7 @@
         }
         function tToday() { return new Date().toISOString().split('T')[0]; }
         function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-        function tContractor(id) { return db.trade.contractors.find(c => c.id === id); }
+        function tContractor(id) { return (db.trade && db.trade.contractors || []).find(c => c.id === id); }
         function tContractorName(id) { const c = tContractor(id); return c ? c.name : '—'; }
         function tContract(id) { return db.trade.contracts.find(c => c.id === id); }
         function tContractName(id) { const c = tContract(id); return c ? (c.name + ' №' + c.number + ' от ' + formatDate(c.date)) : '—'; }

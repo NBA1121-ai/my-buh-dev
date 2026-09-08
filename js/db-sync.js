@@ -6,7 +6,7 @@
 
 const DbSync = (function() {
     const REPO_OWNER = 'NBA1121-ai';
-    const REPO_NAME = '1c-accounting';
+    const REPO_NAME = 'my-buh';
     const DATA_BRANCH = 'data';
     const DATA_FILE = 'db.json';
     const API_BASE = 'https://api.github.com';
@@ -143,6 +143,7 @@ const DbSync = (function() {
         try {
             if (!navigator.onLine) {
                 showSyncStatus('offline');
+                _saving = false;
                 return;
             }
 
