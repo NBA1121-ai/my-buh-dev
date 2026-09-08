@@ -690,6 +690,47 @@
             .stats { grid-template-columns: 1fr; }
             .header h1 { font-size: 14px; }
         }
+
+        /* Dashboard */
+        .dash-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .dash-card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .dash-card h3 { font-size: 13px; color: #999; margin-bottom: 8px; text-transform: uppercase; }
+        .dash-card .dash-value { font-size: 28px; font-weight: 700; color: #333; }
+        .dash-card .dash-sub { font-size: 12px; color: #999; margin-top: 4px; }
+        .dash-recent { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .dash-recent h3 { margin-bottom: 12px; }
+        .dash-recent table { width: 100%; }
+        .dash-recent td, .dash-recent th { padding: 8px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
+
+        /* Dark theme */
+        body.dark { background: #1a1a2e; color: #e0e0e0; }
+        body.dark .main { background: #1e1e2f; }
+        body.dark .header { background: #252540; border-bottom-color: #333; }
+        body.dark .header h1 { color: #e0e0e0; }
+        body.dark .content { background: #1e1e2f; }
+        body.dark .dash-card, body.dark .dash-recent, body.dark .table-container { background: #252540; color: #e0e0e0; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        body.dark .dash-card .dash-value { color: #e0e0e0; }
+        body.dark .btn { background: #333; color: #e0e0e0; border-color: #444; }
+        body.dark .btn.primary { background: #2a6fb8; color: #fff; }
+        body.dark table th { background: #2a2a40; color: #ccc; }
+        body.dark table td { border-bottom-color: #333; }
+        body.dark input, body.dark select, body.dark textarea { background: #2a2a40; color: #e0e0e0; border-color: #444; }
+        body.dark .modal-content { background: #252540; color: #e0e0e0; }
+        body.dark .modal-header { background: #1a1a2e; color: #e0e0e0; }
+        body.dark .empty-state { color: #888; }
+        body.dark .nav-item:hover { background: #333; }
+        body.dark .section-title { color: #777; }
+
+        /* Notifications dropdown */
+        .notif-dropdown { display:none; position:absolute; top:100%; right:0; background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.15); width:360px; max-height:400px; overflow-y:auto; z-index:1000; }
+        body.dark .notif-dropdown { background:#252540; border-color:#444; }
+        .notif-dropdown.open { display:block; }
+        .notif-item { padding:12px 16px; border-bottom:1px solid #eee; font-size:13px; cursor:pointer; }
+        .notif-item:hover { background:#f5f5f5; }
+        body.dark .notif-item { border-bottom-color:#333; }
+        body.dark .notif-item:hover { background:#2a2a40; }
+        .notif-item .notif-title { font-weight:600; margin-bottom:4px; }
+        .notif-item .notif-time { color:#999; font-size:11px; }
     </style>
 </head>
 <body>
@@ -705,6 +746,8 @@
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
             <div class="logo">📊 1s Бухгалтерия</div>
+
+            <div class="nav-item active" onclick="selectPage('dashboard')">📋 Главная (Дашборд)</div>
 
             <div class="section-title" onclick="tToggleGroup(this)">Банк и касса</div>
             <div class="nav-item active" onclick="selectPage('bank')">🏦 Банковские документы</div>
@@ -810,6 +853,7 @@
 
             <div class="section-title admin-only" onclick="tToggleGroup(this)" style="display:none">Администрирование</div>
             <div class="nav-item admin-only" onclick="selectPage('users')" style="display:none">👥 Пользователи</div>
+            <div class="nav-item admin-only" onclick="selectPage('actlog')" style="display:none">📜 Журнал действий</div>
         </div>
 
         <!-- Main -->
@@ -823,8 +867,13 @@
                     <button class="btn" onclick="window.print()">🖨 Печать</button>
                 </div>
                 <div class="user-panel">
+                    <input type="text" id="globalSearch" placeholder="Поиск..." style="padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;width:160px" onkeydown="if(event.key==='Enter')doGlobalSearch()">
+                    <button class="btn" onclick="doGlobalSearch()" title="Поиск">🔍</button>
+                    <button class="btn" onclick="showNotifications()" title="Уведомления" style="position:relative">🔔<span id="notifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;border-radius:50%;font-size:10px;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
+                    <button class="btn" onclick="toggleTheme()" title="Тема">🌓</button>
+                    <button class="btn" onclick="downloadBackup()" title="Скачать резервную копию">💾</button>
                     <span id="syncStatus" style="color:#4caf50">Облако</span>
-                    <span class="user-email" id="userEmail"></span>
+                    <span class="user-email" id="userEmail" style="cursor:pointer" onclick="selectPage('profile')"></span>
                     <button class="btn-logout" onclick="localStorage.removeItem('auth_session');window.location.href='index.html'">Выход</button>
                 </div>
             </div>
@@ -1006,7 +1055,7 @@
             articles: []
         };
 
-        let currentPage = 'bank';
+        let currentPage = 'dashboard';
         let editingId = null;
 
         // ==================== INITIALIZATION ====================
@@ -1057,6 +1106,7 @@
             document.getElementById('appContainer').style.display = 'flex';
 
             renderPage();
+            updateNotifBadge();
 
             // Poll for changes from other devices (every 30 sec)
             DbSync.startPolling((newData) => {
@@ -1188,8 +1238,10 @@
                 document.getElementById('content').innerHTML = renderTradePage(currentPage);
                 return;
             }
-            document.querySelector('.header .toolbar').style.display = '';
+            const noToolbar = ['dashboard','users','actlog','profile','search_results'];
+            document.querySelector('.header .toolbar').style.display = noToolbar.includes(currentPage) ? 'none' : '';
             const pages = {
+                dashboard: renderDashboard,
                 bank: renderBankDocuments,
                 cash: renderCashDocuments,
                 reports: renderReports,
@@ -1199,7 +1251,10 @@
                 banks: renderBanks,
                 cashs: renderCashs,
                 currencies: renderCurrencies,
-                users: renderUsers
+                users: renderUsers,
+                actlog: renderActivityLog,
+                profile: renderProfile,
+                search_results: renderSearchResults
             };
 
             const titles = {
@@ -1212,7 +1267,11 @@
                 banks: 'Справочник банков',
                 cashs: 'Кассы',
                 currencies: 'Валюты',
-                users: 'Управление пользователями'
+                users: 'Управление пользователями',
+                actlog: 'Журнал действий',
+                profile: 'Профиль',
+                search_results: 'Результаты поиска',
+                dashboard: 'Главная'
             };
 
             document.getElementById('pageTitle').textContent = titles[currentPage] || 'Документы';
@@ -1522,6 +1581,229 @@
             `;
         }
 
+        // ==================== DASHBOARD ====================
+        function renderDashboard() {
+            const bankCount = db.bankDocuments ? db.bankDocuments.length : 0;
+            const cashCount = db.cashDocuments ? db.cashDocuments.length : 0;
+            const tradeCount = db.trade && db.trade.docs ? db.trade.docs.length : 0;
+            const contractorCount = db.trade && db.trade.contractors ? db.trade.contractors.length : 0;
+            const nomCount = db.trade && db.trade.nomenclature ? db.trade.nomenclature.length : 0;
+            const empCount = db.trade && db.trade.employees ? db.trade.employees.length : 0;
+
+            // Account balances
+            let balanceHtml = '';
+            if (db.accounts && db.accounts.length) {
+                balanceHtml = db.accounts.map(a => '<div class="dash-card"><h3>' + (a.name || a.bank || 'Счёт') + '</h3><div class="dash-value">' + fmt(a.balance || 0) + '</div><div class="dash-sub">' + (a.currency || 'KGS') + '</div></div>').join('');
+            }
+
+            // Recent operations (last 10)
+            let recentRows = '';
+            const allDocs = [];
+            (db.bankDocuments || []).forEach(d => allDocs.push({ date: d.date, type: 'Банк', desc: d.contractor || d.purpose || d.type, sum: d.sum }));
+            (db.cashDocuments || []).forEach(d => allDocs.push({ date: d.date, type: 'Касса', desc: d.contractor || d.purpose || d.type, sum: d.sum }));
+            if (db.trade && db.trade.docs) db.trade.docs.forEach(d => allDocs.push({ date: d.date, type: d.type || 'Документ', desc: d.contractor ? (tContractor(d.contractor)||{}).name||d.contractor : (d.number||''), sum: d.total || d.sum || 0 }));
+            allDocs.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            const recent = allDocs.slice(0, 10);
+            if (recent.length) {
+                recentRows = recent.map(d => '<tr><td>' + (d.date || '—') + '</td><td>' + (d.type || '') + '</td><td>' + (d.desc || '—') + '</td><td style="text-align:right">' + fmt(d.sum || 0) + '</td></tr>').join('');
+            } else {
+                recentRows = '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">Нет документов</td></tr>';
+            }
+
+            return '<div style="padding:20px"><div class="dash-cards">' +
+                '<div class="dash-card"><h3>Банковские документы</h3><div class="dash-value">' + bankCount + '</div></div>' +
+                '<div class="dash-card"><h3>Кассовые документы</h3><div class="dash-value">' + cashCount + '</div></div>' +
+                '<div class="dash-card"><h3>Покупки / Продажи</h3><div class="dash-value">' + tradeCount + '</div></div>' +
+                '<div class="dash-card"><h3>Контрагенты</h3><div class="dash-value">' + contractorCount + '</div></div>' +
+                '<div class="dash-card"><h3>Номенклатура</h3><div class="dash-value">' + nomCount + '</div></div>' +
+                '<div class="dash-card"><h3>Сотрудники</h3><div class="dash-value">' + empCount + '</div></div>' +
+                balanceHtml +
+                '</div>' +
+                '<div class="dash-recent"><h3>Последние операции</h3><table><thead><tr><th>Дата</th><th>Тип</th><th>Описание</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' + recentRows + '</tbody></table></div></div>';
+        }
+
+        function fmt(n) { return Number(n || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+        // ==================== GLOBAL SEARCH ====================
+        let _searchResults = [];
+        function doGlobalSearch() {
+            const q = (document.getElementById('globalSearch').value || '').trim().toLowerCase();
+            if (!q) return;
+            _searchResults = [];
+            // Search bank docs
+            (db.bankDocuments || []).forEach(d => {
+                if (JSON.stringify(d).toLowerCase().includes(q)) _searchResults.push({ section: 'Банк', number: d.number, date: d.date, desc: d.contractor || d.purpose || '', sum: d.sum });
+            });
+            // Search cash docs
+            (db.cashDocuments || []).forEach(d => {
+                if (JSON.stringify(d).toLowerCase().includes(q)) _searchResults.push({ section: 'Касса', number: d.number, date: d.date, desc: d.contractor || d.purpose || '', sum: d.sum });
+            });
+            // Search trade docs
+            if (db.trade && db.trade.docs) db.trade.docs.forEach(d => {
+                const cn = d.contractor ? ((tContractor(d.contractor)||{}).name||'') : '';
+                if ((JSON.stringify(d) + cn).toLowerCase().includes(q)) _searchResults.push({ section: d.type || 'Документ', number: d.number, date: d.date, desc: cn || d.number, sum: d.total || 0 });
+            });
+            // Search contractors
+            if (db.trade && db.trade.contractors) db.trade.contractors.forEach(c => {
+                if (JSON.stringify(c).toLowerCase().includes(q)) _searchResults.push({ section: 'Контрагент', number: '', date: '', desc: c.name, sum: '' });
+            });
+            // Search nomenclature
+            if (db.trade && db.trade.nomenclature) db.trade.nomenclature.forEach(n => {
+                if (JSON.stringify(n).toLowerCase().includes(q)) _searchResults.push({ section: 'Номенклатура', number: n.article || '', date: '', desc: n.name, sum: n.price || '' });
+            });
+            selectPage('search_results');
+        }
+
+        function renderSearchResults() {
+            const q = (document.getElementById('globalSearch').value || '').trim();
+            if (!_searchResults.length) return '<div class="empty-state">По запросу «' + q + '» ничего не найдено</div>';
+            return '<div style="padding:20px"><p style="margin-bottom:15px;color:#666">Найдено: ' + _searchResults.length + ' результатов по запросу «' + q + '»</p>' +
+                '<table class="table-container" style="width:100%"><thead><tr><th>Раздел</th><th>Номер</th><th>Дата</th><th>Описание</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' +
+                _searchResults.map(r => '<tr><td>' + r.section + '</td><td>' + (r.number||'') + '</td><td>' + (r.date||'') + '</td><td>' + (r.desc||'') + '</td><td style="text-align:right">' + (r.sum ? fmt(r.sum) : '') + '</td></tr>').join('') +
+                '</tbody></table></div>';
+        }
+
+        // ==================== NOTIFICATIONS ====================
+        function getNotifications() {
+            const notifs = [];
+            const today = new Date().toISOString().split('T')[0];
+            // Unpaid invoices (supplier invoices not matched by payments)
+            if (db.trade && db.trade.docs) {
+                const unpaidInvoices = db.trade.docs.filter(d => d.type === 'supplier_invoice' && d.status !== 'paid' && d.status !== 'posted');
+                unpaidInvoices.forEach(d => {
+                    notifs.push({ title: 'Неоплаченный счёт: ' + (d.number || ''), text: 'Сумма: ' + fmt(d.total || 0), time: d.date || '' });
+                });
+                // Overdue customer invoices
+                const overdueCustomer = db.trade.docs.filter(d => d.type === 'customer_invoice' && d.status !== 'paid' && d.status !== 'posted' && d.date && d.date < today);
+                overdueCustomer.forEach(d => {
+                    notifs.push({ title: 'Просроченный счёт покупателю: ' + (d.number || ''), text: 'Сумма: ' + fmt(d.total || 0), time: d.date || '' });
+                });
+            }
+            // Expiring contracts (within 30 days)
+            if (db.trade && db.trade.contracts) {
+                const in30 = new Date(Date.now() + 30*86400000).toISOString().split('T')[0];
+                db.trade.contracts.forEach(c => {
+                    if (c.endDate && c.endDate <= in30 && c.endDate >= today) {
+                        notifs.push({ title: 'Истекает договор: ' + (c.name || c.number || ''), text: 'До: ' + c.endDate, time: c.endDate });
+                    }
+                });
+            }
+            if (!notifs.length) notifs.push({ title: 'Нет уведомлений', text: 'Всё в порядке', time: '' });
+            return notifs;
+        }
+
+        function updateNotifBadge() {
+            const notifs = getNotifications();
+            const realCount = notifs.filter(n => n.title !== 'Нет уведомлений').length;
+            const badge = document.getElementById('notifBadge');
+            if (badge) {
+                if (realCount > 0) { badge.textContent = realCount; badge.style.display = ''; }
+                else { badge.style.display = 'none'; }
+            }
+        }
+
+        function showNotifications() {
+            let dd = document.getElementById('notifDropdown');
+            if (dd) { dd.classList.toggle('open'); return; }
+            const btn = document.querySelector('[onclick="showNotifications()"]');
+            dd = document.createElement('div');
+            dd.id = 'notifDropdown';
+            dd.className = 'notif-dropdown open';
+            const notifs = getNotifications();
+            dd.innerHTML = '<div style="padding:12px 16px;font-weight:600;border-bottom:1px solid #eee">Уведомления</div>' +
+                notifs.map(n => '<div class="notif-item"><div class="notif-title">' + n.title + '</div><div>' + n.text + '</div><div class="notif-time">' + n.time + '</div></div>').join('');
+            btn.style.position = 'relative';
+            btn.appendChild(dd);
+            setTimeout(() => document.addEventListener('click', function closeNotif(e) { if (!dd.contains(e.target) && e.target !== btn) { dd.classList.remove('open'); document.removeEventListener('click', closeNotif); } }), 10);
+        }
+
+        // ==================== DARK THEME ====================
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+        }
+        // Apply saved theme on load
+        if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+
+        // ==================== BACKUP DOWNLOAD ====================
+        function downloadBackup() {
+            const data = JSON.parse(JSON.stringify(db));
+            data._backupDate = new Date().toISOString();
+            data._backupFormat = '1s-buh-full';
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'backup_' + new Date().toISOString().split('T')[0] + '.json';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('Резервная копия скачана');
+        }
+
+        // ==================== ACTIVITY LOG ====================
+        function logActivity(action, details) {
+            if (!db._activityLog) db._activityLog = [];
+            try {
+                const s = JSON.parse(localStorage.getItem('auth_session') || '{}');
+                db._activityLog.unshift({ date: new Date().toISOString(), user: s.name || 'Неизвестный', action: action, details: details || '' });
+                if (db._activityLog.length > 500) db._activityLog = db._activityLog.slice(0, 500);
+            } catch(e) {}
+        }
+
+        function renderActivityLog() {
+            try {
+                const s = JSON.parse(localStorage.getItem('auth_session') || '{}');
+                if (s.role !== 'admin') return '<div class="empty-state">Доступ запрещен</div>';
+            } catch(e) { return '<div class="empty-state">Доступ запрещен</div>'; }
+
+            const logs = db._activityLog || [];
+            if (!logs.length) return '<div class="empty-state">Журнал действий пуст</div>';
+            return '<div style="padding:20px"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Дата и время</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Пользователь</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Действие</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Детали</th></tr></thead><tbody>' +
+                logs.slice(0, 200).map(l => '<tr><td style="padding:8px;border-bottom:1px solid #eee;font-size:12px">' + new Date(l.date).toLocaleString('ru-RU') + '</td><td style="padding:8px;border-bottom:1px solid #eee">' + (l.user||'') + '</td><td style="padding:8px;border-bottom:1px solid #eee">' + (l.action||'') + '</td><td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;color:#666">' + (l.details||'') + '</td></tr>').join('') +
+                '</tbody></table></div>';
+        }
+
+        // ==================== PROFILE (Change Password) ====================
+        function renderProfile() {
+            let s = {};
+            try { s = JSON.parse(localStorage.getItem('auth_session') || '{}'); } catch(e) {}
+            return '<div style="padding:20px;max-width:500px">' +
+                '<div class="dash-card" style="margin-bottom:20px"><h3>Профиль</h3><div style="margin-top:10px"><strong>Имя:</strong> ' + (s.name || 'Пользователь') + '</div><div><strong>Роль:</strong> ' + (s.role === 'admin' ? 'Администратор' : 'Пользователь') + '</div></div>' +
+                '<div class="dash-card"><h3>Смена пароля</h3>' +
+                '<div style="margin-top:12px"><label style="font-size:12px;color:#666">Текущий пароль</label><br><input type="password" id="oldPass" style="padding:8px;border:1px solid #ddd;border-radius:4px;width:100%;margin-bottom:10px"></div>' +
+                '<div><label style="font-size:12px;color:#666">Новый пароль</label><br><input type="password" id="newPass1" style="padding:8px;border:1px solid #ddd;border-radius:4px;width:100%;margin-bottom:10px"></div>' +
+                '<div><label style="font-size:12px;color:#666">Подтвердите новый пароль</label><br><input type="password" id="newPass2" style="padding:8px;border:1px solid #ddd;border-radius:4px;width:100%;margin-bottom:10px"></div>' +
+                '<button class="btn primary" onclick="changePassword()">Сменить пароль</button>' +
+                '<div id="passMsg" style="margin-top:8px;font-size:13px"></div></div></div>';
+        }
+
+        async function changePassword() {
+            const oldP = document.getElementById('oldPass').value;
+            const newP1 = document.getElementById('newPass1').value;
+            const newP2 = document.getElementById('newPass2').value;
+            const msg = document.getElementById('passMsg');
+            if (!oldP || !newP1 || !newP2) { msg.innerHTML = '<span style="color:#d32f2f">Заполните все поля</span>'; return; }
+            if (newP1 !== newP2) { msg.innerHTML = '<span style="color:#d32f2f">Пароли не совпадают</span>'; return; }
+            if (newP1.length < 4) { msg.innerHTML = '<span style="color:#d32f2f">Минимум 4 символа</span>'; return; }
+            msg.innerHTML = '<span style="color:#999">Сохранение...</span>';
+            const oldHash = await _sha256(oldP);
+            const newHash = await _sha256(newP1);
+            const users = await DbSync.loadUsers();
+            if (!users || !users.length) { msg.innerHTML = '<span style="color:#d32f2f">Ошибка загрузки пользователей</span>'; return; }
+            let s = {};
+            try { s = JSON.parse(localStorage.getItem('auth_session') || '{}'); } catch(e) {}
+            const user = users.find(u => u.name === s.name && u.pass === oldHash);
+            if (!user) { msg.innerHTML = '<span style="color:#d32f2f">Неверный текущий пароль</span>'; return; }
+            user.pass = newHash;
+            const ok = await DbSync.saveUsers(users);
+            if (ok) {
+                msg.innerHTML = '<span style="color:#2e7d32">Пароль успешно изменён</span>';
+                logActivity('Смена пароля', s.name);
+                saveData();
+            } else {
+                msg.innerHTML = '<span style="color:#d32f2f">Ошибка сохранения</span>';
+            }
+        }
+
         // ==================== USER MANAGEMENT (Admin only) ====================
         async function _sha256(text) {
             const enc = new TextEncoder();
@@ -1799,14 +2081,17 @@
 
             saveData();
             closeModal();
+            logActivity(editingId ? 'Изменение документа' : 'Создание документа', doc.type + ' ' + doc.number + ' на ' + doc.sum);
             showToast('Документ сохранён');
             renderPage();
         }
 
         function deleteDoc(id) {
             if (!confirm('Удалить документ?')) return;
+            const found = db.bankDocuments.find(d=>d.id===id) || db.cashDocuments.find(d=>d.id===id);
             db.bankDocuments = db.bankDocuments.filter(d => d.id !== id);
             db.cashDocuments = db.cashDocuments.filter(d => d.id !== id);
+            logActivity('Удаление документа', found ? (found.type + ' ' + found.number) : id);
             saveData();
             showToast('Документ удален');
             renderPage();
@@ -2839,7 +3124,9 @@
             const d = tDoc; delete d._sel; tCalcDoc(d);
             const idx = db.trade.docs.findIndex(x => x.id === d.id);
             const copy = JSON.parse(JSON.stringify(d));
+            const isNew = idx < 0;
             if (idx >= 0) db.trade.docs[idx] = copy; else db.trade.docs.push(copy);
+            logActivity(isNew ? 'Создание документа' : 'Изменение документа', (d.type||'') + ' ' + (d.number||''));
             saveData(); tSelected = d.id; renderPage(); showToast('Документ записан');
             if (close) tCloseForm(); else tRenderForm(false);
         }
