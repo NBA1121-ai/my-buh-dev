@@ -1596,10 +1596,45 @@
             const nomCount = db.trade && db.trade.nomenclature ? db.trade.nomenclature.length : 0;
             const empCount = db.trade && db.trade.employees ? db.trade.employees.length : 0;
 
-            // Account balances
+            // Calculate account balances from documents
+            const accBalances = {};
+            (db.accounts || []).forEach(a => { accBalances[a.id] = 0; });
+            const allFinDocs = [...(db.bankDocuments || []), ...(db.cashDocuments || [])];
+            allFinDocs.forEach(d => {
+                if (!d.account || accBalances[d.account] === undefined) return;
+                const isIn = d.type === 'payment_in' || d.type === 'pko';
+                const isOut = d.type === 'payment_out' || d.type === 'rko';
+                if (isIn) accBalances[d.account] += (d.sum || 0);
+                else if (isOut) accBalances[d.account] -= (d.sum || 0);
+            });
+
+            // Account balance cards
             let balanceHtml = '';
             if (db.accounts && db.accounts.length) {
-                balanceHtml = db.accounts.map(a => '<div class="dash-card"><h3>' + (a.name || a.bank || 'Счёт') + '</h3><div class="dash-value">' + fmt(a.balance || 0) + '</div><div class="dash-sub">' + (a.currency || 'KGS') + '</div></div>').join('');
+                balanceHtml = '<div class="dash-section"><h3 style="margin-bottom:12px">Остатки по счетам (KGS)</h3><div class="dash-cards">' +
+                    db.accounts.map(a => {
+                        const bal = accBalances[a.id] || 0;
+                        const color = bal > 0 ? '#2e7d32' : bal < 0 ? '#d32f2f' : '#666';
+                        return '<div class="dash-card">' +
+                            '<h3>' + esc(a.name || a.bank || 'Счёт') + '</h3>' +
+                            (a.number ? '<div class="dash-sub" style="margin-bottom:4px">' + esc(a.number) + '</div>' : '') +
+                            '<div class="dash-value" style="color:' + color + '">' + fmt(bal) + '</div>' +
+                            '<div class="dash-sub">KGS</div>' +
+                            '</div>';
+                    }).join('') +
+                    '</div></div>';
+
+                // Total across all accounts
+                const totalBal = Object.values(accBalances).reduce((s, v) => s + v, 0);
+                const totalColor = totalBal > 0 ? '#2e7d32' : totalBal < 0 ? '#d32f2f' : '#666';
+                balanceHtml += '<div class="dash-section" style="margin-top:8px"><div class="dash-cards">' +
+                    '<div class="dash-card" style="border-left:4px solid ' + totalColor + '">' +
+                    '<h3>Итого по всем счетам</h3>' +
+                    '<div class="dash-value" style="color:' + totalColor + '">' + fmt(totalBal) + '</div>' +
+                    '<div class="dash-sub">KGS</div></div>' +
+                    '<div class="dash-card"><h3>Всего поступлений</h3><div class="dash-value" style="color:#2e7d32">' + fmt(allFinDocs.filter(d => d.type === 'payment_in' || d.type === 'pko').reduce((s,d) => s + (d.sum||0), 0)) + '</div><div class="dash-sub">KGS</div></div>' +
+                    '<div class="dash-card"><h3>Всего расходов</h3><div class="dash-value" style="color:#d32f2f">' + fmt(allFinDocs.filter(d => d.type === 'payment_out' || d.type === 'rko').reduce((s,d) => s + (d.sum||0), 0)) + '</div><div class="dash-sub">KGS</div></div>' +
+                    '</div></div>';
             }
 
             // Recent operations (last 10)
@@ -1616,15 +1651,16 @@
                 recentRows = '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">Нет документов</td></tr>';
             }
 
-            return '<div style="padding:20px"><div class="dash-cards">' +
+            return '<div style="padding:20px">' +
+                balanceHtml +
+                '<div class="dash-section" style="margin-top:16px"><h3 style="margin-bottom:12px">Сводка</h3><div class="dash-cards">' +
                 '<div class="dash-card"><h3>Банковские документы</h3><div class="dash-value">' + bankCount + '</div></div>' +
                 '<div class="dash-card"><h3>Кассовые документы</h3><div class="dash-value">' + cashCount + '</div></div>' +
                 '<div class="dash-card"><h3>Покупки / Продажи</h3><div class="dash-value">' + tradeCount + '</div></div>' +
                 '<div class="dash-card"><h3>Контрагенты</h3><div class="dash-value">' + contractorCount + '</div></div>' +
                 '<div class="dash-card"><h3>Номенклатура</h3><div class="dash-value">' + nomCount + '</div></div>' +
                 '<div class="dash-card"><h3>Сотрудники</h3><div class="dash-value">' + empCount + '</div></div>' +
-                balanceHtml +
-                '</div>' +
+                '</div></div>' +
                 '<div class="dash-recent"><h3>Последние операции</h3><table><thead><tr><th>Дата</th><th>Тип</th><th>Описание</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' + recentRows + '</tbody></table></div></div>';
         }
 
