@@ -808,9 +808,8 @@
             <div class="nav-item" onclick="selectPage('cashs')">💵 Кассы</div>
             <div class="nav-item" onclick="selectPage('currencies')">💱 Валюты</div>
 
-            <div class="section-title" onclick="tToggleGroup(this)">Сервис</div>
-            <div class="nav-item" onclick="selectPage('import')">📥 Импорт</div>
-            <div class="nav-item" onclick="selectPage('export')">📤 Экспорт</div>
+            <div class="section-title admin-only" onclick="tToggleGroup(this)" style="display:none">Администрирование</div>
+            <div class="nav-item admin-only" onclick="selectPage('users')" style="display:none">👥 Пользователи</div>
         </div>
 
         <!-- Main -->
@@ -1029,6 +1028,10 @@
                 }
                 const emailEl = document.getElementById('userEmail');
                 if (emailEl) emailEl.textContent = s.name || 'Пользователь';
+                // Show admin-only elements
+                if (s.role === 'admin') {
+                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+                }
             } catch(e) {
                 localStorage.removeItem('auth_session');
                 window.location.href = 'index.html';
@@ -1196,8 +1199,7 @@
                 banks: renderBanks,
                 cashs: renderCashs,
                 currencies: renderCurrencies,
-                import: renderImport,
-                export: renderExport
+                users: renderUsers
             };
 
             const titles = {
@@ -1210,8 +1212,7 @@
                 banks: 'Справочник банков',
                 cashs: 'Кассы',
                 currencies: 'Валюты',
-                import: 'Импорт',
-                export: 'Экспорт'
+                users: 'Управление пользователями'
             };
 
             document.getElementById('pageTitle').textContent = titles[currentPage] || 'Документы';
@@ -1519,6 +1520,121 @@
                     </tbody>
                 </table>
             `;
+        }
+
+        // ==================== USER MANAGEMENT (Admin only) ====================
+        async function _sha256(text) {
+            const enc = new TextEncoder();
+            const buf = await crypto.subtle.digest('SHA-256', enc.encode(text));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        let _usersCache = [];
+
+        function renderUsers() {
+            // Check admin role
+            try {
+                const s = JSON.parse(localStorage.getItem('auth_session') || '{}');
+                if (s.role !== 'admin') return '<div class="empty-state">Доступ запрещен</div>';
+            } catch(e) { return '<div class="empty-state">Доступ запрещен</div>'; }
+
+            // Load users async and re-render the list
+            _loadUsersAndRender();
+
+            return `
+                <div style="padding:20px" class="table-container">
+                    <h3>Управление пользователями</h3>
+                    <p style="margin:15px 0;color:#666">Создание и удаление пользователей системы. Администратор имеет полный доступ ко всем функциям.</p>
+                    <div style="background:#f0f7ff;border:1px solid #c0d8f0;border-radius:8px;padding:15px;margin-bottom:20px">
+                        <h4 style="margin-bottom:10px">Добавить пользователя</h4>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+                            <div><label style="font-size:12px;color:#666">Имя</label><br><input id="newUserName" placeholder="Имя пользователя" style="padding:8px;border:1px solid #ddd;border-radius:4px"></div>
+                            <div><label style="font-size:12px;color:#666">Логин</label><br><input id="newUserLogin" placeholder="Логин" style="padding:8px;border:1px solid #ddd;border-radius:4px"></div>
+                            <div><label style="font-size:12px;color:#666">Пароль</label><br><input id="newUserPass" type="password" placeholder="Пароль" style="padding:8px;border:1px solid #ddd;border-radius:4px"></div>
+                            <div><label style="font-size:12px;color:#666">Роль</label><br>
+                                <select id="newUserRole" style="padding:8px;border:1px solid #ddd;border-radius:4px">
+                                    <option value="user">Пользователь</option>
+                                    <option value="admin">Администратор</option>
+                                </select>
+                            </div>
+                            <button class="btn primary" onclick="addUser()">Добавить</button>
+                        </div>
+                        <div id="addUserMsg" style="margin-top:8px;font-size:13px"></div>
+                    </div>
+                    <div id="usersListContainer"><p style="color:#999">Загрузка списка пользователей...</p></div>
+                </div>
+            `;
+        }
+
+        async function _loadUsersAndRender() {
+            try {
+                const users = await DbSync.loadUsers();
+                _usersCache = users && users.length ? users : [];
+            } catch(e) { _usersCache = []; }
+            const el = document.getElementById('usersListContainer');
+            if (!el) return;
+            if (!_usersCache.length) { el.innerHTML = '<p style="color:#999">Нет пользователей</p>'; return; }
+            el.innerHTML = '<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Имя</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Роль</th><th style="padding:8px;border-bottom:2px solid #ddd">Действие</th></tr></thead><tbody>' +
+                _usersCache.map((u, i) => '<tr><td style="padding:8px;border-bottom:1px solid #eee">' + (u.name || '—') + '</td><td style="padding:8px;border-bottom:1px solid #eee">' + (u.role === 'admin' ? 'Администратор' : 'Пользователь') + '</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:center">' +
+                    (u.role === 'admin' && _usersCache.filter(x => x.role === 'admin').length <= 1 ? '<span style="color:#999">Основной админ</span>' : '<button class="btn danger" onclick="deleteUser(' + i + ')">Удалить</button>') +
+                '</td></tr>').join('') +
+                '</tbody></table>';
+        }
+
+        async function addUser() {
+            const nameEl = document.getElementById('newUserName');
+            const loginEl = document.getElementById('newUserLogin');
+            const passEl = document.getElementById('newUserPass');
+            const roleEl = document.getElementById('newUserRole');
+            const msgEl = document.getElementById('addUserMsg');
+            const name = (nameEl.value || '').trim();
+            const login = (loginEl.value || '').trim().toLowerCase();
+            const pass = passEl.value || '';
+
+            if (!name || !login || !pass) {
+                msgEl.innerHTML = '<span style="color:#d32f2f">Заполните все поля</span>';
+                return;
+            }
+            if (pass.length < 4) {
+                msgEl.innerHTML = '<span style="color:#d32f2f">Пароль минимум 4 символа</span>';
+                return;
+            }
+
+            msgEl.innerHTML = '<span style="color:#999">Сохранение...</span>';
+            const loginHash = await _sha256(login);
+            const passHash = await _sha256(pass);
+
+            // Check duplicate login
+            if (_usersCache.find(u => u.login === loginHash)) {
+                msgEl.innerHTML = '<span style="color:#d32f2f">Пользователь с таким логином уже существует</span>';
+                return;
+            }
+
+            _usersCache.push({ login: loginHash, pass: passHash, name: name, role: roleEl.value });
+            const ok = await DbSync.saveUsers(_usersCache);
+            if (ok) {
+                msgEl.innerHTML = '<span style="color:#2e7d32">Пользователь добавлен</span>';
+                nameEl.value = ''; loginEl.value = ''; passEl.value = '';
+                _loadUsersAndRender();
+            } else {
+                _usersCache.pop();
+                msgEl.innerHTML = '<span style="color:#d32f2f">Ошибка сохранения</span>';
+            }
+        }
+
+        async function deleteUser(index) {
+            const user = _usersCache[index];
+            if (!user) return;
+            if (!confirm('Удалить пользователя "' + user.name + '"?')) return;
+            _usersCache.splice(index, 1);
+            const ok = await DbSync.saveUsers(_usersCache);
+            if (ok) {
+                showToast('Пользователь удален');
+                _loadUsersAndRender();
+            } else {
+                showToast('Ошибка удаления');
+                _loadUsersAndRender(); // reload from server
+            }
         }
 
         function renderImport() {

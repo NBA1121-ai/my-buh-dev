@@ -301,9 +301,63 @@ const DbSync = (function() {
 
     function logout() {
         stopPolling();
-        clearToken();
         localStorage.removeItem('auth_session');
         window.location.href = 'index.html';
+    }
+
+    // ---- User management (users.json in data branch) ----
+    const USERS_FILE = 'users.json';
+    let _usersSha = null;
+
+    async function loadUsers() {
+        if (!_token) return [];
+        try {
+            const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${USERS_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;
+            const res = await fetch(url, {
+                headers: { 'Authorization': 'token ' + _token, 'Accept': 'application/vnd.github+json' },
+                cache: 'no-store'
+            });
+            if (!res.ok) return [];
+            const fileData = await res.json();
+            _usersSha = fileData.sha;
+            const decoded = b64DecodeUTF8(fileData.content);
+            return JSON.parse(decoded);
+        } catch(e) {
+            console.error('loadUsers error:', e);
+            return [];
+        }
+    }
+
+    async function saveUsers(users) {
+        if (!_token) return false;
+        try {
+            // Reload SHA to avoid conflicts
+            if (!_usersSha) {
+                const chk = await fetch(`${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${USERS_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`, {
+                    headers: { 'Authorization': 'token ' + _token, 'Accept': 'application/vnd.github+json' },
+                    cache: 'no-store'
+                });
+                if (chk.ok) { const d = await chk.json(); _usersSha = d.sha; }
+            }
+            const body = {
+                message: 'Update users ' + new Date().toLocaleString('ru-RU'),
+                content: b64EncodeUTF8(JSON.stringify(users, null, 2)),
+                branch: DATA_BRANCH
+            };
+            if (_usersSha) body.sha = _usersSha;
+            const res = await fetch(`${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${USERS_FILE}`, {
+                method: 'PUT',
+                headers: { 'Authorization': 'token ' + _token, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json' },
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error('Save users failed: ' + res.status);
+            const result = await res.json();
+            _usersSha = result.content.sha;
+            return true;
+        } catch(e) {
+            console.error('saveUsers error:', e);
+            return false;
+        }
     }
 
     // FNV-1a 52-bit hash — much lower collision rate than 32-bit
@@ -346,6 +400,7 @@ const DbSync = (function() {
         loadData, scheduleSave, forceSave,
         startPolling, stopPolling,
         getHistory, restoreFromCommit,
-        logout, showSyncStatus
+        logout, showSyncStatus,
+        loadUsers, saveUsers
     };
 })();
