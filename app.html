@@ -1155,7 +1155,8 @@
         }
 
         function initializeDefaults() {
-            if (!db.accounts.length) {
+            let changed = false;
+            if (!db.accounts.length) { changed = true;
                 db.accounts = [
                     { id: '_1', name: 'Рублевый счет', number: '40702810200009999999', bank: 'АБ Кыргызстан', type: 'bank' },
                     { id: '_2', name: 'USD счет', number: '40702840200009999999', bank: 'НИСПА', type: 'bank' },
@@ -1163,7 +1164,7 @@
                 ];
             }
 
-            if (!db.banks.length) {
+            if (!db.banks.length) { changed = true;
                 db.banks = [
                     { id: '_1', name: 'АБ Кыргызстан', bik: '170201001', corrAccount: '1234567890' },
                     { id: '_2', name: 'НИСПА', bik: '170202001', corrAccount: '0987654321' },
@@ -1171,14 +1172,14 @@
                 ];
             }
 
-            if (!db.cashs.length) {
+            if (!db.cashs.length) { changed = true;
                 db.cashs = [
                     { id: '_1', name: 'Касса магазина', responsible: 'Иванов И.И.' },
                     { id: '_2', name: 'Касса офиса', responsible: 'Петрова М.М.' }
                 ];
             }
 
-            if (!db.currencies.length) {
+            if (!db.currencies.length) { changed = true;
                 db.currencies = [
                     { id: '_1', code: 'KGS', name: 'Киргизский сом', rate: 1 },
                     { id: '_2', code: 'USD', name: 'Доллар США', rate: 85 },
@@ -1187,7 +1188,7 @@
                 ];
             }
 
-            if (!db.articles.length) {
+            if (!db.articles.length) { changed = true;
                 db.articles = [
                     // Приход
                     { id: '_1', name: 'Оплата от покупателя', type: 'in' },
@@ -1204,7 +1205,7 @@
             }
 
             populateSelects();
-            saveData();
+            if (changed) saveData();
         }
 
         function populateSelects() {
@@ -2430,7 +2431,6 @@
             t.sfCounter = t.sfCounter || { in: 0, out: 0 };
             stockInit();
             hrInit();
-            saveData();
         }
 
         // ---------- Утилиты ----------
