@@ -1497,6 +1497,23 @@
 
         function renderAccounts() {
             return `
+                <div style="margin-bottom:12px">
+                    <button class="btn btn-primary" onclick="showAddAccount()">+ Добавить счёт</button>
+                </div>
+                <div id="accountFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <h4 id="accountFormTitle" style="margin-bottom:12px">Новый счёт</h4>
+                    <input type="hidden" id="accEditId">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                        <div class="form-group"><label>Название</label><input id="accName" class="form-control" placeholder="Рублёвый счёт"></div>
+                        <div class="form-group"><label>Номер счёта</label><input id="accNumber" class="form-control" placeholder="40702810..."></div>
+                        <div class="form-group"><label>Банк</label><input id="accBank" class="form-control" placeholder="АБ Кыргызстан"></div>
+                        <div class="form-group"><label>Тип</label><select id="accType" class="form-control"><option value="bank">Банковский</option><option value="cash">Касса</option></select></div>
+                    </div>
+                    <div style="margin-top:10px;display:flex;gap:8px">
+                        <button class="btn btn-primary" onclick="saveAccount()">Сохранить</button>
+                        <button class="btn" onclick="document.getElementById('accountFormWrap').style.display='none'">Отмена</button>
+                    </div>
+                </div>
                 <table class="table-container">
                     <thead>
                         <tr>
@@ -1504,15 +1521,20 @@
                             <th>Номер счета</th>
                             <th>Банк</th>
                             <th>Тип</th>
+                            <th style="width:100px">Действия</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${db.accounts.map(a => `
                             <tr>
-                                <td><strong>${a.name}</strong></td>
-                                <td>${a.number || '-'}</td>
-                                <td>${a.bank || '-'}</td>
+                                <td><strong>${esc(a.name)}</strong></td>
+                                <td>${esc(a.number || '-')}</td>
+                                <td>${esc(a.bank || '-')}</td>
                                 <td><span class="badge ${a.type === 'bank' ? 'posted' : 'draft'}">${a.type === 'bank' ? 'Банк' : 'Касса'}</span></td>
+                                <td>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editAccount('${a.id}')">✏️</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:#d32f2f" onclick="deleteAccount('${a.id}')">🗑</button>
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -1520,22 +1542,82 @@
             `;
         }
 
+        function showAddAccount() {
+            document.getElementById('accountFormWrap').style.display = 'block';
+            document.getElementById('accountFormTitle').textContent = 'Новый счёт';
+            document.getElementById('accEditId').value = '';
+            document.getElementById('accName').value = '';
+            document.getElementById('accNumber').value = '';
+            document.getElementById('accBank').value = '';
+            document.getElementById('accType').value = 'bank';
+        }
+        function editAccount(id) {
+            const a = db.accounts.find(x => x.id === id);
+            if (!a) return;
+            document.getElementById('accountFormWrap').style.display = 'block';
+            document.getElementById('accountFormTitle').textContent = 'Редактировать счёт';
+            document.getElementById('accEditId').value = id;
+            document.getElementById('accName').value = a.name || '';
+            document.getElementById('accNumber').value = a.number || '';
+            document.getElementById('accBank').value = a.bank || '';
+            document.getElementById('accType').value = a.type || 'bank';
+        }
+        function saveAccount() {
+            const name = document.getElementById('accName').value.trim();
+            if (!name) { alert('Укажите название'); return; }
+            const editId = document.getElementById('accEditId').value;
+            if (editId) {
+                const a = db.accounts.find(x => x.id === editId);
+                if (a) { a.name = name; a.number = document.getElementById('accNumber').value.trim(); a.bank = document.getElementById('accBank').value.trim(); a.type = document.getElementById('accType').value; }
+            } else {
+                db.accounts.push({ id: '_' + Date.now(), name, number: document.getElementById('accNumber').value.trim(), bank: document.getElementById('accBank').value.trim(), type: document.getElementById('accType').value });
+            }
+            saveData(); populateSelects(); renderPage();
+        }
+        function deleteAccount(id) {
+            const a = db.accounts.find(x => x.id === id);
+            if (!a || !confirm('Удалить счёт «' + a.name + '»?')) return;
+            db.accounts = db.accounts.filter(x => x.id !== id);
+            saveData(); populateSelects(); renderPage();
+        }
+
         function renderBanks() {
             return `
+                <div style="margin-bottom:12px">
+                    <button class="btn btn-primary" onclick="showAddBank()">+ Добавить банк</button>
+                </div>
+                <div id="bankFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <h4 id="bankFormTitle" style="margin-bottom:12px">Новый банк</h4>
+                    <input type="hidden" id="bankEditId">
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+                        <div class="form-group"><label>Название</label><input id="bankName" class="form-control" placeholder="АБ Кыргызстан"></div>
+                        <div class="form-group"><label>БИК</label><input id="bankBik" class="form-control" placeholder="170201001"></div>
+                        <div class="form-group"><label>Корр. счёт</label><input id="bankCorr" class="form-control" placeholder="1234567890"></div>
+                    </div>
+                    <div style="margin-top:10px;display:flex;gap:8px">
+                        <button class="btn btn-primary" onclick="saveBankItem()">Сохранить</button>
+                        <button class="btn" onclick="document.getElementById('bankFormWrap').style.display='none'">Отмена</button>
+                    </div>
+                </div>
                 <table class="table-container">
                     <thead>
                         <tr>
                             <th>Название банка</th>
                             <th>БИК</th>
                             <th>Корреспондентский счет</th>
+                            <th style="width:100px">Действия</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${db.banks.map(b => `
                             <tr>
-                                <td><strong>${b.name}</strong></td>
-                                <td>${b.bik}</td>
-                                <td>${b.corrAccount}</td>
+                                <td><strong>${esc(b.name)}</strong></td>
+                                <td>${esc(b.bik)}</td>
+                                <td>${esc(b.corrAccount)}</td>
+                                <td>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editBankItem('${b.id}')">✏️</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:#d32f2f" onclick="deleteBankItem('${b.id}')">🗑</button>
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -1543,25 +1625,117 @@
             `;
         }
 
+        function showAddBank() {
+            document.getElementById('bankFormWrap').style.display = 'block';
+            document.getElementById('bankFormTitle').textContent = 'Новый банк';
+            document.getElementById('bankEditId').value = '';
+            document.getElementById('bankName').value = '';
+            document.getElementById('bankBik').value = '';
+            document.getElementById('bankCorr').value = '';
+        }
+        function editBankItem(id) {
+            const b = db.banks.find(x => x.id === id);
+            if (!b) return;
+            document.getElementById('bankFormWrap').style.display = 'block';
+            document.getElementById('bankFormTitle').textContent = 'Редактировать банк';
+            document.getElementById('bankEditId').value = id;
+            document.getElementById('bankName').value = b.name || '';
+            document.getElementById('bankBik').value = b.bik || '';
+            document.getElementById('bankCorr').value = b.corrAccount || '';
+        }
+        function saveBankItem() {
+            const name = document.getElementById('bankName').value.trim();
+            if (!name) { alert('Укажите название'); return; }
+            const editId = document.getElementById('bankEditId').value;
+            if (editId) {
+                const b = db.banks.find(x => x.id === editId);
+                if (b) { b.name = name; b.bik = document.getElementById('bankBik').value.trim(); b.corrAccount = document.getElementById('bankCorr').value.trim(); }
+            } else {
+                db.banks.push({ id: '_' + Date.now(), name, bik: document.getElementById('bankBik').value.trim(), corrAccount: document.getElementById('bankCorr').value.trim() });
+            }
+            saveData(); renderPage();
+        }
+        function deleteBankItem(id) {
+            const b = db.banks.find(x => x.id === id);
+            if (!b || !confirm('Удалить банк «' + b.name + '»?')) return;
+            db.banks = db.banks.filter(x => x.id !== id);
+            saveData(); renderPage();
+        }
+
         function renderCashs() {
             return `
+                <div style="margin-bottom:12px">
+                    <button class="btn btn-primary" onclick="showAddCash()">+ Добавить кассу</button>
+                </div>
+                <div id="cashFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <h4 id="cashFormTitle" style="margin-bottom:12px">Новая касса</h4>
+                    <input type="hidden" id="cashEditId">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                        <div class="form-group"><label>Название</label><input id="cashName" class="form-control" placeholder="Касса магазина"></div>
+                        <div class="form-group"><label>Ответственный</label><input id="cashResp" class="form-control" placeholder="Иванов И.И."></div>
+                    </div>
+                    <div style="margin-top:10px;display:flex;gap:8px">
+                        <button class="btn btn-primary" onclick="saveCashItem()">Сохранить</button>
+                        <button class="btn" onclick="document.getElementById('cashFormWrap').style.display='none'">Отмена</button>
+                    </div>
+                </div>
                 <table class="table-container">
                     <thead>
                         <tr>
                             <th>Название кассы</th>
                             <th>Ответственный</th>
+                            <th style="width:100px">Действия</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${db.cashs.map(c => `
                             <tr>
-                                <td><strong>${c.name}</strong></td>
-                                <td>${c.responsible || '-'}</td>
+                                <td><strong>${esc(c.name)}</strong></td>
+                                <td>${esc(c.responsible || '-')}</td>
+                                <td>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editCashItem('${c.id}')">✏️</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:#d32f2f" onclick="deleteCashItem('${c.id}')">🗑</button>
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
             `;
+        }
+
+        function showAddCash() {
+            document.getElementById('cashFormWrap').style.display = 'block';
+            document.getElementById('cashFormTitle').textContent = 'Новая касса';
+            document.getElementById('cashEditId').value = '';
+            document.getElementById('cashName').value = '';
+            document.getElementById('cashResp').value = '';
+        }
+        function editCashItem(id) {
+            const c = db.cashs.find(x => x.id === id);
+            if (!c) return;
+            document.getElementById('cashFormWrap').style.display = 'block';
+            document.getElementById('cashFormTitle').textContent = 'Редактировать кассу';
+            document.getElementById('cashEditId').value = id;
+            document.getElementById('cashName').value = c.name || '';
+            document.getElementById('cashResp').value = c.responsible || '';
+        }
+        function saveCashItem() {
+            const name = document.getElementById('cashName').value.trim();
+            if (!name) { alert('Укажите название'); return; }
+            const editId = document.getElementById('cashEditId').value;
+            if (editId) {
+                const c = db.cashs.find(x => x.id === editId);
+                if (c) { c.name = name; c.responsible = document.getElementById('cashResp').value.trim(); }
+            } else {
+                db.cashs.push({ id: '_' + Date.now(), name, responsible: document.getElementById('cashResp').value.trim() });
+            }
+            saveData(); renderPage();
+        }
+        function deleteCashItem(id) {
+            const c = db.cashs.find(x => x.id === id);
+            if (!c || !confirm('Удалить кассу «' + c.name + '»?')) return;
+            db.cashs = db.cashs.filter(x => x.id !== id);
+            saveData(); renderPage();
         }
 
         function renderCurrencies() {
