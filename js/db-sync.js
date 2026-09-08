@@ -116,10 +116,7 @@ const DbSync = (function() {
             } else {
                 // Large file — download via raw URL
                 const rawUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${DATA_BRANCH}/${DATA_FILE}?_t=${Date.now()}`;
-                const rawRes = await fetch(rawUrl, {
-                    headers: { 'Authorization': 'token ' + _token },
-                    cache: 'no-store'
-                });
+                const rawRes = await fetch(rawUrl, { cache: 'no-store' });
                 if (!rawRes.ok) throw new Error('Raw download error: ' + rawRes.status);
                 parsed = await rawRes.json();
             }
