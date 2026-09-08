@@ -2706,7 +2706,7 @@
 
         // Оплаты по документу (из банка и кассы, созданные «на основании»)
         function tPayments(docId) {
-            return [...db.bankDocuments, ...db.cashDocuments].filter(p => p.basis === docId);
+            return [...db.bankDocuments, ...db.cashDocuments].filter(p => p.basis === docId && p.status !== 'deleted' && p.status !== 'draft');
         }
         function tPayStatus(d) {
             if (d.invoiceStatus === 'cancelled') return { label: 'Отменен', cls: 'draft' };
@@ -2947,6 +2947,7 @@
                 for (const t of tabs) for (const r of (d[t] || [])) {
                     if (!r.nom) return 'В таблице «' + TAB_LABELS[t] + '» есть строка без номенклатуры';
                     if (!(Number(r.qty) > 0)) return 'Количество должно быть больше нуля (' + tNomName(r.nom) + ')';
+                    if (Number(r.price) < 0) return 'Цена не может быть отрицательной (' + tNomName(r.nom) + ')';
                 }
             }
             const shortages = tStockShortages(d);
