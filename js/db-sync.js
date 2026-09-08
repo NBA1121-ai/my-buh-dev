@@ -73,8 +73,9 @@ const DbSync = (function() {
         if (!_token) return null;
 
         try {
-            const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;
-            const res = await fetch(url, {
+            // Step 1: Get file metadata (sha, size, download_url)
+            const metaUrl = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;
+            const metaRes = await fetch(metaUrl, {
                 headers: {
                     'Authorization': 'token ' + _token,
                     'Accept': 'application/vnd.github+json'
@@ -82,16 +83,30 @@ const DbSync = (function() {
                 cache: 'no-store'
             });
 
-            if (!res.ok) {
-                if (res.status === 404) return null;
-                throw new Error('GitHub API error: ' + res.status);
+            if (!metaRes.ok) {
+                if (metaRes.status === 404) return null;
+                throw new Error('GitHub API error: ' + metaRes.status);
             }
 
-            const fileData = await res.json();
+            const fileData = await metaRes.json();
             _fileSha = fileData.sha;
 
-            const decoded = b64DecodeUTF8(fileData.content);
-            const parsed = JSON.parse(decoded);
+            let parsed;
+
+            // Step 2: If file has content (< 1MB), decode directly; otherwise use raw download
+            if (fileData.content) {
+                const decoded = b64DecodeUTF8(fileData.content);
+                parsed = JSON.parse(decoded);
+            } else {
+                // Large file — download via raw URL
+                const rawUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${DATA_BRANCH}/${DATA_FILE}?_t=${Date.now()}`;
+                const rawRes = await fetch(rawUrl, {
+                    headers: { 'Authorization': 'token ' + _token },
+                    cache: 'no-store'
+                });
+                if (!rawRes.ok) throw new Error('Raw download error: ' + rawRes.status);
+                parsed = await rawRes.json();
+            }
 
             _lastHash = hashData(parsed);
 
@@ -246,8 +261,19 @@ const DbSync = (function() {
 
                 if (fileData.sha !== _fileSha) {
                     _fileSha = fileData.sha;
-                    const decoded = b64DecodeUTF8(fileData.content);
-                    const parsed = JSON.parse(decoded);
+                    let parsed;
+                    if (fileData.content) {
+                        const decoded = b64DecodeUTF8(fileData.content);
+                        parsed = JSON.parse(decoded);
+                    } else {
+                        const rawUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${DATA_BRANCH}/${DATA_FILE}?_t=${Date.now()}`;
+                        const rawRes = await fetch(rawUrl, {
+                            headers: { 'Authorization': 'token ' + _token },
+                            cache: 'no-store'
+                        });
+                        if (!rawRes.ok) return;
+                        parsed = await rawRes.json();
+                    }
                     const newHash = hashData(parsed);
 
                     if (newHash !== _lastHash) {
