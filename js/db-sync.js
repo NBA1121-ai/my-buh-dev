@@ -69,11 +69,13 @@ const DbSync = (function() {
         return btoa(binStr);
     }
 
+    let _dataLoaded = false; // true after successful GitHub load
+
     async function loadData() {
         if (!_token) return null;
 
         try {
-            // Step 1: Get file metadata (sha, size, download_url)
+            // Step 1: Get file metadata (sha, size)
             const metaUrl = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;
             const metaRes = await fetch(metaUrl, {
                 headers: {
@@ -90,6 +92,20 @@ const DbSync = (function() {
 
             const fileData = await metaRes.json();
             _fileSha = fileData.sha;
+
+            // Check if cache is current (same SHA = same data, skip download)
+            const cachedSha = localStorage.getItem('db_cache_sha');
+            if (cachedSha === _fileSha) {
+                try {
+                    const cached = localStorage.getItem('db_cache');
+                    if (cached) {
+                        const parsed = JSON.parse(cached);
+                        _lastHash = hashData(parsed);
+                        _dataLoaded = true;
+                        return parsed;
+                    }
+                } catch(e) {}
+            }
 
             let parsed;
 
@@ -109,14 +125,18 @@ const DbSync = (function() {
             }
 
             _lastHash = hashData(parsed);
+            _dataLoaded = true;
 
-            // Cache locally for offline fallback
-            try { localStorage.setItem('db_cache', JSON.stringify(parsed)); } catch(e) {}
+            // Cache locally with SHA for offline fallback
+            try {
+                localStorage.setItem('db_cache', JSON.stringify(parsed));
+                localStorage.setItem('db_cache_sha', _fileSha);
+            } catch(e) {}
 
             return parsed;
         } catch(err) {
             console.error('Load error:', err);
-            // Fallback to local cache
+            // Fallback to local cache ONLY if GitHub is unreachable
             try {
                 const cached = localStorage.getItem('db_cache');
                 if (cached) {
@@ -128,7 +148,11 @@ const DbSync = (function() {
         }
     }
 
+    function isDataLoaded() { return _dataLoaded; }
+
     function scheduleSave(dbObject) {
+        // Don't save until data is loaded from GitHub (prevents overwriting with stale cache)
+        if (!_dataLoaded) return;
         if (_saveTimer) clearTimeout(_saveTimer);
         // Cache locally immediately (protection against browser close)
         try { localStorage.setItem('db_cache', JSON.stringify(dbObject)); } catch(e) {}
@@ -203,6 +227,8 @@ const DbSync = (function() {
             const result = await res.json();
             _fileSha = result.content.sha;
             _lastHash = currentHash;
+            // Update cache SHA so next load won't re-download
+            try { localStorage.setItem('db_cache_sha', _fileSha); } catch(e) {}
             showSyncStatus('saved');
         } catch(err) {
             console.error('Save error:', err);
@@ -278,6 +304,11 @@ const DbSync = (function() {
 
                     if (newHash !== _lastHash) {
                         _lastHash = newHash;
+                        // Update cache with new data
+                        try {
+                            localStorage.setItem('db_cache', JSON.stringify(parsed));
+                            localStorage.setItem('db_cache_sha', _fileSha);
+                        } catch(e) {}
                         callback(parsed);
                         showSyncStatus('synced');
                     }
@@ -424,7 +455,7 @@ const DbSync = (function() {
 
     return {
         init, getToken, setToken, clearToken, validateToken,
-        loadData, scheduleSave, forceSave,
+        loadData, scheduleSave, forceSave, isDataLoaded,
         startPolling, stopPolling,
         getHistory, restoreFromCommit,
         logout, showSyncStatus,
