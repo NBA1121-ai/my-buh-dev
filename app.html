@@ -1632,8 +1632,6 @@
                     '<h3>Итого по всем счетам</h3>' +
                     '<div class="dash-value" style="color:' + totalColor + '">' + fmt(totalBal) + '</div>' +
                     '<div class="dash-sub">KGS</div></div>' +
-                    '<div class="dash-card"><h3>Всего поступлений</h3><div class="dash-value" style="color:#2e7d32">' + fmt(allFinDocs.filter(d => d.type === 'payment_in' || d.type === 'pko').reduce((s,d) => s + (d.sum||0), 0)) + '</div><div class="dash-sub">KGS</div></div>' +
-                    '<div class="dash-card"><h3>Всего расходов</h3><div class="dash-value" style="color:#d32f2f">' + fmt(allFinDocs.filter(d => d.type === 'payment_out' || d.type === 'rko').reduce((s,d) => s + (d.sum||0), 0)) + '</div><div class="dash-sub">KGS</div></div>' +
                     '</div></div>';
             }
 
