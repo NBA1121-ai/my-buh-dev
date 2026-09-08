@@ -290,10 +290,7 @@ const DbSync = (function() {
                         parsed = JSON.parse(decoded);
                     } else {
                         const rawUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${DATA_BRANCH}/${DATA_FILE}?_t=${Date.now()}`;
-                        const rawRes = await fetch(rawUrl, {
-                            headers: { 'Authorization': 'token ' + _token },
-                            cache: 'no-store'
-                        });
+                        const rawRes = await fetch(rawUrl, { cache: 'no-store' });
                         if (!rawRes.ok) return;
                         parsed = await rawRes.json();
                     }
