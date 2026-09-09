@@ -1897,10 +1897,10 @@
             return '<div style="padding:20px">' +
                 balanceHtml +
                 '<div class="dash-section" style="margin-top:16px"><h3 style="margin-bottom:12px">Быстрые действия</h3><div style="display:flex;gap:8px;flex-wrap:wrap">' +
-                '<button class="btn primary" onclick="selectPage(\'bank\');setTimeout(()=>addDoc(\'payment_in\'),100)" style="padding:8px 14px">Входящий платёж</button>' +
-                '<button class="btn primary" onclick="selectPage(\'bank\');setTimeout(()=>addDoc(\'payment_out\'),100)" style="padding:8px 14px">Исходящий платёж</button>' +
-                '<button class="btn" onclick="selectPage(\'cash\');setTimeout(()=>addDoc(\'pko\'),100)" style="padding:8px 14px">ПКО</button>' +
-                '<button class="btn" onclick="selectPage(\'cash\');setTimeout(()=>addDoc(\'rko\'),100)" style="padding:8px 14px">РКО</button>' +
+                '<button class="btn primary" onclick="selectPage(\'bank\');setTimeout(()=>{openCreateModal();document.getElementById(\'docType\').value=\'payment_in\';updateFormByType()},100)" style="padding:8px 14px">Входящий платёж</button>' +
+                '<button class="btn primary" onclick="selectPage(\'bank\');setTimeout(()=>{openCreateModal();document.getElementById(\'docType\').value=\'payment_out\';updateFormByType()},100)" style="padding:8px 14px">Исходящий платёж</button>' +
+                '<button class="btn" onclick="selectPage(\'cash\');setTimeout(()=>{openCreateModal();document.getElementById(\'docType\').value=\'pko\';updateFormByType()},100)" style="padding:8px 14px">ПКО</button>' +
+                '<button class="btn" onclick="selectPage(\'cash\');setTimeout(()=>{openCreateModal();document.getElementById(\'docType\').value=\'rko\';updateFormByType()},100)" style="padding:8px 14px">РКО</button>' +
                 '<button class="btn" onclick="selectPage(\'p_purchase\');setTimeout(()=>tCreate(\'purchase\'),100)" style="padding:8px 14px">Поступление</button>' +
                 '<button class="btn" onclick="selectPage(\'p_sale\');setTimeout(()=>tCreate(\'sale\'),100)" style="padding:8px 14px">Реализация</button>' +
                 '</div></div>' +
