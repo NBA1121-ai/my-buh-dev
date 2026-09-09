@@ -1767,6 +1767,27 @@
             const cashCount = db.cashDocuments ? db.cashDocuments.length : 0;
             const tradeCount = db.trade && db.trade.docs ? db.trade.docs.length : 0;
             const contractorCount = db.trade && db.trade.contractors ? db.trade.contractors.length : 0;
+
+            // Пустая база — показываем приветствие
+            const totalDocs = bankCount + cashCount + tradeCount;
+            if (totalDocs === 0 && contractorCount === 0) {
+                return '<div style="padding:40px;text-align:center;max-width:600px;margin:0 auto">' +
+                    '<div style="font-size:64px;margin-bottom:20px">📊</div>' +
+                    '<h2 style="margin-bottom:12px;color:#333">Добро пожаловать в 1s Бухгалтерия!</h2>' +
+                    '<p style="color:#666;margin-bottom:30px;line-height:1.6">База данных пуста. Вы можете начать работу с нуля или загрузить тестовые данные для ознакомления с системой.</p>' +
+                    '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
+                    '<button class="btn primary" onclick="tSeedDemo(true)" style="padding:12px 24px;font-size:15px">📦 Загрузить тестовые данные</button>' +
+                    '<button class="btn" onclick="selectPage(\'bank\')" style="padding:12px 24px;font-size:15px">➕ Начать с нуля</button>' +
+                    '</div>' +
+                    '<div style="margin-top:40px;text-align:left;background:#f8f9fa;border-radius:8px;padding:20px">' +
+                    '<h3 style="margin-bottom:12px;font-size:15px">Быстрый старт:</h3>' +
+                    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'accounts\')">🏦 Настроить счета</div>' +
+                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'contractors\')">👥 Добавить контрагентов</div>' +
+                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'nomenclature\')">📋 Создать номенклатуру</div>' +
+                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'org\')">🏢 Реквизиты организации</div>' +
+                    '</div></div></div>';
+            }
             const nomCount = db.trade && db.trade.nomenclature ? db.trade.nomenclature.length : 0;
             const empCount = db.trade && db.trade.employees ? db.trade.employees.length : 0;
 
@@ -4820,7 +4841,7 @@
             list.push(doc); return doc;
         }
         function tSeedDemo(force) {
-            if (!force && (db.trade.demoSeeded || db.trade.docs.length)) {
+            if (!force && (db.trade.demoSeeded || db.trade.docs.length || db.trade.noDemo)) {
                 // База уже есть, но складских/производственных демо-документов нет — дополняем
                 if (!db.trade.stockSeeded && db.trade.docs.length && !db.trade.docs.some(d => ['stock', 'prod'].includes((TT[d.type] || {}).group))) {
                     const y0 = new Date().getFullYear(), m0 = String(new Date().getMonth() + 1).padStart(2, '0');
