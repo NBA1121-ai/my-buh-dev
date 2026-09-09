@@ -1285,14 +1285,27 @@
         }
 
         // ==================== RENDER FUNCTIONS ====================
+        let _finFilter = { from: '', to: '', search: '' };
         function renderBankDocuments() {
-            const docs = db.bankDocuments.filter(d => ['payment_out', 'payment_in', 'payment_order', 'conversion', 'statement', 'directbank'].includes(d.type));
+            let docs = db.bankDocuments.filter(d => ['payment_out', 'payment_in', 'payment_order', 'conversion', 'statement', 'directbank'].includes(d.type));
+            if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
+            if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
+            if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
+            docs.sort((a, b) => (b.date + b.number).localeCompare(a.date + a.number));
 
-            if (docs.length === 0) {
-                return '<div class="empty-state">Нет банковских документов</div>';
-            }
+            const totalIn = docs.filter(d => d.type === 'payment_in').reduce((s, d) => s + (d.sum || 0), 0);
+            const totalOut = docs.filter(d => d.type === 'payment_out').reduce((s, d) => s + (d.sum || 0), 0);
 
             return `
+                <div class="filters" style="display:flex;gap:10px;align-items:end;margin-bottom:12px;flex-wrap:wrap">
+                    <div class="filter-group"><label>Период с</label><input type="date" value="${_finFilter.from}" onchange="_finFilter.from=this.value;renderPage()"></div>
+                    <div class="filter-group"><label>по</label><input type="date" value="${_finFilter.to}" onchange="_finFilter.to=this.value;renderPage()"></div>
+                    <div class="filter-group"><label>Поиск</label><input type="text" placeholder="Номер, контрагент..." value="${esc(_finFilter.search)}" oninput="_finFilter.search=this.value;renderPage()"></div>
+                    <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
+                    <span style="flex:1"></span>
+                    <span style="font-size:13px;color:#666">Приход: <b style="color:#2e7d32">${formatAmount(totalIn)}</b> | Расход: <b style="color:#d32f2f">${formatAmount(totalOut)}</b></span>
+                </div>
+                ${docs.length === 0 ? '<div class="empty-state">Нет банковских документов</div>' : `
                 <table class="table-container">
                     <thead>
                         <tr>
@@ -1326,18 +1339,30 @@
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>
+                </table>`}
             `;
         }
 
         function renderCashDocuments() {
-            const docs = db.cashDocuments;
+            let docs = [...db.cashDocuments];
+            if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
+            if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
+            if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
+            docs.sort((a, b) => (b.date + b.number).localeCompare(a.date + a.number));
 
-            if (docs.length === 0) {
-                return '<div class="empty-state">Нет кассовых документов</div>';
-            }
+            const totalIn = docs.filter(d => d.type === 'pko').reduce((s, d) => s + (d.sum || 0), 0);
+            const totalOut = docs.filter(d => d.type === 'rko').reduce((s, d) => s + (d.sum || 0), 0);
 
             return `
+                <div class="filters" style="display:flex;gap:10px;align-items:end;margin-bottom:12px;flex-wrap:wrap">
+                    <div class="filter-group"><label>Период с</label><input type="date" value="${_finFilter.from}" onchange="_finFilter.from=this.value;renderPage()"></div>
+                    <div class="filter-group"><label>по</label><input type="date" value="${_finFilter.to}" onchange="_finFilter.to=this.value;renderPage()"></div>
+                    <div class="filter-group"><label>Поиск</label><input type="text" placeholder="Номер, контрагент..." value="${esc(_finFilter.search)}" oninput="_finFilter.search=this.value;renderPage()"></div>
+                    <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
+                    <span style="flex:1"></span>
+                    <span style="font-size:13px;color:#666">Приход: <b style="color:#2e7d32">${formatAmount(totalIn)}</b> | Расход: <b style="color:#d32f2f">${formatAmount(totalOut)}</b></span>
+                </div>
+                ${docs.length === 0 ? '<div class="empty-state">Нет кассовых документов</div>' : `
                 <table class="table-container">
                     <thead>
                         <tr>
@@ -1371,7 +1396,7 @@
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>
+                </table>`}
             `;
         }
 
