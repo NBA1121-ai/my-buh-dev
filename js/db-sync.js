@@ -20,9 +20,20 @@ const DbSync = (function() {
     let _lastHash = '';
     let _pollTimer = null;
     let _pendingSave = null; // queued save while _saving is true
+    let _offlinePending = null; // data queued while offline
+    let _autoSaveTimer = null;
 
     function init() {
         _token = localStorage.getItem('gh_token');
+        // When browser comes back online, send queued offline data
+        window.addEventListener('online', () => {
+            if (_offlinePending) {
+                const data = _offlinePending;
+                _offlinePending = null;
+                showSyncStatus('saving');
+                setTimeout(() => saveData(data), 1000);
+            }
+        });
     }
 
     function getToken() { return _token; }
@@ -180,6 +191,7 @@ const DbSync = (function() {
             if (!navigator.onLine) {
                 showSyncStatus('offline');
                 _saving = false;
+                _offlinePending = dbObject;
                 return;
             }
 
@@ -354,6 +366,8 @@ const DbSync = (function() {
     function logout() {
         stopPolling();
         localStorage.removeItem('auth_session');
+        localStorage.removeItem('db_cache');
+        localStorage.removeItem('db_cache_sha');
         window.location.href = 'index.html';
     }
 

@@ -671,7 +671,7 @@
             .thead-grid { grid-template-columns: 1fr !important; }
             .thead-grid .fg.wide, .thead-grid .fg.wide2 { grid-column: span 1; }
             .tmodal-content { width: 100% !important; max-height: 100vh !important; border-radius: 0; }
-            .modal-content { width: 95%; }
+            .modal-content { width: 98%; max-height: 95vh; border-radius: 4px; }
             .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
             .stat-card { padding: 12px; }
             .stat-value { font-size: 18px; }
@@ -718,8 +718,16 @@
         body.dark .modal-content { background: #252540; color: #e0e0e0; }
         body.dark .modal-header { background: #1a1a2e; color: #e0e0e0; }
         body.dark .empty-state { color: #888; }
+        body.dark .sidebar { background: #151525; }
+        body.dark .nav-item { color: #ccc; }
         body.dark .nav-item:hover { background: #333; }
+        body.dark .nav-item.active { background: #2a6fb8; color: #fff; }
         body.dark .section-title { color: #777; }
+        body.dark .stat-card { background: #252540; color: #e0e0e0; }
+        body.dark .filters { background: transparent; }
+        body.dark .badge { opacity: 0.9; }
+        body.dark .form-group label { color: #bbb; }
+        body.dark .tcmd { border-bottom-color: #333; }
 
         /* Notifications dropdown */
         .notif-dropdown { display:none; position:absolute; top:100%; right:0; background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.15); width:360px; max-height:400px; overflow-y:auto; z-index:1000; }
@@ -750,7 +758,7 @@
             <div class="nav-item active" onclick="selectPage('dashboard')">📋 Главная (Дашборд)</div>
 
             <div class="section-title" onclick="tToggleGroup(this)">Банк и касса</div>
-            <div class="nav-item active" onclick="selectPage('bank')">🏦 Банковские документы</div>
+            <div class="nav-item" onclick="selectPage('bank')">🏦 Банковские документы</div>
             <div class="nav-item" onclick="selectPage('cash')">💰 Кассовые документы</div>
             <div class="nav-item" onclick="selectPage('reports')">📊 Отчеты по ДДС</div>
             <div class="nav-item" onclick="selectPage('cashbook')">📔 Кассовая книга</div>
@@ -860,7 +868,7 @@
         <div class="main">
             <div class="header">
                 <button class="burger" onclick="toggleSidebar()">&#9776;</button>
-                <h1 id="pageTitle">Главная</h1>
+                <div><h1 id="pageTitle" style="margin:0">Главная</h1><div id="breadcrumb" style="font-size:11px;color:#999"></div></div>
                 <div class="toolbar">
                     <button class="btn primary" onclick="openCreateModal()">+ Создать</button>
                     <button class="btn" onclick="exportToCSV()">📥 Экспорт</button>
@@ -959,11 +967,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Сумма *</label>
-                            <input type="number" id="docSum" step="0.01" placeholder="0.00" required>
+                            <input type="number" id="docSum" step="0.01" min="0.01" placeholder="0.00" required>
                         </div>
                         <div class="form-group">
                             <label>Курс</label>
-                            <input type="number" id="docRate" step="0.01" value="1" placeholder="1.00">
+                            <input type="number" id="docRate" step="0.01" min="0.01" value="1" placeholder="1.00">
                         </div>
                     </div>
 
@@ -1112,10 +1120,12 @@
 
             // Poll for changes from other devices (every 30 sec)
             DbSync.startPolling((newData) => {
-                Object.keys(db).forEach(k => delete db[k]);
-                Object.assign(db, newData);
-                renderPage();
-                showToast('Данные синхронизированы с другого устройства');
+                if (confirm('Данные были изменены с другого устройства. Загрузить обновлённые данные?\n\nОК — загрузить новые данные\nОтмена — оставить текущие (ваши изменения сохранятся при следующем сохранении)')) {
+                    Object.keys(db).forEach(k => delete db[k]);
+                    Object.assign(db, newData);
+                    renderPage();
+                    showToast('Данные синхронизированы с другого устройства');
+                }
             });
 
             // Periodic session check (every 5 min)
@@ -1145,6 +1155,11 @@
         window.addEventListener('beforeunload', () => {
             try { localStorage.setItem('db_cache', JSON.stringify(db)); } catch(e) {}
         });
+
+        // Periodic auto-save to localStorage every 30s (crash protection)
+        setInterval(() => {
+            try { localStorage.setItem('db_cache', JSON.stringify(db)); } catch(e) {}
+        }, 30000);
 
         // Mobile sidebar functions
         function toggleSidebar() {
@@ -1214,17 +1229,17 @@
             // Accounts
             const accountSelect = document.getElementById('docAccount');
             accountSelect.innerHTML = '<option value="">Выбрать...</option>' +
-                db.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+                db.accounts.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
 
             // Articles
             const articleSelect = document.getElementById('docArticle');
             articleSelect.innerHTML = '<option value="">Выбрать...</option>' +
-                db.articles.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+                db.articles.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
 
             // Currencies
             const currencySelect = document.getElementById('docCurrency');
             currencySelect.innerHTML = '<option value="">Выбрать...</option>' +
-                db.currencies.map(c => `<option value="${c.id}">${c.code} - ${c.name}</option>`).join('');
+                db.currencies.map(c => `<option value="${esc(c.id)}">${esc(c.code)} - ${esc(c.name)}</option>`).join('');
         }
 
         // ==================== NAVIGATION ====================
@@ -1233,7 +1248,10 @@
             tSelected = null;
             tFilters.search = '';
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            if (event && event.target && event.target.classList.contains('nav-item')) event.target.classList.add('active');
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(el => {
+                if (el.getAttribute('onclick') && el.getAttribute('onclick').includes("'" + page + "'")) el.classList.add('active');
+            });
             closeSidebar();
             renderPage();
         }
@@ -1246,8 +1264,8 @@
                 document.getElementById('content').innerHTML = renderTradePage(currentPage);
                 return;
             }
-            const noToolbar = ['dashboard','users','actlog','profile','search_results'];
-            document.querySelector('.header .toolbar').style.display = noToolbar.includes(currentPage) ? 'none' : '';
+            const toolbarPages = ['bank','cash'];
+            document.querySelector('.header .toolbar').style.display = toolbarPages.includes(currentPage) ? '' : 'none';
             const pages = {
                 dashboard: renderDashboard,
                 bank: renderBankDocuments,
@@ -1282,7 +1300,12 @@
                 dashboard: 'Главная'
             };
 
-            document.getElementById('pageTitle').textContent = titles[currentPage] || 'Документы';
+            const title = titles[currentPage] || 'Документы';
+            document.getElementById('pageTitle').textContent = title;
+            // Breadcrumb
+            const sections = { bank: 'Банк и касса', cash: 'Банк и касса', reports: 'Банк и касса', cashbook: 'Банк и касса', articles: 'Справочники', accounts: 'Справочники', banks: 'Справочники', cashs: 'Справочники', currencies: 'Справочники', users: 'Администрирование', actlog: 'Администрирование' };
+            const bc = document.getElementById('breadcrumb');
+            if (bc) bc.innerHTML = sections[currentPage] ? '<a href="#" onclick="selectPage(\'dashboard\');return false" style="color:#999;text-decoration:none">Главная</a> / ' + sections[currentPage] + ' / ' + esc(title) : '';
             document.getElementById('content').innerHTML = pages[currentPage]();
             if (currentPage === 'dashboard') initDashCharts();
         }
@@ -1326,11 +1349,11 @@
                     <tbody>
                         ${docs.map(d => `
                             <tr>
-                                <td><strong>${d.number}</strong></td>
+                                <td><strong>${esc(d.number)}</strong></td>
                                 <td>${formatDate(d.date)}</td>
                                 <td>${getDocTypeLabel(d.type)}</td>
                                 <td>${getAccountName(d.account)}</td>
-                                <td>${d.contractor || '-'}</td>
+                                <td>${esc(d.contractor || '-')}</td>
                                 <td class="num amount">${formatAmount(d.sum)}</td>
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
                                 <td>
@@ -1384,11 +1407,11 @@
                     <tbody>
                         ${docs.map(d => `
                             <tr>
-                                <td><strong>${d.number}</strong></td>
+                                <td><strong>${esc(d.number)}</strong></td>
                                 <td>${formatDate(d.date)}</td>
                                 <td>${getDocTypeLabel(d.type)}</td>
                                 <td>${getAccountName(d.account)}</td>
-                                <td>${d.contractor || '-'}</td>
+                                <td>${esc(d.contractor || '-')}</td>
                                 <td class="num amount">${formatAmount(d.sum)}</td>
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
                                 <td>
@@ -1407,8 +1430,8 @@
 
         function renderReports() {
             const allDocs = [...db.bankDocuments, ...db.cashDocuments];
-            const totalIn = allDocs.filter(d => d.type === 'payment_in' || d.type === 'pko').reduce((s, d) => s + d.sum, 0);
-            const totalOut = allDocs.filter(d => d.type === 'payment_out' || d.type === 'rko').reduce((s, d) => s + d.sum, 0);
+            const totalIn = allDocs.filter(d => d.type === 'payment_in' || d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0), 0);
+            const totalOut = allDocs.filter(d => d.type === 'payment_out' || d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0), 0);
             const postedDocs = allDocs.filter(d => d.status === 'posted').length;
 
             return `
@@ -1447,9 +1470,9 @@
                             const isIn = d.type === 'payment_in' || d.type === 'pko';
                             return `
                                 <tr>
-                                    <td>${d.number}</td>
+                                    <td>${esc(d.number)}</td>
                                     <td>${formatDate(d.date)}</td>
-                                    <td>${d.contractor || '-'}</td>
+                                    <td>${esc(d.contractor || '-')}</td>
                                     <td class="num">${isIn ? formatAmount(d.sum) : '-'}</td>
                                     <td class="num">${!isIn && d.type !== 'payment_in' && d.type !== 'pko' ? formatAmount(d.sum) : '-'}</td>
                                 </tr>
@@ -1485,8 +1508,8 @@
                         <tbody>
                             <tr><td colspan="3"><i>Остаток на начало дня</i></td><td class="num">${formatAmount(opening)}</td><td></td></tr>
                             ${docs.map(d => { const art = db.articles.find(a => a.id === d.article); return `<tr ondblclick="editDoc('${d.id}')" style="cursor:pointer">
-                                <td><strong>${d.number}</strong> <span style="color:#777">(${d.type === 'pko' ? 'ПКО' : 'РКО'})</span></td>
-                                <td>${d.contractor || '-'}${d.purpose ? '<br><span style="color:#777;font-size:12px">' + d.purpose + '</span>' : ''}</td>
+                                <td><strong>${esc(d.number)}</strong> <span style="color:#777">(${d.type === 'pko' ? 'ПКО' : 'РКО'})</span></td>
+                                <td>${esc(d.contractor || '-')}${d.purpose ? '<br><span style="color:#777;font-size:12px">' + esc(d.purpose) + '</span>' : ''}</td>
                                 <td>${art ? (art.type === 'in' ? '62.01' : '60.01') : (d.type === 'pko' ? '62.01' : '71.01')}</td>
                                 <td class="num">${d.type === 'pko' ? formatAmount(d.sum) : ''}</td><td class="num">${d.type === 'rko' ? formatAmount(d.sum) : ''}</td></tr>`; }).join('')}
                             <tr style="background:#fafafa"><td colspan="3"><b>Итого за день</b></td><td class="num"><b>${formatAmount(inSum)}</b></td><td class="num"><b>${formatAmount(outSum)}</b></td></tr>
@@ -1501,28 +1524,87 @@
         }
         function printCashbook() {
             const el = document.getElementById('cashbook'); if (!el) return;
-            tPrintWindow('<h2>Кассовая книга (КО-4)</h2><p>' + esc(db.trade.org.name) + '</p>' + el.innerHTML.replace(/ondblclick="[^"]*"/g, ''), 'Кассовая книга');
+            const orgName = db.trade && db.trade.org ? db.trade.org.name : '';
+            tPrintWindow('<h2>Кассовая книга (КО-4)</h2><p>' + esc(orgName) + '</p>' + el.innerHTML.replace(/ondblclick="[^"]*"/g, ''), 'Кассовая книга');
         }
 
         function renderArticles() {
             return `
+                <div style="margin-bottom:12px">
+                    <button class="btn btn-primary" onclick="showAddArticle()">+ Добавить статью</button>
+                </div>
+                <div id="articleFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <h4 id="articleFormTitle" style="margin-bottom:12px">Новая статья ДДС</h4>
+                    <input type="hidden" id="artEditId">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                        <div class="form-group"><label>Название</label><input id="artName" class="form-control" placeholder="Оплата поставщикам"></div>
+                        <div class="form-group"><label>Тип</label><select id="artType" class="form-control"><option value="in">Приход</option><option value="out">Расход</option></select></div>
+                    </div>
+                    <div style="margin-top:10px;display:flex;gap:8px">
+                        <button class="btn btn-primary" onclick="saveArticle()">Сохранить</button>
+                        <button class="btn" onclick="document.getElementById('articleFormWrap').style.display='none'">Отмена</button>
+                    </div>
+                </div>
                 <table class="table-container">
                     <thead>
                         <tr>
                             <th>Статья</th>
                             <th>Тип</th>
+                            <th style="width:100px">Действия</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${db.articles.map(a => `
                             <tr>
-                                <td>${a.name}</td>
+                                <td>${esc(a.name)}</td>
                                 <td><span class="badge ${a.type === 'in' ? 'incoming' : 'draft'}">${a.type === 'in' ? 'Приход' : 'Расход'}</span></td>
+                                <td>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editArticle('${a.id}')">✏️</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:#d32f2f" onclick="deleteArticle('${a.id}')">🗑</button>
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
             `;
+        }
+        function showAddArticle() {
+            document.getElementById('articleFormWrap').style.display = 'block';
+            document.getElementById('articleFormTitle').textContent = 'Новая статья ДДС';
+            document.getElementById('artEditId').value = '';
+            document.getElementById('artName').value = '';
+            document.getElementById('artType').value = 'out';
+        }
+        function editArticle(id) {
+            const a = db.articles.find(x => x.id === id);
+            if (!a) return;
+            document.getElementById('articleFormWrap').style.display = 'block';
+            document.getElementById('articleFormTitle').textContent = 'Редактировать статью';
+            document.getElementById('artEditId').value = id;
+            document.getElementById('artName').value = a.name || '';
+            document.getElementById('artType').value = a.type || 'out';
+        }
+        function saveArticle() {
+            const name = document.getElementById('artName').value.trim();
+            if (!name) { alert('Укажите название'); return; }
+            const editId = document.getElementById('artEditId').value;
+            if (editId) {
+                const a = db.articles.find(x => x.id === editId);
+                if (a) { a.name = name; a.type = document.getElementById('artType').value; }
+            } else {
+                db.articles.push({ id: uid(), name, type: document.getElementById('artType').value });
+            }
+            saveData(); populateSelects(); renderPage();
+        }
+        function deleteArticle(id) {
+            const a = db.articles.find(x => x.id === id);
+            if (!a) return;
+            const usedIn = (db.bankDocuments || []).filter(d => d.article === id)
+                .concat((db.cashDocuments || []).filter(d => d.article === id));
+            if (usedIn.length) { alert('Нельзя удалить статью «' + a.name + '» — она используется в ' + usedIn.length + ' документе(ах). Сначала измените статью в этих документах.'); return; }
+            if (!confirm('Удалить статью «' + a.name + '»?')) return;
+            db.articles = db.articles.filter(x => x.id !== id);
+            saveData(); populateSelects(); renderPage();
         }
 
         function renderAccounts() {
@@ -1600,13 +1682,17 @@
                 const a = db.accounts.find(x => x.id === editId);
                 if (a) { a.name = name; a.number = document.getElementById('accNumber').value.trim(); a.bank = document.getElementById('accBank').value.trim(); a.type = document.getElementById('accType').value; }
             } else {
-                db.accounts.push({ id: '_' + Date.now(), name, number: document.getElementById('accNumber').value.trim(), bank: document.getElementById('accBank').value.trim(), type: document.getElementById('accType').value });
+                db.accounts.push({ id: uid(), name, number: document.getElementById('accNumber').value.trim(), bank: document.getElementById('accBank').value.trim(), type: document.getElementById('accType').value });
             }
             saveData(); populateSelects(); renderPage();
         }
         function deleteAccount(id) {
             const a = db.accounts.find(x => x.id === id);
-            if (!a || !confirm('Удалить счёт «' + a.name + '»?')) return;
+            if (!a) return;
+            const usedIn = (db.bankDocuments || []).filter(d => d.account === id)
+                .concat((db.cashDocuments || []).filter(d => d.account === id));
+            if (usedIn.length) { alert('Нельзя удалить счёт «' + a.name + '» — он используется в ' + usedIn.length + ' документе(ах). Сначала измените счёт в этих документах.'); return; }
+            if (!confirm('Удалить счёт «' + a.name + '»?')) return;
             db.accounts = db.accounts.filter(x => x.id !== id);
             saveData(); populateSelects(); renderPage();
         }
@@ -1681,13 +1767,16 @@
                 const b = db.banks.find(x => x.id === editId);
                 if (b) { b.name = name; b.bik = document.getElementById('bankBik').value.trim(); b.corrAccount = document.getElementById('bankCorr').value.trim(); }
             } else {
-                db.banks.push({ id: '_' + Date.now(), name, bik: document.getElementById('bankBik').value.trim(), corrAccount: document.getElementById('bankCorr').value.trim() });
+                db.banks.push({ id: uid(), name, bik: document.getElementById('bankBik').value.trim(), corrAccount: document.getElementById('bankCorr').value.trim() });
             }
             saveData(); renderPage();
         }
         function deleteBankItem(id) {
             const b = db.banks.find(x => x.id === id);
-            if (!b || !confirm('Удалить банк «' + b.name + '»?')) return;
+            if (!b) return;
+            const usedIn = (db.accounts || []).filter(a => a.bank === b.name || a.bank === id);
+            if (usedIn.length) { alert('Нельзя удалить банк «' + b.name + '» — он привязан к ' + usedIn.length + ' счёту(ам). Сначала измените банк в этих счетах.'); return; }
+            if (!confirm('Удалить банк «' + b.name + '»?')) return;
             db.banks = db.banks.filter(x => x.id !== id);
             saveData(); renderPage();
         }
@@ -1757,38 +1846,104 @@
                 const c = db.cashs.find(x => x.id === editId);
                 if (c) { c.name = name; c.responsible = document.getElementById('cashResp').value.trim(); }
             } else {
-                db.cashs.push({ id: '_' + Date.now(), name, responsible: document.getElementById('cashResp').value.trim() });
+                db.cashs.push({ id: uid(), name, responsible: document.getElementById('cashResp').value.trim() });
             }
             saveData(); renderPage();
         }
         function deleteCashItem(id) {
             const c = db.cashs.find(x => x.id === id);
-            if (!c || !confirm('Удалить кассу «' + c.name + '»?')) return;
+            if (!c) return;
+            const usedIn = (db.cashDocuments || []).filter(d => d.account === id);
+            if (usedIn.length) { alert('Нельзя удалить кассу «' + c.name + '» — она используется в ' + usedIn.length + ' документе(ах). Сначала измените кассу в этих документах.'); return; }
+            if (!confirm('Удалить кассу «' + c.name + '»?')) return;
             db.cashs = db.cashs.filter(x => x.id !== id);
             saveData(); renderPage();
         }
 
         function renderCurrencies() {
             return `
+                <div style="margin-bottom:12px">
+                    <button class="btn btn-primary" onclick="showAddCurrency()">+ Добавить валюту</button>
+                </div>
+                <div id="currFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <h4 id="currFormTitle" style="margin-bottom:12px">Новая валюта</h4>
+                    <input type="hidden" id="currEditId">
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+                        <div class="form-group"><label>Код</label><input id="currCode" class="form-control" placeholder="USD" maxlength="5"></div>
+                        <div class="form-group"><label>Название</label><input id="currName" class="form-control" placeholder="Доллар США"></div>
+                        <div class="form-group"><label>Курс</label><input id="currRate" class="form-control" type="number" step="0.0001" placeholder="1.0000"></div>
+                    </div>
+                    <div style="margin-top:10px;display:flex;gap:8px">
+                        <button class="btn btn-primary" onclick="saveCurrency()">Сохранить</button>
+                        <button class="btn" onclick="document.getElementById('currFormWrap').style.display='none'">Отмена</button>
+                    </div>
+                </div>
                 <table class="table-container">
                     <thead>
                         <tr>
                             <th>Код</th>
                             <th>Название</th>
                             <th style="text-align: right;">Курс</th>
+                            <th style="width:100px">Действия</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${db.currencies.map(c => `
                             <tr>
-                                <td><strong>${c.code}</strong></td>
-                                <td>${c.name}</td>
+                                <td><strong>${esc(c.code)}</strong></td>
+                                <td>${esc(c.name)}</td>
                                 <td class="num">${formatAmount(c.rate)}</td>
+                                <td>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editCurrency('${c.id}')">✏️</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:#d32f2f" onclick="deleteCurrency('${c.id}')">🗑</button>
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
             `;
+        }
+        function showAddCurrency() {
+            document.getElementById('currFormWrap').style.display = 'block';
+            document.getElementById('currFormTitle').textContent = 'Новая валюта';
+            document.getElementById('currEditId').value = '';
+            document.getElementById('currCode').value = '';
+            document.getElementById('currName').value = '';
+            document.getElementById('currRate').value = '';
+        }
+        function editCurrency(id) {
+            const c = db.currencies.find(x => x.id === id);
+            if (!c) return;
+            document.getElementById('currFormWrap').style.display = 'block';
+            document.getElementById('currFormTitle').textContent = 'Редактировать валюту';
+            document.getElementById('currEditId').value = id;
+            document.getElementById('currCode').value = c.code || '';
+            document.getElementById('currName').value = c.name || '';
+            document.getElementById('currRate').value = c.rate || '';
+        }
+        function saveCurrency() {
+            const code = document.getElementById('currCode').value.trim().toUpperCase();
+            const name = document.getElementById('currName').value.trim();
+            if (!code || !name) { alert('Заполните код и название'); return; }
+            const rate = parseFloat(document.getElementById('currRate').value) || 1;
+            const editId = document.getElementById('currEditId').value;
+            if (editId) {
+                const c = db.currencies.find(x => x.id === editId);
+                if (c) { c.code = code; c.name = name; c.rate = rate; }
+            } else {
+                db.currencies.push({ id: uid(), code, name, rate });
+            }
+            saveData(); renderPage();
+        }
+        function deleteCurrency(id) {
+            const c = db.currencies.find(x => x.id === id);
+            if (!c) return;
+            const usedIn = (db.bankDocuments || []).filter(d => d.currency === id)
+                .concat((db.cashDocuments || []).filter(d => d.currency === id));
+            if (usedIn.length) { alert('Нельзя удалить валюту «' + c.name + '» — она используется в ' + usedIn.length + ' документе(ах). Сначала измените валюту в этих документах.'); return; }
+            if (!confirm('Удалить валюту «' + c.name + '»?')) return;
+            db.currencies = db.currencies.filter(x => x.id !== id);
+            saveData(); renderPage();
         }
 
         // ==================== DASHBOARD ====================
@@ -1813,9 +1968,9 @@
                     '<h3 style="margin-bottom:12px;font-size:15px">Быстрый старт:</h3>' +
                     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
                     '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'accounts\')">🏦 Настроить счета</div>' +
-                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'contractors\')">👥 Добавить контрагентов</div>' +
-                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'nomenclature\')">📋 Создать номенклатуру</div>' +
-                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'org\')">🏢 Реквизиты организации</div>' +
+                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'ref_contractors\')">👥 Добавить контрагентов</div>' +
+                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'ref_nomenclature\')">📋 Создать номенклатуру</div>' +
+                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'ref_org\')">🏢 Реквизиты организации</div>' +
                     '</div></div></div>';
             }
             const nomCount = db.trade && db.trade.nomenclature ? db.trade.nomenclature.length : 0;
@@ -1916,11 +2071,14 @@
                 '<div class="dash-recent"><h3>Последние операции</h3><table><thead><tr><th>Дата</th><th>Тип</th><th>Описание</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' + recentRows + '</tbody></table></div></div>';
         }
 
+        let _dashBarChart = null, _dashPieChart = null;
         function initDashCharts() {
             if (typeof Chart === 'undefined') return;
             const el = document.getElementById('dashChart');
             const pie = document.getElementById('dashPie');
             if (!el || !pie) return;
+            if (_dashBarChart) { _dashBarChart.destroy(); _dashBarChart = null; }
+            if (_dashPieChart) { _dashPieChart.destroy(); _dashPieChart = null; }
 
             // Collect 6 months of income/expense data
             const months = [];
@@ -1949,7 +2107,7 @@
                 else if (tt && tt.group === 'purchase') expense[idx] += doc.total || 0;
             });
 
-            new Chart(el, {
+            _dashBarChart = new Chart(el, {
                 type: 'bar',
                 data: {
                     labels: months.map(m => m.label),
@@ -1971,7 +2129,7 @@
             const pieData = pieLabels.map(k => byArticle[k]);
             const pieColors = ['#2196f3', '#ff9800', '#4caf50', '#9c27b0', '#f44336', '#009688', '#795548', '#607d8b'];
 
-            new Chart(pie, {
+            _dashPieChart = new Chart(pie, {
                 type: 'doughnut',
                 data: { labels: pieLabels, datasets: [{ data: pieData, backgroundColor: pieColors.slice(0, pieLabels.length) }] },
                 options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } }, title: { display: true, text: 'Расходы по статьям' } } }
@@ -2067,7 +2225,7 @@
             dd.className = 'notif-dropdown open';
             const notifs = getNotifications();
             dd.innerHTML = '<div style="padding:12px 16px;font-weight:600;border-bottom:1px solid #eee">Уведомления</div>' +
-                notifs.map(n => '<div class="notif-item"><div class="notif-title">' + n.title + '</div><div>' + n.text + '</div><div class="notif-time">' + n.time + '</div></div>').join('');
+                notifs.map(n => '<div class="notif-item"><div class="notif-title">' + esc(n.title) + '</div><div>' + esc(n.text) + '</div><div class="notif-time">' + esc(n.time) + '</div></div>').join('');
             btn.style.position = 'relative';
             btn.appendChild(dd);
             setTimeout(() => document.addEventListener('click', function closeNotif(e) { if (!dd.contains(e.target) && e.target !== btn) { dd.classList.remove('open'); document.removeEventListener('click', closeNotif); } }), 10);
@@ -2139,7 +2297,7 @@
             const msg = document.getElementById('passMsg');
             if (!oldP || !newP1 || !newP2) { msg.innerHTML = '<span style="color:#d32f2f">Заполните все поля</span>'; return; }
             if (newP1 !== newP2) { msg.innerHTML = '<span style="color:#d32f2f">Пароли не совпадают</span>'; return; }
-            if (newP1.length < 4) { msg.innerHTML = '<span style="color:#d32f2f">Минимум 4 символа</span>'; return; }
+            if (newP1.length < 6) { msg.innerHTML = '<span style="color:#d32f2f">Минимум 6 символов</span>'; return; }
             msg.innerHTML = '<span style="color:#999">Сохранение...</span>';
             const oldHash = await _sha256(oldP);
             const newHash = await _sha256(newP1);
@@ -2233,8 +2391,8 @@
                 msgEl.innerHTML = '<span style="color:#d32f2f">Заполните все поля</span>';
                 return;
             }
-            if (pass.length < 4) {
-                msgEl.innerHTML = '<span style="color:#d32f2f">Пароль минимум 4 символа</span>';
+            if (pass.length < 6) {
+                msgEl.innerHTML = '<span style="color:#d32f2f">Пароль минимум 6 символов</span>';
                 return;
             }
 
@@ -2312,7 +2470,7 @@
             const commits = await DbSync.getHistory(20);
             if (!commits.length) { el.innerHTML = '<p style="color:#999">История пуста</p>'; return; }
             el.innerHTML = '<table class="table-container"><thead><tr><th>Дата</th><th>Описание</th><th>Действие</th></tr></thead><tbody>' +
-                commits.map(c => '<tr><td>' + new Date(c.commit.author.date).toLocaleString('ru-RU') + '</td><td>' + (c.commit.message || '') + '</td><td><button class="btn" onclick="restoreFromCommit(\'' + c.sha + '\')">Восстановить</button></td></tr>').join('') +
+                commits.map(c => '<tr><td>' + esc(new Date(c.commit.author.date).toLocaleString('ru-RU')) + '</td><td>' + esc(c.commit.message || '') + '</td><td><button class="btn" onclick="restoreFromCommit(\'' + esc(c.sha) + '\')">Восстановить</button></td></tr>').join('') +
                 '</tbody></table>';
         }
 
@@ -2358,15 +2516,24 @@
             });
         }
 
+        function nextDocNumber(prefix, docs) {
+            let max = 0;
+            docs.forEach(d => { const m = String(d.number).match(/(\d+)$/); if (m) max = Math.max(max, parseInt(m[1])); });
+            return prefix + '-' + String(max + 1).padStart(4, '0');
+        }
         function openCreateModal() {
             editingId = null;
             const group = currentPage === 'cash' ? 'cash' : 'bank';
             document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
             document.getElementById('documentForm').reset();
             setTypeOptions(group);
-            document.getElementById('docType').value = group === 'cash' ? 'pko' : 'payment_out';
+            const defType = group === 'cash' ? 'pko' : 'payment_out';
+            document.getElementById('docType').value = defType;
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('docDate').value = today;
+            const prefix = group === 'cash' ? (defType === 'pko' ? 'ПКО' : 'РКО') : 'ПП';
+            const list = group === 'cash' ? db.cashDocuments : db.bankDocuments;
+            document.getElementById('docNumber').value = nextDocNumber(prefix, list);
             document.getElementById('documentModal').classList.add('active');
             updateFormByType();
         }
@@ -2405,8 +2572,13 @@
                 return;
             }
 
+            const sumVal = parseFloat(document.getElementById('docSum').value);
+            if (isNaN(sumVal) || sumVal <= 0) { alert('Сумма должна быть положительным числом'); return; }
+            const rateVal = parseFloat(document.getElementById('docRate').value) || 1;
+            if (rateVal <= 0) { alert('Курс должен быть положительным числом'); return; }
+
             const doc = {
-                id: editingId || '_' + Date.now(),
+                id: editingId || uid(),
                 type: document.getElementById('docType').value,
                 number: document.getElementById('docNumber').value,
                 date: document.getElementById('docDate').value,
@@ -2415,8 +2587,8 @@
                 contractor: document.getElementById('docContractor').value,
                 article: document.getElementById('docArticle').value,
                 currency: document.getElementById('docCurrency').value,
-                sum: parseFloat(document.getElementById('docSum').value),
-                rate: parseFloat(document.getElementById('docRate').value) || 1,
+                sum: sumVal,
+                rate: rateVal,
                 purpose: document.getElementById('docPurpose').value,
                 note: document.getElementById('docNote').value,
                 created: new Date().toISOString()
@@ -2443,8 +2615,12 @@
         }
 
         function deleteDoc(id) {
-            if (!confirm('Удалить документ?')) return;
             const found = db.bankDocuments.find(d=>d.id===id) || db.cashDocuments.find(d=>d.id===id);
+            if (found && found.status === 'posted') {
+                if (!confirm('Документ проведён! Удаление отменит проводки. Продолжить?')) return;
+            } else {
+                if (!confirm('Удалить документ?')) return;
+            }
             db.bankDocuments = db.bankDocuments.filter(d => d.id !== id);
             db.cashDocuments = db.cashDocuments.filter(d => d.id !== id);
             logActivity('Удаление документа', found ? (found.type + ' ' + found.number) : id);
@@ -2457,6 +2633,34 @@
             // Form can be extended based on type
         }
 
+        function amountInWords(n) {
+            n = Math.abs(Number(n || 0));
+            const units = ['','один','два','три','четыре','пять','шесть','семь','восемь','девять'];
+            const teens = ['десять','одиннадцать','двенадцать','тринадцать','четырнадцать','пятнадцать','шестнадцать','семнадцать','восемнадцать','девятнадцать'];
+            const tens = ['','','двадцать','тридцать','сорок','пятьдесят','шестьдесят','семьдесят','восемьдесят','девяносто'];
+            const hundreds = ['','сто','двести','триста','четыреста','пятьсот','шестьсот','семьсот','восемьсот','девятьсот'];
+            const intPart = Math.floor(n);
+            const kopPart = Math.round((n - intPart) * 100);
+            if (intPart === 0) return 'ноль сом ' + String(kopPart).padStart(2,'0') + ' тыйын';
+            function group(num) {
+                let r = '';
+                r += hundreds[Math.floor(num / 100)];
+                const rem = num % 100;
+                if (rem >= 10 && rem < 20) { r += (r ? ' ' : '') + teens[rem - 10]; }
+                else { if (tens[Math.floor(rem / 10)]) r += (r ? ' ' : '') + tens[Math.floor(rem / 10)]; if (units[rem % 10]) r += (r ? ' ' : '') + units[rem % 10]; }
+                return r;
+            }
+            let result = '';
+            const millions = Math.floor(intPart / 1000000);
+            const thousands = Math.floor((intPart % 1000000) / 1000);
+            const rest = intPart % 1000;
+            if (millions) result += group(millions) + ' млн ';
+            if (thousands) result += group(thousands) + ' тыс. ';
+            if (rest || !result) result += group(rest);
+            result = result.trim();
+            result = result.charAt(0).toUpperCase() + result.slice(1);
+            return result + ' сом ' + String(kopPart).padStart(2,'0') + ' тыйын';
+        }
         function printDoc(id) {
             const doc = [...db.bankDocuments, ...db.cashDocuments].find(d => d.id === id);
             if (!doc) return;
@@ -2484,6 +2688,7 @@
                     <p style="margin-top:10px">Принято от: <b>${esc(doc.contractor || '—')}</b></p>
                     <p>Основание: ${esc(doc.purpose || '—')}</p>
                     <p>Сумма: <b>${formatAmount(doc.sum)}</b> сом</p>
+                    <p><i>${amountInWords(doc.sum)}</i></p>
                     <p>В том числе НДС: ________</p>
                     <p>Приложение: ________</p>
                     <table class="nob" style="margin-top:20px"><tr><td>Главный бухгалтер <span class="line"></span></td><td>Кассир <span class="line"></span></td></tr></table>
@@ -2509,6 +2714,7 @@
                     <p style="margin-top:10px">Выдать: <b>${esc(doc.contractor || '—')}</b></p>
                     <p>Основание: ${esc(doc.purpose || '—')}</p>
                     <p>Сумма: <b>${formatAmount(doc.sum)}</b> сом</p>
+                    <p><i>${amountInWords(doc.sum)}</i></p>
                     <p>Приложение: ________</p>
                     <table class="nob" style="margin-top:15px"><tr><td>Руководитель <span class="line"></span></td><td>Главный бухгалтер <span class="line"></span></td></tr></table>
                     <p style="margin-top:15px">Получил: ${formatAmount(doc.sum)} сом</p>
@@ -2547,17 +2753,20 @@
             }
 
             const w = window.open();
+            if (!w) { alert('Браузер заблокировал всплывающее окно. Разрешите попапы для этого сайта.'); return; }
             w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Печать</title><style>${css}</style></head><body>${html}</body></html>`);
             w.document.close();
             w.print();
         }
 
         // ==================== EXPORT FUNCTIONS ====================
+        function csvSafe(v) { let s = String(v == null ? '' : v).replace(/"/g, '""'); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s + '"'; }
+        function xmlSafe(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
         function exportToCSV() {
             const allDocs = [...db.bankDocuments, ...db.cashDocuments];
             let csv = 'Номер,Дата,Тип,Контрагент,Сумма,Статус\n';
             allDocs.forEach(d => {
-                csv += `"${d.number}","${d.date}","${getDocTypeLabel(d.type)}","${d.contractor}",${d.sum},"${d.status}"\n`;
+                csv += `${csvSafe(d.number)},${csvSafe(d.date)},${csvSafe(getDocTypeLabel(d.type))},${csvSafe(d.contractor)},${d.sum || 0},${csvSafe(d.status)}\n`;
             });
 
             downloadFile(csv, 'documents.csv', 'text/csv');
@@ -2574,11 +2783,11 @@
             let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<documents>\n';
             [...db.bankDocuments, ...db.cashDocuments].forEach(d => {
                 xml += `  <document>\n`;
-                xml += `    <number>${d.number}</number>\n`;
-                xml += `    <date>${d.date}</date>\n`;
-                xml += `    <type>${d.type}</type>\n`;
-                xml += `    <sum>${d.sum}</sum>\n`;
-                xml += `    <status>${d.status}</status>\n`;
+                xml += `    <number>${xmlSafe(d.number)}</number>\n`;
+                xml += `    <date>${xmlSafe(d.date)}</date>\n`;
+                xml += `    <type>${xmlSafe(d.type)}</type>\n`;
+                xml += `    <sum>${d.sum || 0}</sum>\n`;
+                xml += `    <status>${xmlSafe(d.status)}</status>\n`;
                 xml += `  </document>\n`;
             });
             xml += '</documents>';
@@ -2706,7 +2915,7 @@
         }
 
         function formatAmount(num) {
-            return Number(num || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+            return Number(num || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         function getDocTypeLabel(type) {
@@ -2897,6 +3106,7 @@
         }
         function tToday() { return new Date().toISOString().split('T')[0]; }
         function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function uid() { return '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
         function tContractor(id) { return (db.trade && db.trade.contractors || []).find(c => c.id === id); }
         function tContractorName(id) { const c = tContractor(id); return c ? c.name : '—'; }
         function tContract(id) { return db.trade.contracts.find(c => c.id === id); }
@@ -3209,7 +3419,7 @@
             const j = TRADE_JOURNALS[page];
             const docs = tFilteredDocs(j.types);
             let csv = 'Дата;Номер;Вид операции;Контрагент;Сумма;НДС;Состояние;Комментарий\n';
-            docs.forEach(d => csv += `${d.date};${d.number};${d.opKind || ''};${tContractorName(d.contractor)};${d.total};${d.vatTotal};${d.status};${(d.extra && d.extra.comment) || ''}\n`);
+            docs.forEach(d => { const safe = v => String(v==null?'':v).replace(/;/g,',').replace(/^[=+\-@]/,"'$&"); csv += `${safe(d.date)};${safe(d.number)};${safe(d.opKind)};${safe(tContractorName(d.contractor))};${d.total||0};${d.vatTotal||0};${safe(d.status)};${safe((d.extra&&d.extra.comment)||'')}\n`; });
             downloadFile('﻿' + csv, page + '.csv', 'text/csv'); showToast('Список выведен в CSV');
         }
 
@@ -3264,7 +3474,7 @@
                 const paid = tPayments(base.id).reduce((s, p) => s + p.sum, 0);
                 const rest = Math.max(0, Math.round((base.total - paid) * 100) / 100);
                 const sumStr = prompt('Сумма оплаты (остаток по документу ' + formatAmount(rest) + '):', rest || base.total); if (sumStr === null) return;
-                const doc = { id: '_' + Date.now(), type: target, number: (isBank ? 'ПП' : (target === 'pko' ? 'ПКО' : 'РКО')) + '-' + String(([...db.bankDocuments, ...db.cashDocuments].filter(x => x.type === target).length + 1)).padStart(3, '0'),
+                const doc = { id: uid(), type: target, number: (isBank ? 'ПП' : (target === 'pko' ? 'ПКО' : 'РКО')) + '-' + String(([...db.bankDocuments, ...db.cashDocuments].filter(x => x.type === target).length + 1)).padStart(3, '0'),
                     date: tToday(), status: 'posted', account: acc ? acc.id : '', contractor: cname, article: art ? art.id : '', currency: cur ? cur.id : '', sum: parseFloat(sumStr) || 0, rate: 1,
                     purpose: 'Оплата по документу ' + tDocTitle(base) + (base.vatTotal ? ', в т.ч. НДС ' + formatAmount(base.vatTotal) : ''), note: 'Создано на основании', created: new Date().toISOString(), basis: base.id };
                 (isBank ? db.bankDocuments : db.cashDocuments).push(doc); saveData(); renderPage();
@@ -3655,6 +3865,7 @@
         // ---------- Печатные формы ----------
         function tPrintWindow(html, title) {
             const w = window.open('', '_blank');
+            if (!w) { alert('Браузер заблокировал всплывающее окно. Разрешите попапы для этого сайта.'); return; }
             w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)}</title><style>
                 body{font-family:Arial,sans-serif;margin:30px;color:#000;font-size:12px}
                 h2{font-size:16px;margin:0 0 6px} h3{font-size:13px;margin:14px 0 6px}
@@ -3952,7 +4163,26 @@
             renderPage();
         }
         // Сворачивание групп меню
-        function tToggleGroup(el) { el.classList.toggle('collapsed'); let n = el.nextElementSibling; while (n && !n.classList.contains('section-title')) { n.style.display = el.classList.contains('collapsed') ? 'none' : ''; n = n.nextElementSibling; } }
+        function tToggleGroup(el) {
+            el.classList.toggle('collapsed');
+            let n = el.nextElementSibling;
+            while (n && !n.classList.contains('section-title')) { n.style.display = el.classList.contains('collapsed') ? 'none' : ''; n = n.nextElementSibling; }
+            // Save collapsed state
+            const titles = Array.from(document.querySelectorAll('.section-title'));
+            const collapsed = titles.filter(t => t.classList.contains('collapsed')).map(t => t.textContent.trim());
+            try { localStorage.setItem('collapsed_groups', JSON.stringify(collapsed)); } catch(e) {}
+        }
+        // Restore collapsed groups on load
+        (function() {
+            try {
+                const saved = JSON.parse(localStorage.getItem('collapsed_groups') || '[]');
+                if (saved.length) {
+                    document.querySelectorAll('.section-title').forEach(el => {
+                        if (saved.includes(el.textContent.trim())) { el.classList.add('collapsed'); let n = el.nextElementSibling; while (n && !n.classList.contains('section-title')) { n.style.display = 'none'; n = n.nextElementSibling; } }
+                    });
+                }
+            } catch(e) {}
+        })();
 
         window.addEventListener('DOMContentLoaded', () => { document.querySelectorAll('.nav-item').forEach(el => { const m = (el.getAttribute('onclick') || '').match(/selectPage\('([^']+)'\)/); if (m) el.dataset.page = m[1]; }); });
 
@@ -5181,6 +5411,11 @@
             } else if (e.ctrlKey && e.key === 'p') {
                 e.preventDefault();
                 if (isTrade && tSelected) tPrint(tSelected, TT[tDocById(tSelected).type].prints[0]);
+            } else if (e.key === 'Escape') {
+                // Close any open modal
+                document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
+            } else if (e.ctrlKey && e.key === 'n' && !isTrade && (currentPage === 'bank' || currentPage === 'cash')) {
+                e.preventDefault(); openCreateModal();
             }
         });
 

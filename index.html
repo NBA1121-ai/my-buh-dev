@@ -119,9 +119,13 @@
             </div>
             <div class="form-group">
                 <label>Пароль</label>
-                <input type="password" id="passwordInput" placeholder="Введите пароль" autocomplete="current-password">
+                <div style="position:relative">
+                    <input type="password" id="passwordInput" placeholder="Введите пароль" autocomplete="current-password">
+                    <span onclick="const p=document.getElementById('passwordInput');p.type=p.type==='password'?'text':'password';this.textContent=p.type==='password'?'👁':'🙈'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;user-select:none">👁</span>
+                </div>
             </div>
 
+            <p style="font-size:11px;color:#999;margin-bottom:15px">Минимальная длина пароля — 6 символов</p>
             <button class="btn-login" id="loginBtn" onclick="handleLogin()">Войти</button>
         </div>
 
@@ -187,6 +191,8 @@
             document.getElementById('authForm').style.display = 'block';
         })();
 
+        let _failCount = 0;
+        let _lockUntil = 0;
         async function handleLogin() {
             const login = document.getElementById('loginInput').value.trim().toLowerCase();
             const password = document.getElementById('passwordInput').value;
@@ -194,6 +200,13 @@
             const btn = document.getElementById('loginBtn');
 
             errEl.style.display = 'none';
+
+            if (Date.now() < _lockUntil) {
+                const sec = Math.ceil((_lockUntil - Date.now()) / 1000);
+                errEl.textContent = 'Слишком много попыток. Подождите ' + sec + ' сек.';
+                errEl.style.display = 'block';
+                return;
+            }
 
             if (!login || !password) {
                 errEl.textContent = 'Заполните все поля';
@@ -210,12 +223,15 @@
             const user = _allUsers.find(u => u.login === loginH && u.pass === passH);
 
             if (!user) {
+                _failCount++;
+                if (_failCount >= 5) { _lockUntil = Date.now() + 30000; _failCount = 0; }
                 errEl.textContent = 'Неверный логин или пароль';
                 errEl.style.display = 'block';
                 btn.disabled = false;
                 btn.textContent = 'Войти';
                 return;
             }
+            _failCount = 0;
 
             // Save session (24 hours) with role
             localStorage.setItem('auth_session', JSON.stringify({
