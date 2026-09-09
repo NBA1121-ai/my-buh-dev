@@ -526,7 +526,7 @@
         .tcmd.small { padding: 6px 8px; margin-bottom: 8px; background: #f8f9fb; box-shadow: none; }
         .tcmd .btn:disabled { opacity: .5; cursor: default; }
         .tdd { position: relative; display: inline-block; }
-        .tdd-menu { display: none; position: absolute; top: 100%; left: 0; min-width: 260px; background: #fff; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); z-index: 1500; padding: 4px 0; max-height: 60vh; overflow-y: auto; }
+        .tdd-menu { display: none; position: absolute; top: 100%; left: 0; min-width: 260px; background: #fff; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); z-index: 900; padding: 4px 0; max-height: 60vh; overflow-y: auto; }
         .tdd.open .tdd-menu { display: block; }
         .tdd-item { padding: 8px 14px; font-size: 13px; cursor: pointer; white-space: nowrap; }
         .tdd-item:hover { background: #e8f0f8; }
@@ -677,7 +677,8 @@
             .stat-value { font-size: 18px; }
             .tcmd { padding: 8px; gap: 5px; }
             .tcmd .btn { padding: 5px 8px; font-size: 11px; }
-            table { font-size: 12px; }
+            .table-container, table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { font-size: 12px; min-width: 600px; }
             th, td { padding: 6px 8px; }
             .action-buttons { flex-direction: column; gap: 3px; }
             .user-email { display: none; }
@@ -893,7 +894,7 @@
     </div>
 
     <!-- Create/Edit Modal -->
-    <div class="modal" id="documentModal">
+    <div class="modal" id="documentModal" onclick="if(event.target===this)closeModal()">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modalTitle">Создать документ</h2>
@@ -999,7 +1000,7 @@
 
 
     <!-- ===== Форма документа Покупки/Продажи ===== -->
-    <div class="modal" id="tModal">
+    <div class="modal" id="tModal" onclick="if(event.target===this)tCloseForm()">
         <div class="modal-content tmodal-content">
             <div class="modal-header">
                 <h2 id="tModalTitle">Документ</h2>
@@ -1016,7 +1017,7 @@
     </div>
 
     <!-- Подбор номенклатуры -->
-    <div class="modal" id="tPickModal" style="z-index:1100">
+    <div class="modal" id="tPickModal" style="z-index:1100" onclick="if(event.target===this)tClosePick()">
         <div class="modal-content" style="max-width:900px">
             <div class="modal-header"><h2>Подбор номенклатуры</h2><button class="modal-close" onclick="tClosePick()">×</button></div>
             <div class="modal-body">
@@ -1031,7 +1032,7 @@
     </div>
 
     <!-- Движения документа Дт/Кт -->
-    <div class="modal" id="tPostModal" style="z-index:1100">
+    <div class="modal" id="tPostModal" style="z-index:1100" onclick="if(event.target===this)this.classList.remove('active')">
         <div class="modal-content" style="max-width:900px">
             <div class="modal-header"><h2 id="tPostTitle">Движения документа</h2><button class="modal-close" onclick="document.getElementById('tPostModal').classList.remove('active')">×</button></div>
             <div class="modal-body"><div class="table-container" id="tPostBody"></div></div>
@@ -1040,7 +1041,7 @@
     </div>
 
     <!-- Элемент справочника -->
-    <div class="modal" id="tRefModal" style="z-index:1200">
+    <div class="modal" id="tRefModal" style="z-index:1200" onclick="if(event.target===this)this.classList.remove('active')">
         <div class="modal-content" style="max-width:800px">
             <div class="modal-header"><h2 id="tRefTitle">Справочник</h2><button class="modal-close" onclick="document.getElementById('tRefModal').classList.remove('active')">×</button></div>
             <div class="modal-body" id="tRefBody"></div>
@@ -1104,7 +1105,7 @@
                 await loadData();
             } catch(e) {
                 console.error('Failed to load data:', e);
-                // Continue with defaults — data will load from local cache or be empty
+                showToast('Не удалось загрузить данные с сервера. Работа с локальным кэшем.');
             }
 
             initializeDefaults();
@@ -1142,6 +1143,7 @@
         async function loadData() {
             const cloudData = await DbSync.loadData();
             if (cloudData && typeof cloudData === 'object') {
+                Object.keys(db).forEach(k => delete db[k]);
                 Object.assign(db, cloudData);
             }
         }
@@ -1160,6 +1162,18 @@
         setInterval(() => {
             try { localStorage.setItem('db_cache', JSON.stringify(db)); } catch(e) {}
         }, 30000);
+
+        // Sync between browser tabs via storage event
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'db_cache' && e.newValue) {
+                try {
+                    const newData = JSON.parse(e.newValue);
+                    Object.keys(db).forEach(k => delete db[k]);
+                    Object.assign(db, newData);
+                    renderPage();
+                } catch(err) {}
+            }
+        });
 
         // Mobile sidebar functions
         function toggleSidebar() {
@@ -2630,7 +2644,21 @@
         }
 
         function updateFormByType() {
-            // Form can be extended based on type
+            const type = document.getElementById('docType').value;
+            const isCash = CASH_TYPES.includes(type);
+            const accountSelect = document.getElementById('docAccount');
+            const filtered = db.accounts.filter(a => isCash ? a.type === 'cash' : a.type !== 'cash');
+            const current = accountSelect.value;
+            accountSelect.innerHTML = '<option value="">Выбрать...</option>' +
+                filtered.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
+            if (filtered.find(a => a.id === current)) accountSelect.value = current;
+            // Filter articles by type
+            const artSelect = document.getElementById('docArticle');
+            const artFiltered = db.articles.filter(a => isCash ? true : true); // show all articles
+            const currentArt = artSelect.value;
+            artSelect.innerHTML = '<option value="">Выбрать...</option>' +
+                artFiltered.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
+            if (artFiltered.find(a => a.id === currentArt)) artSelect.value = currentArt;
         }
 
         function amountInWords(n) {
@@ -2684,7 +2712,7 @@
                     <p class="title">ПРИХОДНЫЙ КАССОВЫЙ ОРДЕР</p>
                     <table class="nob"><tr><td>Номер документа</td><td>Дата составления</td></tr><tr><td class="center"><b>${esc(doc.number)}</b></td><td class="center"><b>${formatDate(doc.date)}</b></td></tr></table>
                     <table style="margin-top:10px"><thead><tr><th>Дебет</th><th>Кредит</th><th>Сумма</th><th>Код целевого назначения</th></tr></thead>
-                    <tbody><tr><td class="center">50</td><td class="center">${esc(doc.article || '')}</td><td class="right">${formatAmount(doc.sum)}</td><td></td></tr></tbody></table>
+                    <tbody><tr><td class="center">50</td><td class="center">${esc((db.articles.find(a=>a.id===doc.article)||{}).name || '')}</td><td class="right">${formatAmount(doc.sum)}</td><td></td></tr></tbody></table>
                     <p style="margin-top:10px">Принято от: <b>${esc(doc.contractor || '—')}</b></p>
                     <p>Основание: ${esc(doc.purpose || '—')}</p>
                     <p>Сумма: <b>${formatAmount(doc.sum)}</b> сом</p>
@@ -2710,7 +2738,7 @@
                     <p class="title">РАСХОДНЫЙ КАССОВЫЙ ОРДЕР</p>
                     <table class="nob"><tr><td>Номер документа</td><td>Дата составления</td></tr><tr><td class="center"><b>${esc(doc.number)}</b></td><td class="center"><b>${formatDate(doc.date)}</b></td></tr></table>
                     <table style="margin-top:10px"><thead><tr><th>Дебет</th><th>Кредит</th><th>Сумма</th><th>Код целевого назначения</th></tr></thead>
-                    <tbody><tr><td class="center">${esc(doc.article || '')}</td><td class="center">50</td><td class="right">${formatAmount(doc.sum)}</td><td></td></tr></tbody></table>
+                    <tbody><tr><td class="center">${esc((db.articles.find(a=>a.id===doc.article)||{}).name || '')}</td><td class="center">50</td><td class="right">${formatAmount(doc.sum)}</td><td></td></tr></tbody></table>
                     <p style="margin-top:10px">Выдать: <b>${esc(doc.contractor || '—')}</b></p>
                     <p>Основание: ${esc(doc.purpose || '—')}</p>
                     <p>Сумма: <b>${formatAmount(doc.sum)}</b> сом</p>
@@ -2736,8 +2764,8 @@
                     </table>
                     <table style="margin-top:5px">
                     <tr><td style="width:40%"><b>Получатель</b></td><td>${isOut ? esc(doc.contractor || '—') : esc(org.name || '')}</td></tr>
-                    <tr><td>Сч. №</td><td></td></tr>
-                    <tr><td><b>Банк получателя</b></td><td></td></tr>
+                    <tr><td>Сч. №</td><td>${!isOut && acc ? esc(acc.number || '') : ''}</td></tr>
+                    <tr><td><b>Банк получателя</b></td><td>${!isOut && acc ? esc(acc.bank || '') : ''}</td></tr>
                     </table>
                     <table style="margin-top:10px"><tr><th>Сумма платежа</th><td class="right"><b>${formatAmount(doc.sum)} KGS</b></td></tr></table>
                     <p style="margin-top:10px"><b>Назначение платежа:</b> ${esc(doc.purpose || '—')}</p>
@@ -2764,13 +2792,17 @@
         function xmlSafe(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
         function exportToCSV() {
             const allDocs = [...db.bankDocuments, ...db.cashDocuments];
+            const tradeDocs = db.trade && db.trade.docs ? db.trade.docs : [];
             let csv = 'Номер,Дата,Тип,Контрагент,Сумма,Статус\n';
             allDocs.forEach(d => {
                 csv += `${csvSafe(d.number)},${csvSafe(d.date)},${csvSafe(getDocTypeLabel(d.type))},${csvSafe(d.contractor)},${d.sum || 0},${csvSafe(d.status)}\n`;
             });
-
+            tradeDocs.forEach(d => {
+                const cName = d.contractor && db.trade.contractors ? (db.trade.contractors.find(c => c.id === d.contractor) || {}).name || '' : '';
+                csv += `${csvSafe(d.number)},${csvSafe(d.date)},${csvSafe(d.type)},${csvSafe(cName)},${d.total || 0},${csvSafe(d.status)}\n`;
+            });
             downloadFile(csv, 'documents.csv', 'text/csv');
-            showToast('Экспортировано в CSV');
+            showToast('Экспортировано в CSV (' + (allDocs.length + tradeDocs.length) + ' документов)');
         }
 
         function exportToJSON() {
@@ -2780,19 +2812,19 @@
         }
 
         function exportToXML() {
+            const allDocs = [...db.bankDocuments, ...db.cashDocuments];
+            const tradeDocs = db.trade && db.trade.docs ? db.trade.docs : [];
             let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<documents>\n';
-            [...db.bankDocuments, ...db.cashDocuments].forEach(d => {
-                xml += `  <document>\n`;
-                xml += `    <number>${xmlSafe(d.number)}</number>\n`;
-                xml += `    <date>${xmlSafe(d.date)}</date>\n`;
-                xml += `    <type>${xmlSafe(d.type)}</type>\n`;
-                xml += `    <sum>${d.sum || 0}</sum>\n`;
-                xml += `    <status>${xmlSafe(d.status)}</status>\n`;
-                xml += `  </document>\n`;
+            allDocs.forEach(d => {
+                xml += `  <document>\n    <number>${xmlSafe(d.number)}</number>\n    <date>${xmlSafe(d.date)}</date>\n    <type>${xmlSafe(d.type)}</type>\n    <contractor>${xmlSafe(d.contractor)}</contractor>\n    <sum>${d.sum || 0}</sum>\n    <status>${xmlSafe(d.status)}</status>\n  </document>\n`;
+            });
+            tradeDocs.forEach(d => {
+                const cName = d.contractor && db.trade.contractors ? (db.trade.contractors.find(c => c.id === d.contractor) || {}).name || '' : '';
+                xml += `  <document>\n    <number>${xmlSafe(d.number)}</number>\n    <date>${xmlSafe(d.date)}</date>\n    <type>${xmlSafe(d.type)}</type>\n    <contractor>${xmlSafe(cName)}</contractor>\n    <sum>${d.total || 0}</sum>\n    <status>${xmlSafe(d.status)}</status>\n  </document>\n`;
             });
             xml += '</documents>';
             downloadFile(xml, 'documents.xml', 'application/xml');
-            showToast('Экспортировано в XML');
+            showToast('Экспортировано в XML (' + (allDocs.length + tradeDocs.length) + ' документов)');
         }
 
         function performImport() {
@@ -2805,7 +2837,12 @@
                 try {
                     if (file.name.toLowerCase().endsWith('.json') || text.trim().startsWith('{')) {
                         const data = JSON.parse(text);
+                        if (typeof data !== 'object' || Array.isArray(data)) throw new Error('Неверный формат файла');
                         if (!data.bankDocuments && !data.cashDocuments && !data.trade) throw new Error('Файл не содержит данных программы');
+                        // Validate arrays
+                        if (data.bankDocuments && !Array.isArray(data.bankDocuments)) throw new Error('bankDocuments должен быть массивом');
+                        if (data.cashDocuments && !Array.isArray(data.cashDocuments)) throw new Error('cashDocuments должен быть массивом');
+                        if (data.trade && data.trade.docs && !Array.isArray(data.trade.docs)) throw new Error('trade.docs должен быть массивом');
                         if (!confirm('Заменить текущую базу данными из файла? (Отмена — добавить документы к существующим)')) {
                             (data.bankDocuments || []).forEach(d => { if (!db.bankDocuments.find(x => x.id === d.id)) db.bankDocuments.push(d); });
                             (data.cashDocuments || []).forEach(d => { if (!db.cashDocuments.find(x => x.id === d.id)) db.cashDocuments.push(d); });
@@ -2825,7 +2862,10 @@
                             const c = l.split(sep).map(x => x.replace(/^"|"$/g, '').trim());
                             if (c.length < 5) return;
                             const type = labels[c[2]] || c[2]; if (!getDocTypeLabel(type) || getDocTypeLabel(type) === type && !CASH_TYPES.concat(BANK_TYPES).includes(type)) return;
-                            const doc = { id: '_' + Date.now() + '_' + n, type, number: c[0], date: c[1], contractor: c[3], sum: parseFloat(c[4]) || 0, status: c[5] === 'posted' || c[5] === 'Проведено' ? 'posted' : 'draft', rate: 1, account: (db.accounts.find(a => a.type === (CASH_TYPES.includes(type) ? 'cash' : 'bank')) || {}).id || '', article: '', currency: (db.currencies[0] || {}).id || '', purpose: '', note: 'Импорт CSV', created: new Date().toISOString() };
+                            const sum = parseFloat(c[4]);
+                            if (isNaN(sum) || sum <= 0) return; // skip invalid amounts
+                            const dateVal = c[1]; if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal) && !/^\d{2}\.\d{2}\.\d{4}$/.test(dateVal)) return; // skip invalid dates
+                            const doc = { id: '_' + Date.now() + '_' + n, type, number: c[0], date: dateVal, contractor: c[3], sum, status: c[5] === 'posted' || c[5] === 'Проведено' ? 'posted' : 'draft', rate: 1, account: (db.accounts.find(a => a.type === (CASH_TYPES.includes(type) ? 'cash' : 'bank')) || {}).id || '', article: '', currency: (db.currencies[0] || {}).id || '', purpose: '', note: 'Импорт CSV', created: new Date().toISOString() };
                             (CASH_TYPES.includes(type) ? db.cashDocuments : db.bankDocuments).push(doc); n++;
                         });
                         if (!n) throw new Error('Не удалось распознать строки CSV');
@@ -2840,8 +2880,11 @@
 
         function tClearAll() {
             if (!confirm('Удалить ВСЕ документы (банк, касса, покупки, продажи)? Справочники останутся.')) return;
+            const total = (db.bankDocuments||[]).length + (db.cashDocuments||[]).length + (db.trade&&db.trade.docs?db.trade.docs.length:0);
+            const input = prompt('Для подтверждения введите УДАЛИТЬ (будет удалено ' + total + ' документов):');
+            if (input !== 'УДАЛИТЬ') { showToast('Удаление отменено'); return; }
             db.bankDocuments = []; db.cashDocuments = []; db.trade.docs = []; db.trade.sfCounter = { in: 0, out: 0 }; db.trade.demoSeeded = true;
-            saveData(); renderPage(); showToast('Документы удалены');
+            saveData(); renderPage(); showToast('Все документы удалены');
         }
 
         function downloadFile(content, filename, type) {
@@ -3113,7 +3156,7 @@
         function tContractName(id) { const c = tContract(id); return c ? (c.name + ' №' + c.number + ' от ' + formatDate(c.date)) : '—'; }
         function tNom(id) { return db.trade.nomenclature.find(n => n.id === id); }
         function tNomName(id) { const n = tNom(id); return n ? n.name : '—'; }
-        function tWh(id) { const w = db.trade.warehouses.find(x => x.id === id); return w ? w.name : '—'; }
+        function tWh(id) { const w = (db.trade.warehouses || []).find(x => x.id === id); return w ? w.name : '—'; }
         function tDocById(id) { return db.trade.docs.find(d => d.id === id); }
         function tDocTitle(d) { return d ? (TT[d.type].short + ' ' + d.number + ' от ' + formatDate(d.date)) : '—'; }
         function tVatLabel(v) { const r = VAT_RATES.find(x => x.v === Number(v)); return r ? r.l : v + '%'; }
@@ -5393,6 +5436,7 @@
             }
 
             const isTrade = typeof tIsTradePage === 'function' && tIsTradePage(currentPage);
+            const isBankCash = currentPage === 'bank' || currentPage === 'cash';
 
             if (e.key === 'F2' && isTrade && tSelected) {
                 e.preventDefault(); tOpen(tSelected);
@@ -5402,19 +5446,25 @@
                 e.preventDefault();
                 const j = TRADE_JOURNALS[currentPage];
                 if (j) tCreate(j.types[0]);
+            } else if (e.key === 'Insert' && isBankCash) {
+                e.preventDefault(); openCreateModal();
             } else if (e.key === 'Delete' && isTrade && tSelected) {
                 e.preventDefault(); tToggleDelete(tSelected);
             } else if (e.ctrlKey && e.key === 'f') {
                 e.preventDefault();
                 const el = document.getElementById('globalSearch') || document.getElementById('tfSearch');
                 if (el) el.focus();
-            } else if (e.ctrlKey && e.key === 'p') {
+            } else if (e.ctrlKey && e.shiftKey && e.key === 'p') {
                 e.preventDefault();
                 if (isTrade && tSelected) tPrint(tSelected, TT[tDocById(tSelected).type].prints[0]);
             } else if (e.key === 'Escape') {
-                // Close any open modal
-                document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
-            } else if (e.ctrlKey && e.key === 'n' && !isTrade && (currentPage === 'bank' || currentPage === 'cash')) {
+                // Close only the topmost modal (highest z-index)
+                const modals = [...document.querySelectorAll('.modal.active')];
+                if (modals.length) {
+                    const top = modals.reduce((a, b) => (parseInt(getComputedStyle(a).zIndex)||0) >= (parseInt(getComputedStyle(b).zIndex)||0) ? a : b);
+                    top.classList.remove('active');
+                }
+            } else if (e.ctrlKey && e.shiftKey && e.key === 'n' && !isTrade && (currentPage === 'bank' || currentPage === 'cash')) {
                 e.preventDefault(); openCreateModal();
             }
         });
