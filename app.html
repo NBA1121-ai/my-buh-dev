@@ -2618,6 +2618,15 @@
             exportExcel(headers, rows, j.title + '.xlsx', j.title);
         }
 
+        function exportDebtExcel() {
+            const rows = window._lastDebtRows || [];
+            const isSale = window._lastDebtGroup === 'sale';
+            const title = isSale ? 'Задолженность покупателей' : 'Задолженность поставщикам';
+            const headers = ['Контрагент', 'ИНН', isSale ? 'Отгружено' : 'Поступило', 'Возвраты', 'Оплачено', isSale ? 'Долг покупателя' : 'Наш долг', 'Аванс', 'Последний документ', 'Просрочка (дн.)'];
+            const data = rows.map(r => [r.c.name, r.c.inn, r.charged, r.returned, r.paid, Math.max(0, r.debt), Math.max(0, -r.debt), r.lastDate || '', r.overdue || 0]);
+            exportExcel(headers, data, title + '.xlsx', title);
+        }
+
         // ==================== HELPERS ====================
         function formatDate(dateStr) {
             return new Date(dateStr + 'T00:00').toLocaleDateString('ru-RU');
@@ -3715,22 +3724,30 @@
             const chargeTypes = isSale ? ['sale', 'production_services', 'commission_report', 'sale_correction'] : ['purchase', 'add_expenses', 'purchase_correction'];
             const returnTypes = isSale ? ['sale_return'] : ['purchase_return'];
             const payTypes = isSale ? ['payment_in', 'pko'] : ['payment_out', 'rko'];
+            const today = new Date().toISOString().slice(0, 10);
             const rows = db.trade.contractors.map(c => {
-                const charged = tPosted(chargeTypes).filter(d => d.contractor === c.id).reduce((s, d) => s + d.total, 0);
+                const cDocs = tPosted(chargeTypes).filter(d => d.contractor === c.id);
+                const charged = cDocs.reduce((s, d) => s + d.total, 0);
                 const returned = tPosted(returnTypes).filter(d => d.contractor === c.id).reduce((s, d) => s + d.total, 0);
                 const paid = [...db.bankDocuments, ...db.cashDocuments].filter(p => payTypes.includes(p.type) && p.contractor === c.name && tInPeriod(p)).reduce((s, p) => s + Number(p.sum || 0), 0);
                 const debt = charged - returned - paid;
-                return { c, charged, returned, paid, debt };
+                const lastDate = cDocs.length ? cDocs.sort((a, b) => b.date.localeCompare(a.date))[0].date : '';
+                const overdue = lastDate && debt > 0 ? Math.max(0, Math.floor((new Date(today) - new Date(lastDate)) / 86400000)) : 0;
+                return { c, charged, returned, paid, debt, lastDate, overdue };
             }).filter(r => r.charged || r.paid || r.returned);
             const tot = (k) => formatAmount(rows.reduce((s, r) => s + r[k], 0));
+            const overdueClass = (days) => days > 30 ? 'color:#d32f2f;font-weight:bold' : days > 14 ? 'color:#ff9800' : '';
+            const _debtGroup = group;
+            window._lastDebtRows = rows; window._lastDebtGroup = group;
             return tReportBar() + `<div id="tReport"><div class="stats">
                 <div class="stat-card"><div class="stat-label">${isSale ? 'ОТГРУЖЕНО' : 'ПОСТУПИЛО'}</div><div class="stat-value">${tot('charged')}</div></div>
                 <div class="stat-card"><div class="stat-label">ОПЛАЧЕНО</div><div class="stat-value">${tot('paid')}</div></div>
                 <div class="stat-card"><div class="stat-label">${isSale ? 'ДОЛГ ПОКУПАТЕЛЕЙ' : 'ДОЛГ ПОСТАВЩИКАМ'}</div><div class="stat-value" style="color:${rows.reduce((s, r) => s + r.debt, 0) > 0 ? '#d32f2f' : '#2e7d32'}">${tot('debt')}</div></div></div>
-            <div class="table-container"><table><thead><tr><th>Контрагент</th><th>ИНН</th><th style="text-align:right">${isSale ? 'Отгружено' : 'Поступило'}</th><th style="text-align:right">Возвраты</th><th style="text-align:right">Оплачено</th><th style="text-align:right">${isSale ? 'Долг покупателя' : 'Наш долг'}</th><th style="text-align:right">Аванс</th></tr></thead>
-            <tbody>${rows.map(r => `<tr><td><a href="#" onclick="event.preventDefault();tFilters.contractor='${r.c.id}';selectPageById('${isSale ? 'p_sale' : 'p_purchase'}')">${esc(r.c.name)}</a></td><td>${esc(r.c.inn)}</td><td class="num">${formatAmount(r.charged)}</td><td class="num">${formatAmount(r.returned)}</td><td class="num">${formatAmount(r.paid)}</td><td class="num amount ${r.debt > 0 ? 'out' : ''}">${r.debt > 0 ? formatAmount(r.debt) : '—'}</td><td class="num">${r.debt < 0 ? formatAmount(-r.debt) : '—'}</td></tr>`).join('')}
-            ${rows.length ? '' : '<tr><td colspan="7" class="empty-state">Нет данных за период</td></tr>'}</tbody>
-            <tfoot><tr><td colspan="2"><b>Итого</b></td><td class="num"><b>${tot('charged')}</b></td><td class="num"><b>${tot('returned')}</b></td><td class="num"><b>${tot('paid')}</b></td><td class="num"><b>${formatAmount(rows.reduce((s, r) => s + Math.max(0, r.debt), 0))}</b></td><td class="num"><b>${formatAmount(rows.reduce((s, r) => s + Math.max(0, -r.debt), 0))}</b></td></tr></tfoot></table></div></div>`;
+            <div style="margin-bottom:8px;text-align:right"><button class="btn" onclick="exportDebtExcel()">📥 Excel</button></div>
+            <div class="table-container"><table><thead><tr><th>Контрагент</th><th>ИНН</th><th style="text-align:right">${isSale ? 'Отгружено' : 'Поступило'}</th><th style="text-align:right">Возвраты</th><th style="text-align:right">Оплачено</th><th style="text-align:right">${isSale ? 'Долг покупателя' : 'Наш долг'}</th><th style="text-align:right">Аванс</th><th>Последний док.</th><th style="text-align:right">Просрочка</th></tr></thead>
+            <tbody>${rows.map(r => `<tr><td><a href="#" onclick="event.preventDefault();tFilters.contractor='${r.c.id}';selectPageById('${isSale ? 'p_sale' : 'p_purchase'}')">${esc(r.c.name)}</a></td><td>${esc(r.c.inn)}</td><td class="num">${formatAmount(r.charged)}</td><td class="num">${formatAmount(r.returned)}</td><td class="num">${formatAmount(r.paid)}</td><td class="num amount ${r.debt > 0 ? 'out' : ''}">${r.debt > 0 ? formatAmount(r.debt) : '—'}</td><td class="num">${r.debt < 0 ? formatAmount(-r.debt) : '—'}</td><td>${r.lastDate ? formatDate(r.lastDate) : '—'}</td><td class="num" style="${overdueClass(r.overdue)}">${r.overdue > 0 ? r.overdue + ' дн.' : '—'}</td></tr>`).join('')}
+            ${rows.length ? '' : '<tr><td colspan="9" class="empty-state">Нет данных за период</td></tr>'}</tbody>
+            <tfoot><tr><td colspan="2"><b>Итого</b></td><td class="num"><b>${tot('charged')}</b></td><td class="num"><b>${tot('returned')}</b></td><td class="num"><b>${tot('paid')}</b></td><td class="num"><b>${formatAmount(rows.reduce((s, r) => s + Math.max(0, r.debt), 0))}</b></td><td class="num"><b>${formatAmount(rows.reduce((s, r) => s + Math.max(0, -r.debt), 0))}</b></td><td colspan="2"></td></tr></tfoot></table></div></div>`;
         }
         function renderSalesReport() {
             const docs = tPosted(['sale', 'production_services', 'commission_report', 'retail_report']);
