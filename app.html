@@ -1043,6 +1043,7 @@
     <div class="toast" id="toast"></div>
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="js/db-sync.js"></script>
     <script>
         // ==================== DATA ====================
@@ -1283,6 +1284,7 @@
 
             document.getElementById('pageTitle').textContent = titles[currentPage] || 'Документы';
             document.getElementById('content').innerHTML = pages[currentPage]();
+            if (currentPage === 'dashboard') initDashCharts();
         }
 
         // ==================== RENDER FUNCTIONS ====================
@@ -1902,7 +1904,70 @@
                 '<div class="dash-card"><h3>Номенклатура</h3><div class="dash-value">' + nomCount + '</div></div>' +
                 '<div class="dash-card"><h3>Сотрудники</h3><div class="dash-value">' + empCount + '</div></div>' +
                 '</div></div>' +
+                (totalDocs > 0 ? '<div class="dash-section" style="margin-top:16px"><h3 style="margin-bottom:12px">Динамика за 6 месяцев</h3><div style="display:grid;grid-template-columns:2fr 1fr;gap:16px"><div style="background:#fff;border-radius:8px;padding:16px;border:1px solid #e0e0e0"><canvas id="dashChart" height="200"></canvas></div><div style="background:#fff;border-radius:8px;padding:16px;border:1px solid #e0e0e0"><canvas id="dashPie" height="200"></canvas></div></div></div>' : '') +
                 '<div class="dash-recent"><h3>Последние операции</h3><table><thead><tr><th>Дата</th><th>Тип</th><th>Описание</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' + recentRows + '</tbody></table></div></div>';
+        }
+
+        function initDashCharts() {
+            if (typeof Chart === 'undefined') return;
+            const el = document.getElementById('dashChart');
+            const pie = document.getElementById('dashPie');
+            if (!el || !pie) return;
+
+            // Collect 6 months of income/expense data
+            const months = [];
+            const now = new Date();
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                months.push({ y: d.getFullYear(), m: d.getMonth() + 1, label: d.toLocaleString('ru-RU', { month: 'short', year: '2-digit' }) });
+            }
+            const income = months.map(() => 0), expense = months.map(() => 0);
+            const allFin = [...(db.bankDocuments || []), ...(db.cashDocuments || [])];
+            allFin.forEach(doc => {
+                if (!doc.date) return;
+                const dd = new Date(doc.date);
+                const idx = months.findIndex(m => m.y === dd.getFullYear() && m.m === dd.getMonth() + 1);
+                if (idx < 0) return;
+                if (doc.type === 'payment_in' || doc.type === 'pko') income[idx] += doc.sum || 0;
+                else if (doc.type === 'payment_out' || doc.type === 'rko') expense[idx] += doc.sum || 0;
+            });
+            if (db.trade && db.trade.docs) db.trade.docs.filter(d => d.status === 'posted').forEach(doc => {
+                if (!doc.date) return;
+                const dd = new Date(doc.date);
+                const idx = months.findIndex(m => m.y === dd.getFullYear() && m.m === dd.getMonth() + 1);
+                if (idx < 0) return;
+                const tt = TT[doc.type];
+                if (tt && tt.group === 'sale') income[idx] += doc.total || 0;
+                else if (tt && tt.group === 'purchase') expense[idx] += doc.total || 0;
+            });
+
+            new Chart(el, {
+                type: 'bar',
+                data: {
+                    labels: months.map(m => m.label),
+                    datasets: [
+                        { label: 'Доходы', data: income, backgroundColor: 'rgba(46,125,50,0.7)', borderRadius: 4 },
+                        { label: 'Расходы', data: expense, backgroundColor: 'rgba(211,47,47,0.7)', borderRadius: 4 }
+                    ]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v } } } }
+            });
+
+            // Pie — expense by article
+            const byArticle = {};
+            allFin.filter(d => d.type === 'payment_out' || d.type === 'rko').forEach(d => {
+                const art = d.article ? ((db.articles || []).find(a => a.id === d.article) || {}).name || 'Прочее' : 'Без статьи';
+                byArticle[art] = (byArticle[art] || 0) + (d.sum || 0);
+            });
+            const pieLabels = Object.keys(byArticle).slice(0, 8);
+            const pieData = pieLabels.map(k => byArticle[k]);
+            const pieColors = ['#2196f3', '#ff9800', '#4caf50', '#9c27b0', '#f44336', '#009688', '#795548', '#607d8b'];
+
+            new Chart(pie, {
+                type: 'doughnut',
+                data: { labels: pieLabels, datasets: [{ data: pieData, backgroundColor: pieColors.slice(0, pieLabels.length) }] },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } }, title: { display: true, text: 'Расходы по статьям' } } }
+            });
         }
 
         function fmt(n) { return Number(n || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
