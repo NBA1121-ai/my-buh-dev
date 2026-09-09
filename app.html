@@ -687,6 +687,14 @@
             #tCmd { flex-wrap: wrap; gap: 5px; padding: 8px 12px; }
         }
 
+        @media (max-width: 1024px) and (min-width: 769px) {
+            .sidebar { width: 220px; }
+            .sidebar .nav-item { padding: 8px 12px; font-size: 12px; }
+            .sidebar .logo { font-size: 14px; padding: 12px; }
+            .content { padding: 12px; }
+            .stats { grid-template-columns: 1fr 1fr; }
+        }
+
         @media (max-width: 480px) {
             .stats { grid-template-columns: 1fr; }
             .header h1 { font-size: 14px; }
@@ -753,7 +761,7 @@
         <!-- Mobile overlay -->
         <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
         <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
+        <aside class="sidebar" id="sidebar" role="navigation" aria-label="Главное меню">
             <div class="logo">📊 1s Бухгалтерия (ТЕСТ)</div>
 
             <div class="nav-item active" onclick="selectPage('dashboard')">📋 Главная (Дашборд)</div>
@@ -860,15 +868,19 @@
             <div class="nav-item" onclick="selectPage('cashs')">💵 Кассы</div>
             <div class="nav-item" onclick="selectPage('currencies')">💱 Валюты</div>
 
+            <div class="section-title" onclick="tToggleGroup(this)">Сервис</div>
+            <div class="nav-item" onclick="selectPage('import_data')">📥 Импорт и резервные копии</div>
+            <div class="nav-item" onclick="selectPage('export_data')">📤 Экспорт данных</div>
+
             <div class="section-title admin-only" onclick="tToggleGroup(this)" style="display:none">Администрирование</div>
             <div class="nav-item admin-only" onclick="selectPage('users')" style="display:none">👥 Пользователи</div>
             <div class="nav-item admin-only" onclick="selectPage('actlog')" style="display:none">📜 Журнал действий</div>
-        </div>
+        </aside>
 
         <!-- Main -->
-        <div class="main">
+        <main class="main" role="main">
             <div class="header">
-                <button class="burger" onclick="toggleSidebar()">&#9776;</button>
+                <button class="burger" onclick="toggleSidebar()" aria-label="Открыть меню">&#9776;</button>
                 <div><h1 id="pageTitle" style="margin:0">Главная</h1><div id="breadcrumb" style="font-size:11px;color:#999"></div></div>
                 <div class="toolbar">
                     <button class="btn primary" onclick="openCreateModal()">+ Создать</button>
@@ -877,24 +889,24 @@
                 </div>
                 <div class="user-panel">
                     <input type="text" id="globalSearch" placeholder="Поиск..." style="padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;width:160px" onkeydown="if(event.key==='Enter')doGlobalSearch()">
-                    <button class="btn" onclick="doGlobalSearch()" title="Поиск">🔍</button>
-                    <button class="btn" onclick="showNotifications()" title="Уведомления" style="position:relative">🔔<span id="notifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;border-radius:50%;font-size:10px;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
-                    <button class="btn" onclick="toggleTheme()" title="Тема">🌓</button>
-                    <button class="btn" onclick="downloadBackup()" title="Скачать резервную копию">💾</button>
+                    <button class="btn" onclick="doGlobalSearch()" title="Поиск" aria-label="Поиск">🔍</button>
+                    <button class="btn" onclick="showNotifications()" title="Уведомления" aria-label="Уведомления" style="position:relative">🔔<span id="notifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;border-radius:50%;font-size:10px;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
+                    <button class="btn" onclick="toggleTheme()" title="Тема" aria-label="Переключить тему">🌓</button>
+                    <button class="btn" onclick="downloadBackup()" title="Скачать резервную копию" aria-label="Скачать резервную копию">💾</button>
                     <span id="syncStatus" style="color:#4caf50">Облако</span>
                     <span class="user-email" id="userEmail" style="cursor:pointer" onclick="selectPage('profile')"></span>
-                    <button class="btn-logout" onclick="localStorage.removeItem('auth_session');window.location.href='index.html'">Выход</button>
+                    <button class="btn-logout" onclick="DbSync.logout()" aria-label="Выход из системы">Выход</button>
                 </div>
             </div>
 
             <div class="content" id="content">
                 <!-- Content will be loaded here -->
             </div>
-        </div>
+        </main>
     </div>
 
     <!-- Create/Edit Modal -->
-    <div class="modal" id="documentModal" onclick="if(event.target===this)closeModal()">
+    <div class="modal" id="documentModal" onclick="if(event.target===this)closeModal()" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modalTitle">Создать документ</h2>
@@ -1000,7 +1012,7 @@
 
 
     <!-- ===== Форма документа Покупки/Продажи ===== -->
-    <div class="modal" id="tModal" onclick="if(event.target===this)tCloseForm()">
+    <div class="modal" id="tModal" onclick="if(event.target===this)tCloseForm()" role="dialog" aria-modal="true" aria-labelledby="tModalTitle">
         <div class="modal-content tmodal-content">
             <div class="modal-header">
                 <h2 id="tModalTitle">Документ</h2>
@@ -1017,7 +1029,7 @@
     </div>
 
     <!-- Подбор номенклатуры -->
-    <div class="modal" id="tPickModal" style="z-index:1100" onclick="if(event.target===this)tClosePick()">
+    <div class="modal" id="tPickModal" style="z-index:1100" onclick="if(event.target===this)tClosePick()" role="dialog" aria-modal="true">
         <div class="modal-content" style="max-width:900px">
             <div class="modal-header"><h2>Подбор номенклатуры</h2><button class="modal-close" onclick="tClosePick()">×</button></div>
             <div class="modal-body">
@@ -1032,7 +1044,7 @@
     </div>
 
     <!-- Движения документа Дт/Кт -->
-    <div class="modal" id="tPostModal" style="z-index:1100" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="modal" id="tPostModal" style="z-index:1100" onclick="if(event.target===this)this.classList.remove('active')" role="dialog" aria-modal="true" aria-labelledby="tPostTitle">
         <div class="modal-content" style="max-width:900px">
             <div class="modal-header"><h2 id="tPostTitle">Движения документа</h2><button class="modal-close" onclick="document.getElementById('tPostModal').classList.remove('active')">×</button></div>
             <div class="modal-body"><div class="table-container" id="tPostBody"></div></div>
@@ -1041,7 +1053,7 @@
     </div>
 
     <!-- Элемент справочника -->
-    <div class="modal" id="tRefModal" style="z-index:1200" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="modal" id="tRefModal" style="z-index:1200" onclick="if(event.target===this)this.classList.remove('active')" role="dialog" aria-modal="true" aria-labelledby="tRefTitle">
         <div class="modal-content" style="max-width:800px">
             <div class="modal-header"><h2 id="tRefTitle">Справочник</h2><button class="modal-close" onclick="document.getElementById('tRefModal').classList.remove('active')">×</button></div>
             <div class="modal-body" id="tRefBody"></div>
@@ -1294,7 +1306,9 @@
                 users: renderUsers,
                 actlog: renderActivityLog,
                 profile: renderProfile,
-                search_results: renderSearchResults
+                search_results: renderSearchResults,
+                import_data: renderImport,
+                export_data: renderExport
             };
 
             const titles = {
@@ -1311,6 +1325,8 @@
                 actlog: 'Журнал действий',
                 profile: 'Профиль',
                 search_results: 'Результаты поиска',
+                import_data: 'Импорт и резервные копии',
+                export_data: 'Экспорт данных',
                 dashboard: 'Главная'
             };
 
@@ -1347,15 +1363,15 @@
                     <span style="font-size:13px;color:#666">Приход: <b style="color:#2e7d32">${formatAmount(totalIn)}</b> | Расход: <b style="color:#d32f2f">${formatAmount(totalOut)}</b></span>
                 </div>
                 ${docs.length === 0 ? '<div class="empty-state">Нет банковских документов</div>' : `
-                <table class="table-container">
+                <div class="table-container"><table>
                     <thead>
                         <tr>
-                            <th>Номер</th>
-                            <th>Дата</th>
-                            <th>Тип</th>
-                            <th>Счет/Касса</th>
-                            <th>Контрагент</th>
-                            <th style="text-align: right;">Сумма</th>
+                            <th scope="col">Номер</th>
+                            <th scope="col">Дата</th>
+                            <th scope="col">Тип</th>
+                            <th scope="col">Счет/Касса</th>
+                            <th scope="col">Контрагент</th>
+                            <th scope="col" style="text-align: right;">Сумма</th>
                             <th>Статус</th>
                             <th>Действия</th>
                         </tr>
@@ -1372,15 +1388,15 @@
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="action-btn" onclick="editDoc('${d.id}')">✏️</button>
-                                        <button class="action-btn" onclick="deleteDoc('${d.id}')">🗑️</button>
-                                        <button class="action-btn" onclick="printDoc('${d.id}')">🖨️</button>
+                                        <button class="action-btn" onclick="editDoc('${d.id}')" title="Редактировать" aria-label="Редактировать">✏️</button>
+                                        <button class="action-btn" onclick="deleteDoc('${d.id}')" title="Удалить" aria-label="Удалить">🗑️</button>
+                                        <button class="action-btn" onclick="printDoc('${d.id}')" title="Печать" aria-label="Печать">🖨️</button>
                                     </div>
                                 </td>
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>`}
+                </table></div>`}
             `;
         }
 
@@ -1405,17 +1421,17 @@
                     <span style="font-size:13px;color:#666">Приход: <b style="color:#2e7d32">${formatAmount(totalIn)}</b> | Расход: <b style="color:#d32f2f">${formatAmount(totalOut)}</b></span>
                 </div>
                 ${docs.length === 0 ? '<div class="empty-state">Нет кассовых документов</div>' : `
-                <table class="table-container">
+                <div class="table-container"><table>
                     <thead>
                         <tr>
-                            <th>Номер</th>
-                            <th>Дата</th>
-                            <th>Тип</th>
-                            <th>Касса</th>
-                            <th>От/Кому</th>
-                            <th style="text-align: right;">Сумма</th>
-                            <th>Статус</th>
-                            <th>Действия</th>
+                            <th scope="col">Номер</th>
+                            <th scope="col">Дата</th>
+                            <th scope="col">Тип</th>
+                            <th scope="col">Касса</th>
+                            <th scope="col">От/Кому</th>
+                            <th scope="col" style="text-align: right;">Сумма</th>
+                            <th scope="col">Статус</th>
+                            <th scope="col">Действия</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1430,15 +1446,15 @@
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="action-btn" onclick="editDoc('${d.id}')">✏️</button>
-                                        <button class="action-btn" onclick="deleteDoc('${d.id}')">🗑️</button>
-                                        <button class="action-btn" onclick="printDoc('${d.id}')">🖨️</button>
+                                        <button class="action-btn" onclick="editDoc('${d.id}')" title="Редактировать" aria-label="Редактировать">✏️</button>
+                                        <button class="action-btn" onclick="deleteDoc('${d.id}')" title="Удалить" aria-label="Удалить">🗑️</button>
+                                        <button class="action-btn" onclick="printDoc('${d.id}')" title="Печать" aria-label="Печать">🖨️</button>
                                     </div>
                                 </td>
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>`}
+                </table></div>`}
             `;
         }
 
@@ -1469,14 +1485,14 @@
                 </div>
 
                 <h3 style="margin-top: 30px; margin-bottom: 15px;">Движение денежных средств</h3>
-                <table class="table-container">
+                ${!allDocs.length ? '<div class="empty-state">Нет документов для отчёта</div>' : `<div class="table-container"><table>
                     <thead>
                         <tr>
-                            <th>Документ</th>
-                            <th>Дата</th>
-                            <th>Контрагент</th>
-                            <th style="text-align: right;">Приход</th>
-                            <th style="text-align: right;">Расход</th>
+                            <th scope="col">Документ</th>
+                            <th scope="col">Дата</th>
+                            <th scope="col">Контрагент</th>
+                            <th scope="col" style="text-align: right;">Приход</th>
+                            <th scope="col" style="text-align: right;">Расход</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1493,7 +1509,7 @@
                             `;
                         }).join('')}
                     </tbody>
-                </table>
+                </table></div>`}
             `;
         }
 
@@ -2156,7 +2172,7 @@
         let _searchResults = [];
         function doGlobalSearch() {
             const q = (document.getElementById('globalSearch').value || '').trim().toLowerCase();
-            if (!q) return;
+            if (!q) { showToast('Введите текст для поиска'); document.getElementById('globalSearch').focus(); return; }
             _searchResults = [];
             // Search bank docs
             (db.bankDocuments || []).forEach(d => {
