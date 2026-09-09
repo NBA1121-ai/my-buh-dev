@@ -1042,6 +1042,7 @@
 
     <div class="toast" id="toast"></div>
 
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="js/db-sync.js"></script>
     <script>
         // ==================== DATA ====================
@@ -1303,6 +1304,7 @@
                     <div class="filter-group"><label>Поиск</label><input type="text" placeholder="Номер, контрагент..." value="${esc(_finFilter.search)}" oninput="_finFilter.search=this.value;renderPage()"></div>
                     <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
                     <span style="flex:1"></span>
+                    <button class="btn" onclick="exportBankExcel()" title="Экспорт в Excel">📥 Excel</button>
                     <span style="font-size:13px;color:#666">Приход: <b style="color:#2e7d32">${formatAmount(totalIn)}</b> | Расход: <b style="color:#d32f2f">${formatAmount(totalOut)}</b></span>
                 </div>
                 ${docs.length === 0 ? '<div class="empty-state">Нет банковских документов</div>' : `
@@ -1360,6 +1362,7 @@
                     <div class="filter-group"><label>Поиск</label><input type="text" placeholder="Номер, контрагент..." value="${esc(_finFilter.search)}" oninput="_finFilter.search=this.value;renderPage()"></div>
                     <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
                     <span style="flex:1"></span>
+                    <button class="btn" onclick="exportCashExcel()" title="Экспорт в Excel">📥 Excel</button>
                     <span style="font-size:13px;color:#666">Приход: <b style="color:#2e7d32">${formatAmount(totalIn)}</b> | Расход: <b style="color:#d32f2f">${formatAmount(totalOut)}</b></span>
                 </div>
                 ${docs.length === 0 ? '<div class="empty-state">Нет кассовых документов</div>' : `
@@ -2498,6 +2501,52 @@
             URL.revokeObjectURL(url);
         }
 
+        function exportExcel(headers, rows, filename, sheetName) {
+            if (typeof XLSX === 'undefined') { showToast('Библиотека Excel не загружена'); return; }
+            const data = [headers, ...rows];
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            // Auto-width columns
+            ws['!cols'] = headers.map((h, i) => {
+                let max = h.length;
+                rows.forEach(r => { const v = String(r[i] || ''); if (v.length > max) max = v.length; });
+                return { wch: Math.min(max + 2, 40) };
+            });
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, sheetName || 'Данные');
+            XLSX.writeFile(wb, filename);
+            showToast('Экспортировано в Excel');
+        }
+
+        function exportBankExcel() {
+            let docs = db.bankDocuments.filter(d => ['payment_out', 'payment_in', 'payment_order', 'conversion', 'statement', 'directbank'].includes(d.type));
+            if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
+            if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
+            if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
+            docs.sort((a, b) => (b.date + b.number).localeCompare(a.date + a.number));
+            const headers = ['Номер', 'Дата', 'Тип', 'Счёт', 'Контрагент', 'Назначение', 'Сумма', 'Статус'];
+            const rows = docs.map(d => [d.number, d.date, getDocTypeLabel(d.type), getAccountName(d.account), d.contractor || '', d.purpose || '', d.sum || 0, d.status === 'posted' ? 'Проведено' : 'Черновик']);
+            exportExcel(headers, rows, 'Банковские_документы.xlsx', 'Банк');
+        }
+
+        function exportCashExcel() {
+            let docs = [...db.cashDocuments];
+            if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
+            if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
+            if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
+            docs.sort((a, b) => (b.date + b.number).localeCompare(a.date + a.number));
+            const headers = ['Номер', 'Дата', 'Тип', 'Касса', 'Контрагент', 'Назначение', 'Сумма', 'Статус'];
+            const rows = docs.map(d => [d.number, d.date, getDocTypeLabel(d.type), getAccountName(d.account), d.contractor || '', d.purpose || '', d.sum || 0, d.status === 'posted' ? 'Проведено' : 'Черновик']);
+            exportExcel(headers, rows, 'Кассовые_документы.xlsx', 'Касса');
+        }
+
+        function tExportExcel(page) {
+            const j = TRADE_JOURNALS[page];
+            const docs = tFilteredDocs(j.types);
+            const headers = ['Дата', 'Номер', 'Вид операции', 'Контрагент', 'Сумма', 'НДС', 'Состояние', 'Комментарий'];
+            const rows = docs.map(d => [d.date, d.number, d.opKind || '', tContractorName(d.contractor), d.total || 0, d.vatTotal || 0, d.status === 'posted' ? 'Проведен' : d.status === 'deleted' ? 'Удалён' : 'Записан', (d.extra && d.extra.comment) || '']);
+            exportExcel(headers, rows, j.title + '.xlsx', j.title);
+        }
+
         // ==================== HELPERS ====================
         function formatDate(dateStr) {
             return new Date(dateStr + 'T00:00').toLocaleDateString('ru-RU');
@@ -2865,6 +2914,7 @@
                 { label: 'Установить период…', action: `tFocusFilter('tfFrom')` },
                 { label: 'Найти…', action: `tFocusFilter('tfSearch')` },
                 { label: 'Отменить поиск', action: `tResetFilters()` },
+                { label: 'Экспорт в Excel', action: `tExportExcel('${page}')` },
                 { label: 'Вывести список (CSV)', action: `tExportList('${page}')` },
                 { label: 'Удалить помеченные объекты', action: `tPurgeDeleted()` }
             ];
