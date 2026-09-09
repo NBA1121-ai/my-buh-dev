@@ -1858,13 +1858,13 @@
             // Recent operations (last 10)
             let recentRows = '';
             const allDocs = [];
-            (db.bankDocuments || []).forEach(d => allDocs.push({ date: d.date, type: 'Банк', desc: esc(d.contractor || d.purpose || d.type), sum: d.sum }));
-            (db.cashDocuments || []).forEach(d => allDocs.push({ date: d.date, type: 'Касса', desc: esc(d.contractor || d.purpose || d.type), sum: d.sum }));
-            if (db.trade && db.trade.docs) db.trade.docs.forEach(d => allDocs.push({ date: d.date, type: esc(d.type || 'Документ'), desc: esc(d.contractor ? (tContractor(d.contractor)||{}).name||d.contractor : (d.number||'')), sum: d.total || d.sum || 0 }));
+            (db.bankDocuments || []).forEach(d => allDocs.push({ date: d.date, type: getDocTypeLabel(d.type), desc: esc(d.contractor || d.purpose || ''), sum: d.sum, isIn: d.type === 'payment_in' }));
+            (db.cashDocuments || []).forEach(d => allDocs.push({ date: d.date, type: getDocTypeLabel(d.type), desc: esc(d.contractor || d.purpose || ''), sum: d.sum, isIn: d.type === 'pko' }));
+            if (db.trade && db.trade.docs) db.trade.docs.forEach(d => { const tt = TT[d.type]; allDocs.push({ date: d.date, type: tt ? tt.short || tt.label : d.type, desc: esc(d.contractor ? (tContractor(d.contractor)||{}).name||d.contractor : (d.number||'')), sum: d.total || d.sum || 0, isIn: tt && tt.group === 'sale' }); });
             allDocs.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
             const recent = allDocs.slice(0, 10);
             if (recent.length) {
-                recentRows = recent.map(d => '<tr><td>' + (d.date || '—') + '</td><td>' + (d.type || '') + '</td><td>' + (d.desc || '—') + '</td><td style="text-align:right">' + fmt(d.sum || 0) + '</td></tr>').join('');
+                recentRows = recent.map(d => '<tr><td>' + (d.date || '—') + '</td><td>' + (d.type || '') + '</td><td>' + (d.desc || '—') + '</td><td style="text-align:right;color:' + (d.isIn ? '#2e7d32' : '#d32f2f') + '">' + fmt(d.sum || 0) + '</td></tr>').join('');
             } else {
                 recentRows = '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">Нет документов</td></tr>';
             }
