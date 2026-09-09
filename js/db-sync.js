@@ -6,7 +6,7 @@
 
 const DbSync = (function() {
     const REPO_OWNER = 'NBA1121-ai';
-    const REPO_NAME = 'my-buh';
+    const REPO_NAME = 'my-buh-dev';
     const DATA_BRANCH = 'data';
     const DATA_FILE = 'db.json';
     const API_BASE = 'https://api.github.com';
