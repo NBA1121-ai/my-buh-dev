@@ -2367,45 +2367,96 @@
         function printDoc(id) {
             const doc = [...db.bankDocuments, ...db.cashDocuments].find(d => d.id === id);
             if (!doc) return;
+            const org = db.trade ? db.trade.org : {};
+            const acc = db.accounts ? db.accounts.find(a => a.id === doc.account) : null;
+            const bankInfo = acc && db.banks ? db.banks.find(b => b.name === acc.bank) : null;
+            const css = `body{font-family:'Times New Roman',serif;font-size:12px;margin:20px}
+                table{border-collapse:collapse;width:100%}td,th{border:1px solid #000;padding:4px 6px;font-size:11px}
+                .nob,.nob td,.nob th{border:none}.center{text-align:center}.right{text-align:right}
+                .title{font-size:14px;font-weight:bold;text-align:center;margin:10px 0}
+                .line{border-bottom:1px solid #000;min-width:150px;display:inline-block;margin:0 4px}
+                .small{font-size:9px;color:#666}.cut{border-top:1px dashed #000;margin:15px 0}
+                @media print{body{margin:10px}}`;
+            let html = '';
 
-            const printHtml = `
-                <html>
-                <head>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 40px; }
-                        .header { border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
-                        .title { font-size: 18px; font-weight: bold; }
-                        .content { margin: 20px 0; }
-                        .row { display: flex; margin: 10px 0; }
-                        .label { width: 150px; font-weight: bold; }
-                        .footer { margin-top: 50px; display: flex; gap: 100px; }
-                        .signature { border-top: 1px solid #000; width: 150px; text-align: center; margin-top: 40px; }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <div class="title">${getDocTypeLabel(doc.type)}</div>
-                    </div>
-                    <div class="content">
-                        <div class="row"><div class="label">Номер:</div><div>${doc.number}</div></div>
-                        <div class="row"><div class="label">Дата:</div><div>${formatDate(doc.date)}</div></div>
-                        <div class="row"><div class="label">Сумма:</div><div>${formatAmount(doc.sum)}</div></div>
-                        <div class="row"><div class="label">Контрагент:</div><div>${doc.contractor || '-'}</div></div>
-                        <div class="row"><div class="label">Статус:</div><div>${doc.status === 'posted' ? 'Проведено' : 'Черновик'}</div></div>
-                        <div class="row"><div class="label">Назначение:</div><div>${doc.purpose || '-'}</div></div>
-                    </div>
-                    <div class="footer">
-                        <div><div class="signature">Подпись главного бухгалтера</div></div>
-                        <div><div class="signature">Подпись руководителя</div></div>
-                    </div>
-                </body>
-                </html>
-            `;
+            if (doc.type === 'pko') {
+                // Приходный кассовый ордер (унифицированная форма КО-1)
+                html = `<table class="nob" style="width:100%"><tr><td style="width:65%;vertical-align:top;padding-right:20px">
+                    <p class="small" style="text-align:right">Унифицированная форма № КО-1</p>
+                    <table class="nob"><tr><td><b>${esc(org.name || '')}</b></td><td class="right">ОКПО ________</td></tr></table>
+                    <p class="title">ПРИХОДНЫЙ КАССОВЫЙ ОРДЕР</p>
+                    <table class="nob"><tr><td>Номер документа</td><td>Дата составления</td></tr><tr><td class="center"><b>${esc(doc.number)}</b></td><td class="center"><b>${formatDate(doc.date)}</b></td></tr></table>
+                    <table style="margin-top:10px"><thead><tr><th>Дебет</th><th>Кредит</th><th>Сумма</th><th>Код целевого назначения</th></tr></thead>
+                    <tbody><tr><td class="center">50</td><td class="center">${esc(doc.article || '')}</td><td class="right">${formatAmount(doc.sum)}</td><td></td></tr></tbody></table>
+                    <p style="margin-top:10px">Принято от: <b>${esc(doc.contractor || '—')}</b></p>
+                    <p>Основание: ${esc(doc.purpose || '—')}</p>
+                    <p>Сумма: <b>${formatAmount(doc.sum)}</b> сом</p>
+                    <p>В том числе НДС: ________</p>
+                    <p>Приложение: ________</p>
+                    <table class="nob" style="margin-top:20px"><tr><td>Главный бухгалтер <span class="line"></span></td><td>Кассир <span class="line"></span></td></tr></table>
+                </td><td style="vertical-align:top;border-left:1px dashed #000;padding-left:20px">
+                    <p class="title">КВИТАНЦИЯ</p>
+                    <p>к приходному кассовому ордеру № <b>${esc(doc.number)}</b> от <b>${formatDate(doc.date)}</b></p>
+                    <p>Принято от: ${esc(doc.contractor || '—')}</p>
+                    <p>Основание: ${esc(doc.purpose || '—')}</p>
+                    <p>Сумма: <b>${formatAmount(doc.sum)}</b> сом</p>
+                    <p>В том числе НДС: ________</p>
+                    <p style="margin-top:20px">Главный бухгалтер <span class="line"></span></p>
+                    <p>Кассир <span class="line"></span></p>
+                    <p class="small" style="margin-top:10px">М.П. (штампа)</p>
+                </td></tr></table>`;
+            } else if (doc.type === 'rko') {
+                // Расходный кассовый ордер (КО-2)
+                html = `<p class="small" style="text-align:right">Унифицированная форма № КО-2</p>
+                    <table class="nob"><tr><td><b>${esc(org.name || '')}</b></td><td class="right">ОКПО ________</td></tr></table>
+                    <p class="title">РАСХОДНЫЙ КАССОВЫЙ ОРДЕР</p>
+                    <table class="nob"><tr><td>Номер документа</td><td>Дата составления</td></tr><tr><td class="center"><b>${esc(doc.number)}</b></td><td class="center"><b>${formatDate(doc.date)}</b></td></tr></table>
+                    <table style="margin-top:10px"><thead><tr><th>Дебет</th><th>Кредит</th><th>Сумма</th><th>Код целевого назначения</th></tr></thead>
+                    <tbody><tr><td class="center">${esc(doc.article || '')}</td><td class="center">50</td><td class="right">${formatAmount(doc.sum)}</td><td></td></tr></tbody></table>
+                    <p style="margin-top:10px">Выдать: <b>${esc(doc.contractor || '—')}</b></p>
+                    <p>Основание: ${esc(doc.purpose || '—')}</p>
+                    <p>Сумма: <b>${formatAmount(doc.sum)}</b> сом</p>
+                    <p>Приложение: ________</p>
+                    <table class="nob" style="margin-top:15px"><tr><td>Руководитель <span class="line"></span></td><td>Главный бухгалтер <span class="line"></span></td></tr></table>
+                    <p style="margin-top:15px">Получил: ${formatAmount(doc.sum)} сом</p>
+                    <p>По ________ выданному ________</p>
+                    <table class="nob" style="margin-top:10px"><tr><td>Подпись получателя <span class="line"></span></td><td>Дата «___» __________ 20__ г.</td></tr></table>
+                    <p style="margin-top:10px">Выдал кассир <span class="line"></span></p>`;
+            } else if (doc.type === 'payment_out' || doc.type === 'payment_in') {
+                // Платёжное поручение
+                const isOut = doc.type === 'payment_out';
+                html = `<table class="nob" style="margin-bottom:5px"><tr><td class="small">0401060</td></tr></table>
+                    <table class="nob"><tr><td style="width:50%">Поступ. в банк плат.</td><td>Списано со сч. плат.</td></tr></table>
+                    <p class="title">ПЛАТЁЖНОЕ ПОРУЧЕНИЕ № ${esc(doc.number)}</p>
+                    <table class="nob"><tr><td>Дата: <b>${formatDate(doc.date)}</b></td><td>Вид платежа: электронно</td></tr></table>
+                    <table style="margin-top:10px">
+                    <tr><td style="width:40%"><b>Плательщик</b></td><td>${isOut ? esc(org.name || '') : esc(doc.contractor || '—')}</td></tr>
+                    <tr><td>ИНН</td><td>${isOut ? esc(org.inn || '') : ''}</td></tr>
+                    <tr><td>Сч. №</td><td>${acc ? esc(acc.number || '') : ''}</td></tr>
+                    <tr><td><b>Банк плательщика</b></td><td>${acc ? esc(acc.bank || '') : ''}${bankInfo ? ', БИК ' + esc(bankInfo.bik || '') : ''}</td></tr>
+                    </table>
+                    <table style="margin-top:5px">
+                    <tr><td style="width:40%"><b>Получатель</b></td><td>${isOut ? esc(doc.contractor || '—') : esc(org.name || '')}</td></tr>
+                    <tr><td>Сч. №</td><td></td></tr>
+                    <tr><td><b>Банк получателя</b></td><td></td></tr>
+                    </table>
+                    <table style="margin-top:10px"><tr><th>Сумма платежа</th><td class="right"><b>${formatAmount(doc.sum)} KGS</b></td></tr></table>
+                    <p style="margin-top:10px"><b>Назначение платежа:</b> ${esc(doc.purpose || '—')}</p>
+                    <table class="nob" style="margin-top:20px"><tr><td>Подписи</td><td><span class="line" style="min-width:200px"></span></td><td style="text-align:right">М.П.</td></tr>
+                    <tr><td></td><td><span class="line" style="min-width:200px"></span></td><td></td></tr></table>`;
+            } else {
+                html = `<p class="title">${getDocTypeLabel(doc.type)}</p>
+                    <p>Номер: <b>${esc(doc.number)}</b>. Дата: <b>${formatDate(doc.date)}</b></p>
+                    <p>Сумма: <b>${formatAmount(doc.sum)}</b></p>
+                    <p>Контрагент: ${esc(doc.contractor || '—')}</p>
+                    <p>Назначение: ${esc(doc.purpose || '—')}</p>
+                    <table class="nob" style="margin-top:30px"><tr><td>Главный бухгалтер <span class="line"></span></td><td>Руководитель <span class="line"></span></td></tr></table>`;
+            }
 
             const w = window.open();
-            w.document.write(printHtml);
+            w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Печать</title><style>${css}</style></head><body>${html}</body></html>`);
+            w.document.close();
             w.print();
-            w.close();
         }
 
         // ==================== EXPORT FUNCTIONS ====================
