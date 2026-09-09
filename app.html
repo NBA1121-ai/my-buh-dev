@@ -2932,7 +2932,9 @@
         }
         function tToggleDelete(id) {
             const d = tDocById(id); if (!d) return;
-            d.status = d.status === 'deleted' ? 'draft' : 'deleted'; saveData(); renderPage();
+            const isDel = d.status === 'deleted';
+            if (!isDel && !confirm('Пометить документ №' + (d.number || '—') + ' на удаление?')) return;
+            d.status = isDel ? 'draft' : 'deleted'; saveData(); renderPage();
             showToast(d.status === 'deleted' ? 'Документ помечен на удаление' : 'Пометка удаления снята');
         }
         function tPurgeDeleted() {
@@ -3088,7 +3090,7 @@
             const moreItems = [
                 { label: 'Копировать', action: `tFormSave(false);tCopy(tDoc.id)` },
                 { label: 'Отменить проведение', action: `tDoc.status='draft';tFormSave(false)` },
-                { label: 'Пометить на удаление', action: `tDoc.status='deleted';tFormSave(true)` },
+                { label: 'Пометить на удаление', action: `if(confirm('Пометить документ на удаление?')){tDoc.status='deleted';tFormSave(true)}` },
                 { sep: true },
                 { label: 'Пересчитать цены по типу цен', action: `tRefillPrices()` },
                 { label: 'Заполнить по основанию', action: `tFillFromBasis()`, disabled: !d.basis }
