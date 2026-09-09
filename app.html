@@ -1831,31 +1831,51 @@
                 else if (isOut) accBalances[d.account] -= (d.sum || 0);
             });
 
-            // Account balance cards
+            // Account balance cards — grouped by currency
             let balanceHtml = '';
             if (db.accounts && db.accounts.length) {
-                balanceHtml = '<div class="dash-section"><h3 style="margin-bottom:12px">Остатки по счетам (KGS)</h3><div class="dash-cards">' +
-                    db.accounts.map(a => {
-                        const bal = accBalances[a.id] || 0;
-                        const color = bal > 0 ? '#2e7d32' : bal < 0 ? '#d32f2f' : '#666';
-                        return '<div class="dash-card">' +
-                            '<h3>' + esc(a.name || a.bank || 'Счёт') + '</h3>' +
-                            (a.number ? '<div class="dash-sub" style="margin-bottom:4px">' + esc(a.number) + '</div>' : '') +
-                            '<div class="dash-value" style="color:' + color + '">' + fmt(bal) + '</div>' +
-                            '<div class="dash-sub">KGS</div>' +
-                            '</div>';
-                    }).join('') +
-                    '</div></div>';
+                const getCur = (a) => { const c = (db.currencies || []).find(x => x.id === a.currency); return c ? c.code : 'KGS'; };
+                const curGroups = {};
+                db.accounts.forEach(a => {
+                    const cur = getCur(a);
+                    if (!curGroups[cur]) curGroups[cur] = [];
+                    curGroups[cur].push(a);
+                });
 
-                // Total across all accounts
-                const totalBal = Object.values(accBalances).reduce((s, v) => s + v, 0);
-                const totalColor = totalBal > 0 ? '#2e7d32' : totalBal < 0 ? '#d32f2f' : '#666';
-                balanceHtml += '<div class="dash-section" style="margin-top:8px"><div class="dash-cards">' +
-                    '<div class="dash-card" style="border-left:4px solid ' + totalColor + '">' +
-                    '<h3>Итого по всем счетам</h3>' +
-                    '<div class="dash-value" style="color:' + totalColor + '">' + fmt(totalBal) + '</div>' +
-                    '<div class="dash-sub">KGS</div></div>' +
-                    '</div></div>';
+                Object.keys(curGroups).forEach(cur => {
+                    balanceHtml += '<div class="dash-section"><h3 style="margin-bottom:12px">Остатки по счетам (' + esc(cur) + ')</h3><div class="dash-cards">' +
+                        curGroups[cur].map(a => {
+                            const bal = accBalances[a.id] || 0;
+                            const color = bal > 0 ? '#2e7d32' : bal < 0 ? '#d32f2f' : '#666';
+                            return '<div class="dash-card">' +
+                                '<h3>' + esc(a.name || a.bank || 'Счёт') + '</h3>' +
+                                (a.number ? '<div class="dash-sub" style="margin-bottom:4px">' + esc(a.number) + '</div>' : '') +
+                                '<div class="dash-value" style="color:' + color + '">' + fmt(bal) + '</div>' +
+                                '<div class="dash-sub">' + esc(cur) + '</div>' +
+                                '</div>';
+                        }).join('') +
+                        '</div></div>';
+                });
+
+                // Totals by currency
+                const totalsByCur = {};
+                db.accounts.forEach(a => {
+                    const cur = getCur(a);
+                    totalsByCur[cur] = (totalsByCur[cur] || 0) + (accBalances[a.id] || 0);
+                });
+                const curKeys = Object.keys(totalsByCur);
+                if (curKeys.length) {
+                    balanceHtml += '<div class="dash-section" style="margin-top:8px"><div class="dash-cards">' +
+                        curKeys.map(cur => {
+                            const t = totalsByCur[cur];
+                            const color = t > 0 ? '#2e7d32' : t < 0 ? '#d32f2f' : '#666';
+                            return '<div class="dash-card" style="border-left:4px solid ' + color + '">' +
+                                '<h3>Итого' + (curKeys.length > 1 ? ' (' + esc(cur) + ')' : '') + '</h3>' +
+                                '<div class="dash-value" style="color:' + color + '">' + fmt(t) + '</div>' +
+                                '<div class="dash-sub">' + esc(cur) + '</div></div>';
+                        }).join('') +
+                        '</div></div>';
+                }
             }
 
             // Recent operations (last 10)
