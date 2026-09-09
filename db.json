@@ -67,6 +67,22 @@
       "note": "Создано на основании Ведомость в банк ВБ-000001 от 05.09.2026",
       "created": "2026-09-09T05:28:31.278Z",
       "basis": "tmttnr2niekq7r7i"
+    },
+    {
+      "id": "_dev_test_1788931724122",
+      "type": "payment_in",
+      "number": "DEV-TEST-001",
+      "date": "2026-09-09",
+      "status": "posted",
+      "account": "",
+      "contractor": "DEV TEST",
+      "article": "",
+      "currency": "",
+      "sum": 99999,
+      "rate": 1,
+      "purpose": "Тестовый документ DEV",
+      "note": "",
+      "created": "2026-09-09T05:28:44.122Z"
     }
   ],
   "cashDocuments": [
@@ -6999,7 +7015,8 @@
         "price": 22000,
         "cost": 17500,
         "account": "41.01",
-        "country": "Китай"
+        "country": "Китай",
+        "nomGroup": "ng2"
       },
       {
         "id": "n10",
@@ -7011,7 +7028,8 @@
         "price": 5000,
         "cost": 0,
         "account": "44.01",
-        "country": ""
+        "country": "",
+        "nomGroup": "ng3"
       },
       {
         "id": "n11",
@@ -7023,7 +7041,8 @@
         "price": 4500,
         "cost": 0,
         "account": "20.01",
-        "country": ""
+        "country": "",
+        "nomGroup": "ng3"
       }
     ],
     "warehouses": [
