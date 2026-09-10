@@ -21,10 +21,12 @@ const DbSync = (function() {
     let _pollTimer = null;
     let _pendingSave = null; // queued save while _saving is true
     let _offlinePending = null; // data queued while offline
-    let _autoSaveTimer = null;
+    let _inited = false;
 
     function init() {
         _token = localStorage.getItem('gh_token');
+        if (_inited) return;
+        _inited = true;
         // When browser comes back online, send queued offline data
         window.addEventListener('online', () => {
             if (_offlinePending) {

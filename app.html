@@ -16,6 +16,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: #f5f5f5;
             color: #333;
+            overflow-x: hidden;
         }
 
         .app {
@@ -421,7 +422,7 @@
 
         .stat-label {
             font-size: 12px;
-            color: #999;
+            color: #767676;
             margin-bottom: 8px;
         }
 
@@ -431,12 +432,8 @@
             color: #2a6fb8;
         }
 
-        .print-hide {
-            display: none;
-        }
-
         @media print {
-            .sidebar, .header, .filters, .print-hide {
+            .sidebar, .header, .filters, .toolbar, .tcmd, .tabs, .print-hide {
                 display: none !important;
             }
             .content {
@@ -445,6 +442,13 @@
             .table-container {
                 box-shadow: none;
             }
+            table tr { page-break-inside: avoid; }
+            @page { margin: 15mm; }
+            body { color: #000; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
         }
 
         .num {
@@ -544,7 +548,7 @@
         tr.trow.sel td { background: #e3eefa; }
         tr.trow.del td { color: #999; text-decoration: line-through; }
         .tmodal-content { max-width: 1400px; width: 96%; display: flex; flex-direction: column; max-height: 94vh; }
-        .tmodal-content .modal-body { overflow-y: auto; flex: 1; padding: 12px 20px; }
+        .tmodal-content .modal-body { overflow-y: auto; overflow-x: auto; flex: 1; padding: 12px 20px; }
         .thead-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 14px; }
         .thead-grid .fg { display: flex; flex-direction: column; gap: 4px; }
         .thead-grid .fg.wide { grid-column: span 2; }
@@ -683,7 +687,7 @@
             .stat-card { padding: 12px; }
             .stat-value { font-size: 18px; }
             .tcmd { padding: 8px; gap: 5px; }
-            .tcmd .btn { padding: 5px 8px; font-size: 11px; }
+            .tcmd .btn { padding: 7px 10px; font-size: 12px; min-height: 36px; }
             .table-container, table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
             table { font-size: 12px; min-width: 600px; }
             th, td { padding: 6px 8px; }
@@ -705,6 +709,13 @@
         @media (max-width: 480px) {
             .stats { grid-template-columns: 1fr; }
             .header h1 { font-size: 14px; }
+            .toolbar .btn { padding: 6px 8px; font-size: 11px; }
+            .filters { flex-direction: column; }
+            .filter-group { width: 100%; }
+            .filter-group input, .filter-group select { width: 100%; }
+            #globalSearch { width: 100% !important; }
+            .modal-content { width: 100%; max-height: 100vh; border-radius: 0; }
+            .notif-dropdown { width: 100vw; right: -10px; border-radius: 0; }
         }
 
         /* Dashboard */
@@ -733,12 +744,12 @@
         body.dark input, body.dark select, body.dark textarea { background: #2a2a40; color: #e0e0e0; border-color: #444; }
         body.dark .modal-content { background: #252540; color: #e0e0e0; }
         body.dark .modal-header { background: #1a1a2e; color: #e0e0e0; }
-        body.dark .empty-state { color: #888; }
+        body.dark .empty-state { color: #aaa; }
         body.dark .sidebar { background: #151525; }
         body.dark .nav-item { color: #ccc; }
         body.dark .nav-item:hover { background: #333; }
         body.dark .nav-item.active { background: #2a6fb8; color: #fff; }
-        body.dark .section-title { color: #777; }
+        body.dark .section-title { color: #aaa; }
         body.dark .stat-card { background: #252540; color: #e0e0e0; }
         body.dark .filters { background: transparent; }
         body.dark .badge { opacity: 0.9; }
@@ -895,7 +906,7 @@
                     <button class="btn" onclick="window.print()">🖨 Печать</button>
                 </div>
                 <div class="user-panel">
-                    <input type="text" id="globalSearch" placeholder="Поиск..." style="padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;width:160px" onkeydown="if(event.key==='Enter')doGlobalSearch()">
+                    <input type="text" id="globalSearch" placeholder="Поиск..." style="padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;width:160px;max-width:100%" onkeydown="if(event.key==='Enter')doGlobalSearch()">
                     <button class="btn" onclick="doGlobalSearch()" title="Поиск" aria-label="Поиск">🔍</button>
                     <button class="btn" onclick="showNotifications()" title="Уведомления" aria-label="Уведомления" style="position:relative">🔔<span id="notifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;border-radius:50%;font-size:10px;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
                     <button class="btn" onclick="toggleTheme()" title="Тема" aria-label="Переключить тему">🌓</button>
@@ -945,7 +956,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Дата *</label>
-                            <input type="date" id="docDate" value="" required>
+                            <input type="date" id="docDate" value="" min="2000-01-01" max="2099-12-31" required>
                         </div>
                         <div class="form-group">
                             <label>Статус</label>
@@ -1280,6 +1291,7 @@
             currentPage = page;
             tSelected = null;
             tFilters.search = '';
+            if (page === 'bank' || page === 'cash') _finFilter = { from: '', to: '', search: '' };
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             const navItems = document.querySelectorAll('.nav-item');
             navItems.forEach(el => {
@@ -1356,8 +1368,8 @@
             if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
             docs.sort((a, b) => (b.date + b.number).localeCompare(a.date + a.number));
 
-            const totalIn = docs.filter(d => d.type === 'payment_in').reduce((s, d) => s + (d.sum || 0), 0);
-            const totalOut = docs.filter(d => d.type === 'payment_out').reduce((s, d) => s + (d.sum || 0), 0);
+            const totalIn = docs.filter(d => ['payment_in'].includes(d.type)).reduce((s, d) => s + Number(d.sum || 0), 0);
+            const totalOut = docs.filter(d => ['payment_out', 'payment_order', 'conversion', 'statement', 'directbank'].includes(d.type) && d.type !== 'payment_in').reduce((s, d) => s + Number(d.sum || 0), 0);
 
             return `
                 <div class="filters" style="display:flex;gap:10px;align-items:end;margin-bottom:12px;flex-wrap:wrap">
@@ -1414,8 +1426,8 @@
             if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
             docs.sort((a, b) => (b.date + b.number).localeCompare(a.date + a.number));
 
-            const totalIn = docs.filter(d => d.type === 'pko').reduce((s, d) => s + (d.sum || 0), 0);
-            const totalOut = docs.filter(d => d.type === 'rko').reduce((s, d) => s + (d.sum || 0), 0);
+            const totalIn = docs.filter(d => d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0), 0);
+            const totalOut = docs.filter(d => d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0), 0);
 
             return `
                 <div class="filters" style="display:flex;gap:10px;align-items:end;margin-bottom:12px;flex-wrap:wrap">
@@ -1503,7 +1515,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${allDocs.slice(0, 20).map(d => {
+                        ${allDocs.map(d => {
                             const isIn = d.type === 'payment_in' || d.type === 'pko';
                             return `
                                 <tr>
@@ -3440,6 +3452,7 @@
             if (status === 'posted') {
                 const err = tValidate(d); if (err) { alert(err); return; }
                 tApplyPrices(d); tApplyMonthClose(d); tApplyHR(d);
+                if (d.type === 'inventory') showToast('Инвентаризация проведена. Для оформления отклонений создайте документы «Оприходование» или «Списание» на основании.');
             } else if (d.type === 'dismissal') { const e = tEmp(d.employee); if (e) { e.status = 'Работает'; e.fireDate = ''; } }
             d.status = status; saveData(); renderPage();
             showToast(status === 'posted' ? 'Документ проведен' : 'Проведение отменено');
@@ -3563,6 +3576,7 @@
             const cfg = TT[target];
             const init = { contractor: base.contractor, contract: base.contract, warehouse: base.warehouse, basis: base.id, vatMode: base.vatMode, priceType: base.priceType };
             ['goods', 'services', 'agent', 'tara'].forEach(t => { if (cfg.tabs.includes(t) && base[t]) init[t] = JSON.parse(JSON.stringify(base[t])); });
+            if (base.discount && base.type === 'customer_invoice') { const k = 1 - Number(base.discount) / 100; ['goods', 'services', 'agent'].forEach(t => (init[t] || []).forEach(r => { r.price = Math.round((r.price || 0) * k * 100) / 100; r.sum = Math.round((r.sum || 0) * k * 100) / 100; r.vatSum = Math.round((r.vatSum || 0) * k * 100) / 100; r.total = Math.round((r.total || 0) * k * 100) / 100; })); }
             if (cfg.correction) { ['goods', 'services'].forEach(t => (init[t] || []).forEach(r => { r.qtyOld = r.qty; r.priceOld = r.price; })); }
             if (target === 'add_expenses') { init.goods = (init.goods || []).map(r => ({ ...r, baseQty: r.qty, baseSum: r.sum, price: 0 })); init.services = undefined; }
             if (target === 'power_of_attorney') { init.basis = base.id; }
@@ -3993,7 +4007,7 @@
             } else if (/ТОРГ-12|Расходная накладная|Накладная на возврат/.test(form)) {
                 html = `<p class="small">Унифицированная форма № ТОРГ-12</p>${hdr('ТОВАРНАЯ НАКЛАДНАЯ')}
                 ${partyLine('Грузоотправитель', p.isSale ? org : c)}${partyLine('Грузополучатель', p.isSale ? c : org)}${partyLine('Поставщик', p.seller)}${partyLine('Плательщик', p.buyer)}
-                <p><b>Основание:</b> ${d.basis ? esc(tDocTitle(tDocById(d.basis))) : (d.contract ? esc(tContractName(d.contract)) : '—')}</p>
+                <p><b>Основание:</b> ${d.basis ? esc(tDocTitle(tDocById(d.basis))) : '—'}${d.contract ? ' <b>Договор:</b> ' + esc(tContractName(d.contract)) : ''}</p>
                 ${tGoodsTable(d, { country: false })}${tSigBlock(d, 'Отпуск груза разрешил / произвел', 'Груз принял / получил')}`;
             } else if (/Акт об оказании услуг|Акт приемки услуг/.test(form)) {
                 html = `${hdr('АКТ об оказании услуг')}<p><b>Исполнитель:</b> ${esc(p.seller.name)}, ИНН ${esc(p.seller.inn || '')}</p><p><b>Заказчик:</b> ${esc(p.buyer.name)}, ИНН ${esc(p.buyer.inn || '')}</p>
@@ -4006,7 +4020,7 @@
             } else if (/Счет-фактура|Корректировочный счет-фактура/.test(form)) {
                 const isCorr = form.includes('Корректировочный');
                 html = `${hdr(isCorr ? 'КОРРЕКТИРОВОЧНЫЙ СЧЕТ-ФАКТУРА' : 'СЧЕТ-ФАКТУРА')}${d.sf ? `<p>Номер и дата счета-фактуры: <b>№ ${esc(d.sf.number)} от ${formatDate(d.sf.date)}</b>, код вида операции ${esc(d.sf.code || '01')}</p>` : '<p style="color:#c00">Счет-фактура не выписан — выполните «Выписать счет-фактуру»</p>'}
-                ${partyLine('Продавец', p.seller)}${partyLine('Покупатель', p.buyer)}<p>К платежно-расчетному документу: ${tPayments(d.id).map(x => x.number + ' от ' + formatDate(x.date)).join(', ') || '—'}</p>
+                ${partyLine('Продавец', p.seller)}${partyLine('Покупатель', p.buyer)}<p>К платежно-расчетному документу: ${[d.id, ...db.trade.docs.filter(x => x.basis === d.id && x.status !== 'deleted').map(x => x.id)].reduce((a, id) => a.concat(tPayments(id)), []).map(x => x.number + ' от ' + formatDate(x.date)).join(', ') || '—'}</p>
                 ${tGoodsTable(d, { country: true })}<div class="sig"><div>Руководитель организации<div class="line"></div><span class="small">${esc(org.director)}</span></div><div>Главный бухгалтер<div class="line"></div><span class="small">${esc(org.accountant)}</span></div></div>`;
             } else if (/УКД|Соглашение об изменении/.test(form)) {
                 const rows = tRowsAll(d);
