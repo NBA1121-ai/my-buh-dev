@@ -152,7 +152,7 @@ const DbSync = (function() {
 
             return parsed;
         } catch(err) {
-            console.error('Load error:', err);
+            console.error('Load error');
             // Fallback to local cache ONLY if GitHub is unreachable
             try {
                 const cached = localStorage.getItem('db_cache');
@@ -188,7 +188,7 @@ const DbSync = (function() {
             return;
         }
 
-        retryCount = retryCount || 0;
+        retryCount = retryCount ?? 0;
 
         const currentHash = hashData(dbObject);
         if (currentHash === _lastHash) return;
@@ -264,7 +264,7 @@ const DbSync = (function() {
             try { localStorage.setItem('db_cache_sha', _fileSha); } catch(e) {}
             showSyncStatus('saved');
         } catch(err) {
-            console.error('Save error:', err);
+            console.error('Save error');
             showSyncStatus('error');
         } finally {
             _saving = false;
@@ -297,7 +297,7 @@ const DbSync = (function() {
                 _fileSha = data.sha;
             }
         } catch(e) {
-            console.error('reloadSha error:', e);
+            console.error('reloadSha error');
         }
     }
 
@@ -415,7 +415,7 @@ const DbSync = (function() {
             const decoded = b64DecodeUTF8(fileData.content);
             return JSON.parse(decoded);
         } catch(e) {
-            console.error('loadUsers error:', e);
+            console.error('loadUsers error');
             return [];
         }
     }
@@ -447,7 +447,7 @@ const DbSync = (function() {
             _usersSha = result.content.sha;
             return true;
         } catch(e) {
-            console.error('saveUsers error:', e);
+            console.error('saveUsers error');
             return false;
         }
     }

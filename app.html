@@ -56,7 +56,7 @@
             border-radius: 5px;
             cursor: pointer;
             font-size: 14px;
-            transition: all 0.3s;
+            transition: background 0.3s, border-color 0.3s;
             border-left: 3px solid transparent;
             white-space: nowrap;
             overflow: hidden;
@@ -106,7 +106,7 @@
             background: #fff;
             cursor: pointer;
             font-size: 13px;
-            transition: all 0.3s;
+            transition: background 0.3s, border-color 0.3s, color 0.3s;
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -192,7 +192,7 @@
             border-radius: 3px;
             cursor: pointer;
             font-size: 12px;
-            transition: all 0.3s;
+            transition: background 0.3s, color 0.3s;
         }
 
         .quick-btn:hover {
@@ -255,7 +255,7 @@
             background: #fff;
             border-radius: 3px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background 0.2s, border-color 0.2s;
         }
 
         .action-btn:hover {
@@ -510,7 +510,7 @@
             border-bottom: 2px solid transparent;
             margin-bottom: -2px;
             color: #666;
-            transition: all 0.3s;
+            transition: color 0.3s, border-color 0.3s;
         }
 
         .tab:hover {
@@ -614,7 +614,9 @@
             border: none;
             font-size: 24px;
             cursor: pointer;
-            padding: 5px;
+            padding: 10px;
+            min-width: 44px;
+            min-height: 44px;
             color: #333;
         }
         .sidebar-overlay {
@@ -623,7 +625,7 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             background: rgba(0,0,0,0.5);
-            z-index: 99;
+            z-index: 950;
         }
         .sidebar-overlay.active { display: block; }
 
@@ -656,7 +658,7 @@
                 position: fixed;
                 top: 0; left: -300px;
                 height: 100vh;
-                z-index: 100;
+                z-index: 960;
                 transition: left 0.3s ease;
                 width: 280px;
             }
@@ -1365,8 +1367,8 @@
             let docs = db.bankDocuments.filter(d => ['payment_out', 'payment_in', 'payment_order', 'conversion', 'statement', 'directbank'].includes(d.type));
             if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
             if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
-            if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
-            docs.sort((a, b) => (b.date + b.number).localeCompare(a.date + a.number));
+            if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '') + ' ' + (d.note || '') + ' ' + d.sum).toLowerCase().includes(q)); }
+            docs.sort(docCmp);
 
             const totalIn = docs.filter(d => ['payment_in'].includes(d.type)).reduce((s, d) => s + Number(d.sum || 0), 0);
             const totalOut = docs.filter(d => ['payment_out', 'payment_order', 'conversion', 'statement', 'directbank'].includes(d.type) && d.type !== 'payment_in').reduce((s, d) => s + Number(d.sum || 0), 0);
@@ -1423,8 +1425,8 @@
             let docs = [...db.cashDocuments];
             if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
             if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
-            if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
-            docs.sort((a, b) => (b.date + b.number).localeCompare(a.date + a.number));
+            if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '') + ' ' + (d.note || '') + ' ' + d.sum).toLowerCase().includes(q)); }
+            docs.sort(docCmp);
 
             const totalIn = docs.filter(d => d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0), 0);
             const totalOut = docs.filter(d => d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0), 0);
@@ -1533,7 +1535,7 @@
         }
 
         function renderCashbook() {
-            const cashDocs = db.cashDocuments.filter(d => (d.type === 'pko' || d.type === 'rko') && d.status !== 'deleted').sort((a, b) => (a.date + a.number).localeCompare(b.date + b.number));
+            const cashDocs = db.cashDocuments.filter(d => (d.type === 'pko' || d.type === 'rko') && d.status !== 'deleted').sort((a, b) => docCmp(b, a));
             const byDay = {};
             cashDocs.forEach(d => { (byDay[d.date] = byDay[d.date] || []).push(d); });
             const days = Object.keys(byDay).sort();
@@ -2599,6 +2601,7 @@
             document.getElementById('modalTitle').textContent = 'Редактировать документ';
             setTypeOptions(CASH_TYPES.includes(doc.type) ? 'cash' : 'bank');
             document.getElementById('docType').value = doc.type;
+            updateFormByType();
             document.getElementById('docNumber').value = doc.number;
             document.getElementById('docDate').value = doc.date;
             document.getElementById('docStatus').value = doc.status;
@@ -2610,7 +2613,6 @@
             document.getElementById('docRate').value = doc.rate || 1;
             document.getElementById('docPurpose').value = doc.purpose || '';
             document.getElementById('docNote').value = doc.note || '';
-            updateFormByType();
             document.getElementById('documentModal').classList.add('active');
         }
 
@@ -2953,7 +2955,7 @@
             if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
             if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
             if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
-            docs.sort((a, b) => (b.date + b.number).localeCompare(a.date + a.number));
+            docs.sort(docCmp);
             const headers = ['Номер', 'Дата', 'Тип', 'Счёт', 'Контрагент', 'Назначение', 'Сумма', 'Статус'];
             const rows = docs.map(d => [d.number, d.date, getDocTypeLabel(d.type), getAccountName(d.account), d.contractor || '', d.purpose || '', d.sum || 0, d.status === 'posted' ? 'Проведено' : 'Черновик']);
             exportExcel(headers, rows, 'Банковские_документы.xlsx', 'Банк');
@@ -2964,7 +2966,7 @@
             if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
             if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
             if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
-            docs.sort((a, b) => (b.date + b.number).localeCompare(a.date + a.number));
+            docs.sort(docCmp);
             const headers = ['Номер', 'Дата', 'Тип', 'Касса', 'Контрагент', 'Назначение', 'Сумма', 'Статус'];
             const rows = docs.map(d => [d.number, d.date, getDocTypeLabel(d.type), getAccountName(d.account), d.contractor || '', d.purpose || '', d.sum || 0, d.status === 'posted' ? 'Проведено' : 'Черновик']);
             exportExcel(headers, rows, 'Кассовые_документы.xlsx', 'Касса');
@@ -2989,13 +2991,16 @@
 
         // ==================== HELPERS ====================
         function formatDate(dateStr) {
-            return new Date(dateStr + 'T00:00').toLocaleDateString('ru-RU');
+            if (!dateStr) return '—';
+            const d = new Date(dateStr + 'T00:00');
+            return isNaN(d) ? '—' : d.toLocaleDateString('ru-RU');
         }
 
         function formatAmount(num) {
             return Number(num || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
+        function docCmp(a, b) { const dc = b.date.localeCompare(a.date); if (dc !== 0) return dc; const na = parseInt((String(a.number).match(/(\d+)$/) || [0, 0])[1]); const nb = parseInt((String(b.number).match(/(\d+)$/) || [0, 0])[1]); return nb - na || String(b.number).localeCompare(String(a.number)); }
         function getDocTypeLabel(type) {
             const labels = {
                 payment_out: 'Платежное поручение (исход.)',
@@ -3221,6 +3226,7 @@
             const isStock = cfgC.group === 'stock' || cfgC.group === 'prod';
             if (cfgC.hr) { tCalcHR(d); return d; }
             ['goods', 'services', 'agent', 'tara'].forEach(tab => (d[tab] || []).forEach(r => { if (isStock && tab === 'goods') r.vat = -1; tCalcRow(r, d.vatMode); total += r.total; vat += r.vatSum; sum += r.sum; }));
+            total = Math.round(total * 100) / 100; vat = Math.round(vat * 100) / 100; sum = Math.round(sum * 100) / 100;
             ['materials', 'products', 'waste'].forEach(tab => (d[tab] || []).forEach(r => { r.vat = -1; tCalcRow(r, 'in'); }));
             if (isStock) {
                 const S = (arr) => (d[arr] || []).reduce((s, r) => s + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
@@ -3337,8 +3343,8 @@
                 .filter(d => !tFilters.to || d.date <= tFilters.to)
                 .filter(d => !tFilters.contractor || d.contractor === tFilters.contractor)
                 .filter(d => !tFilters.status || d.status === tFilters.status)
-                .filter(d => !tFilters.search || (d.number + ' ' + tContractorName(d.contractor) + ' ' + (d.extra && d.extra.comment || '') + ' ' + (d.opKind || '')).toLowerCase().includes(tFilters.search.toLowerCase()))
-                .sort((a, b) => (b.date + b.number).localeCompare(a.date + a.number));
+                .filter(d => !tFilters.search || (d.number + ' ' + tContractorName(d.contractor) + ' ' + (d.extra && d.extra.comment || '') + ' ' + (d.opKind || '') + ' ' + (d.total || '') + ' ' + tWh(d.warehouse)).toLowerCase().includes(tFilters.search.toLowerCase()))
+                .sort(docCmp);
         }
 
         function renderTradeJournal(page) {
@@ -4065,11 +4071,11 @@
                 <p><b>1. Предмет договора.</b> Поставщик обязуется передать, а Покупатель принять и оплатить товар согласно спецификации:</p>${tGoodsTable(d)}<p><b>2. Цена и порядок расчетов.</b> Общая сумма договора составляет ${formatAmount(d.total)} сом${d.vatTotal ? ', в т.ч. НДС ' + formatAmount(d.vatTotal) : ''}. Оплата производится в течение 5 банковских дней с момента выставления счета.</p><p><b>3. Срок поставки.</b> В течение 5 рабочих дней с момента оплаты.</p>${tSigBlock(d, 'Поставщик', 'Покупатель')}`;
             } else if (/Комплект документов/.test(form)) {
                 tPrint(id, 'Товарная накладная (ТОРГ-12)'); setTimeout(() => tPrint(id, 'Счет-фактура'), 600); return;
-            } else if (tPrintExtra(d, form)) {
-                html = tPrintExtra(d, form);
+            } else { const extra = tPrintExtra(d, form); if (extra) {
+                html = extra;
             } else {
                 html = `${hdr(form)}${partyLine('Организация', org)}${c.name ? partyLine('Контрагент', c) : ''}${cfg.noSum ? '' : tGoodsTable(d)}${tSigBlock(d, 'Сдал', 'Принял')}`;
-            }
+            } }
             tPrintWindow(html, form + ' ' + d.number);
         }
         function tPrintRegistry(page) {
@@ -4766,7 +4772,7 @@
         }
         function renderStockJournal() {
             const types = Object.keys(TT).filter(t => ['stock', 'prod'].includes(TT[t].group));
-            const docs = db.trade.docs.filter(d => types.includes(d.type)).filter(d => tInPeriod(d)).sort((a, b) => (b.date + b.number).localeCompare(a.date + a.number));
+            const docs = db.trade.docs.filter(d => types.includes(d.type)).filter(d => tInPeriod(d)).sort(docCmp);
             return tReportBar() + `<div id="tReport"><div class="table-container"><table><thead><tr><th></th><th>Дата</th><th>Номер</th><th>Документ</th><th>Вид операции</th><th>Склад</th><th style="text-align:right">Сумма</th><th>Комментарий</th></tr></thead>
             <tbody>${docs.map(d => `<tr ondblclick="tOpen('${d.id}')" style="cursor:pointer"><td>${tStatusIcon(d)}</td><td>${formatDate(d.date)}</td><td><b>${esc(d.number)}</b></td><td>${esc(TT[d.type].short)}</td><td>${esc(d.opKind || '')}</td><td>${TT[d.type].warehouse ? esc(tWh(d.warehouse)) + (d.type === 'transfer' ? ' → ' + esc(tWh(d.warehouseTo)) : '') : ''}</td><td class="num">${TT[d.type].noSum ? '' : formatAmount(d.total)}</td><td>${esc((d.extra && d.extra.comment) || '')}</td></tr>`).join('')}${docs.length ? '' : '<tr><td colspan="8" class="empty-state">Документов нет</td></tr>'}</tbody></table></div></div>`;
         }
