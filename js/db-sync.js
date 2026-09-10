@@ -24,9 +24,9 @@ const DbSync = (function() {
     let _inited = false;
 
     function init() {
-        _token = localStorage.getItem('gh_token');
-        if (_inited) return;
+        if (_inited) { _token = localStorage.getItem('gh_token'); return; }
         _inited = true;
+        _token = localStorage.getItem('gh_token');
         // When browser comes back online, send queued offline data
         window.addEventListener('online', () => {
             if (_offlinePending) {
