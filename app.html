@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; img-src 'self' data:;">
     <title>1s Бухгалтерия (ТЕСТ) - Банк, Покупки, Продажи, Склад, Производство, Зарплата и кадры</title>
     <style>
         * {
@@ -245,8 +246,10 @@
         }
 
         .action-btn {
-            padding: 4px 8px;
-            font-size: 11px;
+            padding: 6px 10px;
+            font-size: 12px;
+            min-height: 32px;
+            min-width: 32px;
             border: 1px solid #ddd;
             background: #fff;
             border-radius: 3px;
@@ -530,7 +533,7 @@
         .tcmd.small { padding: 6px 8px; margin-bottom: 8px; background: #f8f9fb; box-shadow: none; }
         .tcmd .btn:disabled { opacity: .5; cursor: default; }
         .tdd { position: relative; display: inline-block; }
-        .tdd-menu { display: none; position: absolute; top: 100%; left: 0; min-width: 260px; background: #fff; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); z-index: 900; padding: 4px 0; max-height: 60vh; overflow-y: auto; }
+        .tdd-menu { display: none; position: absolute; top: 100%; left: 0; min-width: 260px; max-width: calc(100vw - 20px); background: #fff; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); z-index: 900; padding: 4px 0; max-height: 60vh; overflow-y: auto; }
         .tdd.open .tdd-menu { display: block; }
         .tdd-item { padding: 8px 14px; font-size: 13px; cursor: pointer; white-space: nowrap; }
         .tdd-item:hover { background: #e8f0f8; }
@@ -710,7 +713,7 @@
         .dash-card h3 { font-size: 13px; color: #999; margin-bottom: 8px; text-transform: uppercase; }
         .dash-card .dash-value { font-size: 28px; font-weight: 700; color: #333; }
         .dash-card .dash-sub { font-size: 12px; color: #999; margin-top: 4px; }
-        .dash-recent { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .dash-recent { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow-x: auto; }
         .dash-recent h3 { margin-bottom: 12px; }
         .dash-recent table { width: 100%; }
         .dash-recent td, .dash-recent th { padding: 8px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
@@ -743,7 +746,7 @@
         body.dark .tcmd { border-bottom-color: #333; }
 
         /* Notifications dropdown */
-        .notif-dropdown { display:none; position:absolute; top:100%; right:0; background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.15); width:360px; max-height:400px; overflow-y:auto; z-index:1000; }
+        .notif-dropdown { display:none; position:absolute; top:100%; right:0; background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.15); width:360px; max-width:calc(100vw - 20px); max-height:400px; overflow-y:auto; z-index:1000; }
         body.dark .notif-dropdown { background:#252540; border-color:#444; }
         .notif-dropdown.open { display:block; }
         .notif-item { padding:12px 16px; border-bottom:1px solid #eee; font-size:13px; cursor:pointer; }
@@ -3259,6 +3262,9 @@
                     add('19.03', '60.01', gVat, 'НДС по приобретенным товарам');
                     services.forEach(r => add(r.account || '26', '60.01', r.total - r.vatSum, 'Услуги: ' + tNomName(r.nom)));
                     add('19.04', '60.01', sVat, 'НДС по приобретенным услугам');
+                    { const agent = (d.agent || []), aSum = agent.reduce((s, r) => s + (r.total || 0) - (r.vatSum || 0), 0), aVat = agent.reduce((s, r) => s + (r.vatSum || 0), 0);
+                      agent.forEach(r => add(r.account || '76.09', '60.01', (r.total || 0) - (r.vatSum || 0), 'Агентские услуги: ' + tNomName(r.nom)));
+                      add('19.04', '60.01', aVat, 'НДС по агентским услугам'); }
                     add('60.01', '60.02', Math.min(d.total, tPayments(d.basis || d.id).reduce((s, p) => s + p.sum, 0)), 'Зачет аванса поставщику');
                     break;
                 case 'add_expenses':
@@ -3279,11 +3285,14 @@
                 case 'commission_report':
                     add('62.01', '90.01.1', d.total, 'Выручка по отчету комиссионера'); add('90.03', '68.02', d.vatTotal, 'НДС'); add('44.01', '60.01', (d.reward || 0), 'Комиссионное вознаграждение'); add('90.02.1', '45.01', cost, 'Себестоимость отгруженных товаров'); break;
                 case 'sale_return':
-                    add('90.02.1', goodsAcc, -cost, ''); add(goodsAcc, '90.02.1', cost, 'Возврат себестоимости'); add('90.01.1', '62.01', d.total, 'Сторно выручки'); add('68.02', '90.03', d.vatTotal, 'Сторно НДС'); break;
+                    add(goodsAcc, '90.02.1', cost, 'Возврат себестоимости'); add('90.01.1', '62.01', d.total, 'Сторно выручки'); add('68.02', '90.03', d.vatTotal, 'Сторно НДС'); break;
                 case 'sale_correction':
                     add('62.01', '90.01.1', d.total, 'Корректировка выручки'); add('90.03', '68.02', d.vatTotal, 'Корректировка НДС'); break;
-                case 'retail_report':
-                    add('90.02.1', goodsAcc, cost, 'Себестоимость розничных продаж'); add('50.01', '90.01.1', Number(d.payCash) || 0, 'Розничная выручка наличными'); add('57.03', '90.01.1', Number(d.payCard) || 0, 'Оплата платежными картами'); add('90.03', '68.02', d.vatTotal, 'НДС с розничных продаж'); break;
+                case 'retail_report': {
+                    const cash = Number(d.payCash) || 0, card = Number(d.payCard) || 0, diff = Math.round((d.total - cash - card) * 100) / 100;
+                    add('90.02.1', goodsAcc, cost, 'Себестоимость розничных продаж'); add('50.01', '90.01.1', cash, 'Розничная выручка наличными'); add('57.03', '90.01.1', card, 'Оплата платежными картами');
+                    if (diff > 0.004) add('62.01', '90.01.1', diff, 'Прочие формы оплаты (разница)');
+                    add('90.03', '68.02', d.vatTotal, 'НДС с розничных продаж'); break; }
                 default: return tPostingsExtra(d);
             }
             return rows;
@@ -3458,6 +3467,8 @@
             const cfg = TT[d.type];
             if (!d.number) return 'Не заполнен номер документа';
             if (!d.date) return 'Не заполнена дата документа';
+            const dup = db.trade.docs.find(x => x.id !== d.id && x.type === d.type && x.number === d.number);
+            if (dup) return 'Документ с номером «' + d.number + '» уже существует (тип: ' + TT[d.type].label + ')';
             if (!cfg.retail && !cfg.noContractor && !d.contractor) return 'Не выбран контрагент';
             if (cfg.specDoc && !d.productNom) return 'Не выбрана продукция для спецификации';
             if (cfg.assembly && !d.kitNom) return 'Не выбран комплект';
@@ -4180,6 +4191,7 @@
             const { key, id, cb } = refEdit, R = REFS[key];
             const item = id ? db.trade[key].find(x => x.id === id) : { id: tUid() };
             for (const f of R.fields) { let v = document.getElementById('rf_' + f.k).value; if (f.req && !v) { alert('Заполните поле «' + f.l.replace(' *', '') + '»'); return; } if (f.type === 'number') v = Number(v); if (['vatIncluded', 'stdDeduction', 'taxable', 'sf'].includes(f.k)) v = v === 'true'; if (['price', 'cost', 'markup'].includes(f.k)) v = Number(v) || 0; item[f.k] = v; }
+            if (item.name) { const dup = db.trade[key].find(x => x.id !== item.id && x.name && x.name.toLowerCase() === item.name.toLowerCase()); if (dup && !confirm('Элемент «' + item.name + '» уже существует в справочнике. Всё равно сохранить?')) return; }
             if (!id) db.trade[key].push(item);
             saveData(); document.getElementById('tRefModal').classList.remove('active'); showToast('Записано');
             if (cb) cb(item); else if (tIsTradePage(currentPage)) renderPage();
@@ -4366,9 +4378,9 @@
                 const cfg = TT[d.type];
                 switch (d.type) {
                     case 'purchase': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, +r.qty, r.total - r.vatSum > 0 ? (r.total - r.vatSum) / r.qty : costOf(r.nom))); (d.tara || []).forEach(r => push(d, r.nom, d.warehouse, +r.qty, r.price)); break;
-                    case 'purchase_return': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, costOf(r.nom))); break;
+                    case 'purchase_return': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, r.price || costOf(r.nom))); break;
                     case 'sale': case 'retail_report': case 'commission_report': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, costOf(r.nom))); (d.tara || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, r.price)); break;
-                    case 'sale_return': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, +r.qty, costOf(r.nom))); break;
+                    case 'sale_return': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, +r.qty, r.price || costOf(r.nom))); break;
                     case 'stock_opening': case 'stock_in': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, +r.qty, r.price)); break;
                     case 'stock_out': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, r.price || costOf(r.nom))); break;
                     case 'transfer': (d.goods || []).forEach(r => { push(d, r.nom, d.warehouse, -r.qty, r.price || costOf(r.nom)); push(d, r.nom, d.warehouseTo, +r.qty, r.price || costOf(r.nom)); }); break;
@@ -4629,7 +4641,7 @@
                 case 'shift_report': (d.products || []).forEach(r => add(r.account || '43', d.costAccount || '20.01', (Number(r.qty) || 0) * (Number(r.price) || 0), 'Выпуск по плановой себестоимости: ' + tNomName(r.nom))); (d.materials || []).forEach(r => add(r.costAccount || d.costAccount || '20.01', r.account || '10.01', (Number(r.qty) || 0) * (Number(r.price) || 0), 'Списание материалов: ' + tNomName(r.nom))); (d.waste || []).forEach(r => add(r.account || '10.06', d.costAccount || '20.01', (Number(r.qty) || 0) * (Number(r.price) || 0), 'Возвратные отходы: ' + tNomName(r.nom))); break;
                 case 'to_processing': (d.materials || []).forEach(r => add('10.07', r.account || '10.01', (Number(r.qty) || 0) * (Number(r.price) || 0), 'Передача в переработку: ' + tNomName(r.nom))); break;
                 case 'from_processing': (d.materials || []).forEach(r => add(d.costAccount || '20.01', '10.07', (Number(r.qty) || 0) * (Number(r.price) || 0), 'Списание переданных материалов: ' + tNomName(r.nom))); (d.services || []).forEach(r => { add(d.costAccount || '20.01', '60.01', (r.total || 0) - (r.vatSum || 0), 'Услуги переработчика: ' + tNomName(r.nom)); add('19.04', '60.01', r.vatSum || 0, 'НДС по услугам переработки'); }); (d.products || []).forEach(r => add(r.account || '43', d.costAccount || '20.01', (Number(r.qty) || 0) * (Number(r.price) || 0), 'Выпуск из переработки: ' + tNomName(r.nom))); break;
-                case 'month_close': (d.calc || []).forEach(g => g.productList.forEach(p => add(p.corr >= 0 ? '43' : '43', '20.01', p.corr, (p.corr >= 0 ? 'Дорасчет' : 'Сторно (отриц.)') + ' себестоимости: ' + tNomName(p.nom) + ' (' + tNG(g.nomGroup) + ')'))); break;
+                case 'month_close': (d.calc || []).forEach(g => g.productList.forEach(p => { if (p.corr >= 0) add('43', '20.01', p.corr, 'Дорасчет себестоимости: ' + tNomName(p.nom) + ' (' + tNG(g.nomGroup) + ')'); else add('20.01', '43', Math.abs(p.corr), 'Сторно себестоимости: ' + tNomName(p.nom) + ' (' + tNG(g.nomGroup) + ')'); })); break;
                 default: return tPostingsHR(d);
             }
             return rows;

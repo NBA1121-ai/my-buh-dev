@@ -233,8 +233,23 @@ const DbSync = (function() {
                     console.warn('SHA conflict, retry', retryCount + 1);
                     await reloadSha();
                     _saving = false;
-                    // Small delay before retry
                     await new Promise(r => setTimeout(r, 500 * (retryCount + 1)));
+                    return await saveData(dbObject, retryCount + 1);
+                }
+                // Rate limiting - wait and retry
+                if (res.status === 429 && retryCount < MAX_RETRIES) {
+                    const retryAfter = parseInt(res.headers.get('Retry-After')) || 10;
+                    console.warn('Rate limited, waiting', retryAfter, 'sec');
+                    showSyncStatus('offline');
+                    _saving = false;
+                    await new Promise(r => setTimeout(r, retryAfter * 1000));
+                    return await saveData(dbObject, retryCount + 1);
+                }
+                // Server error - retry with backoff
+                if (res.status >= 500 && retryCount < MAX_RETRIES) {
+                    console.warn('Server error', res.status, ', retry', retryCount + 1);
+                    _saving = false;
+                    await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
                     return await saveData(dbObject, retryCount + 1);
                 }
                 throw new Error('Save failed: ' + res.status + ' ' + (errData.message || ''));
@@ -375,6 +390,8 @@ const DbSync = (function() {
         localStorage.removeItem('auth_session');
         localStorage.removeItem('db_cache');
         localStorage.removeItem('db_cache_sha');
+        localStorage.removeItem('gh_token');
+        _token = null;
         window.location.href = 'index.html';
     }
 
