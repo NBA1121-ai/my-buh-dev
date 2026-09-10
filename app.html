@@ -205,7 +205,8 @@
         .table-container {
             background: #fff;
             border-radius: 4px;
-            overflow: hidden;
+            overflow: visible;
+            overflow-x: auto;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
@@ -3163,8 +3164,12 @@
         // ---------- Утилиты ----------
         function tUid() { return 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
         function tNextNumber(type) {
-            const cnt = db.trade.docs.filter(d => d.type === type).length + 1;
-            return TT[type].prefix + '-' + String(cnt).padStart(6, '0');
+            let max = 0;
+            db.trade.docs.filter(d => d.type === type).forEach(d => {
+                const m = String(d.number).match(/(\d+)$/);
+                if (m) max = Math.max(max, parseInt(m[1]));
+            });
+            return TT[type].prefix + '-' + String(max + 1).padStart(6, '0');
         }
         function tToday() { return new Date().toISOString().split('T')[0]; }
         function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -3536,8 +3541,9 @@
                 const paid = tPayments(base.id).reduce((s, p) => s + p.sum, 0);
                 const rest = Math.max(0, Math.round((base.total - paid) * 100) / 100);
                 const sumStr = prompt('Сумма оплаты (остаток по документу ' + formatAmount(rest) + '):', rest || base.total); if (sumStr === null) return;
-                const doc = { id: uid(), type: target, number: (isBank ? 'ПП' : (target === 'pko' ? 'ПКО' : 'РКО')) + '-' + String(([...db.bankDocuments, ...db.cashDocuments].filter(x => x.type === target).length + 1)).padStart(3, '0'),
-                    date: tToday(), status: 'posted', account: acc ? acc.id : '', contractor: cname, article: art ? art.id : '', currency: cur ? cur.id : '', sum: parseFloat(sumStr) || 0, rate: 1,
+                const payNum = nextDocNumber((isBank ? 'ПП' : (target === 'pko' ? 'ПКО' : 'РКО')), [...db.bankDocuments, ...db.cashDocuments]);
+                const doc = { id: uid(), type: target, number: payNum,
+                    date: tToday(), status: 'posted', account: acc ? acc.id : '', contractor: cname, contractorId: base.contractor, article: art ? art.id : '', currency: cur ? cur.id : '', sum: parseFloat(sumStr) || 0, rate: 1,
                     purpose: 'Оплата по документу ' + tDocTitle(base) + (base.vatTotal ? ', в т.ч. НДС ' + formatAmount(base.vatTotal) : ''), note: 'Создано на основании', created: new Date().toISOString(), basis: base.id };
                 (isBank ? db.bankDocuments : db.cashDocuments).push(doc); saveData(); renderPage();
                 showToast('Создан документ: ' + getDocTypeLabel(target) + ' ' + doc.number); return;
@@ -3917,7 +3923,7 @@
                 const g = TT[x.type].group; const isDebit = (g === 'sale' && !['sale_return'].includes(x.type)) || x.type === 'purchase_return';
                 rows.push({ date: x.date, doc: tDocTitle(x), dt: isDebit ? x.total : 0, kt: isDebit ? 0 : x.total });
             });
-            [...db.bankDocuments, ...db.cashDocuments].filter(p => p.contractor === cname && p.date >= r.from && p.date <= r.to).forEach(p => {
+            [...db.bankDocuments, ...db.cashDocuments].filter(p => (p.contractorId === d.contractor || p.contractor === cname) && p.date >= r.from && p.date <= r.to).forEach(p => {
                 const inc = ['payment_in', 'pko'].includes(p.type);
                 rows.push({ date: p.date, doc: getDocTypeLabel(p.type) + ' ' + p.number, dt: inc ? 0 : p.sum, kt: inc ? p.sum : 0 });
             });
@@ -4180,6 +4186,14 @@
             if (tDoc && document.getElementById('tModal').classList.contains('active')) tRenderForm(false);
         }
         function tRefDel(key, id) {
+            const usedIn = db.trade.docs.filter(d => {
+                if (key === 'contractors' && d.contractor === id) return true;
+                if (key === 'warehouses' && (d.warehouse === id || d.warehouseTo === id)) return true;
+                if (key === 'contracts' && d.contract === id) return true;
+                if (key === 'nomenclature') { for (const t of ['goods','services','agent','tara']) { if ((d[t]||[]).some(r => r.nom === id)) return true; } }
+                return false;
+            });
+            if (usedIn.length) { alert('Нельзя удалить — элемент используется в ' + usedIn.length + ' документе(ах). Сначала удалите или измените эти документы.'); return; }
             if (!confirm('Удалить элемент справочника?')) return;
             db.trade[key] = db.trade[key].filter(x => x.id !== id); saveData(); renderPage();
         }
@@ -5191,7 +5205,8 @@
             const art = db.articles.find(a => a.name === 'Зарплата') || db.articles.find(a => a.type === 'out');
             const cur = db.currencies.find(c => c.code === 'KGS') || db.currencies[0];
             const list = isBank ? db.bankDocuments : db.cashDocuments;
-            const doc = { id: '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5), type: target, number: (isBank ? 'ПП' : 'РКО') + '-' + String([...db.bankDocuments, ...db.cashDocuments].filter(x => x.type === target).length + 1).padStart(3, '0'), date: tToday(), status: 'posted', account: acc ? acc.id : '', contractor: contractorName, article: art ? art.id : '', currency: cur ? cur.id : '', sum: Math.round(sum * 100) / 100, rate: 1, purpose, note: 'Создано на основании ' + tDocTitle(base), created: new Date().toISOString(), basis: base.id };
+            const payNum = nextDocNumber((isBank ? 'ПП' : 'РКО'), [...db.bankDocuments, ...db.cashDocuments]);
+            const doc = { id: '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5), type: target, number: payNum, date: tToday(), status: 'posted', account: acc ? acc.id : '', contractor: contractorName, article: art ? art.id : '', currency: cur ? cur.id : '', sum: Math.round(sum * 100) / 100, rate: 1, purpose, note: 'Создано на основании ' + tDocTitle(base), created: new Date().toISOString(), basis: base.id };
             list.push(doc); saveData(); return doc;
         }
         function tBasisHR(base, target) {
@@ -5365,8 +5380,9 @@
             const art = db.articles.find(a => a.name === (['payment_in', 'pko'].includes(type) ? 'Оплата от покупателя' : 'Оплата поставщику'));
             const cur = db.currencies.find(c => c.code === 'KGS') || db.currencies[0];
             const list = isBank ? db.bankDocuments : db.cashDocuments;
-            const doc = { id: '_' + Date.now() + '_' + list.length + Math.random().toString(36).slice(2, 5), type, number: (isBank ? 'ПП' : (type === 'pko' ? 'ПКО' : 'РКО')) + '-' + String([...db.bankDocuments, ...db.cashDocuments].filter(x => x.type === type).length + 1).padStart(3, '0'),
-                date, status: 'posted', account: acc ? acc.id : '', contractor: tContractorName(base.contractor), article: art ? art.id : '', currency: cur ? cur.id : '', sum, rate: 1,
+            const payNum = nextDocNumber((isBank ? 'ПП' : (type === 'pko' ? 'ПКО' : 'РКО')), [...db.bankDocuments, ...db.cashDocuments]);
+            const doc = { id: '_' + Date.now() + '_' + list.length + Math.random().toString(36).slice(2, 5), type, number: payNum,
+                date, status: 'posted', account: acc ? acc.id : '', contractor: tContractorName(base.contractor), contractorId: base.contractor, article: art ? art.id : '', currency: cur ? cur.id : '', sum, rate: 1,
                 purpose: 'Оплата по документу ' + tDocTitle(base) + (base.vatTotal ? ', в т.ч. НДС ' + formatAmount(base.vatTotal) : ''), note: note || 'Тестовые данные', created: new Date().toISOString(), basis: base.id };
             list.push(doc); return doc;
         }
