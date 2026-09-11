@@ -142,7 +142,7 @@
         <main class="main" role="main">
             <div class="header">
                 <button class="burger" onclick="toggleSidebar()" aria-label="Открыть меню">&#9776;</button>
-                <div><h1 id="pageTitle" style="margin:0">Главная</h1><div id="breadcrumb" style="font-size:11px;color:#999"></div></div>
+                <div><h1 id="pageTitle" style="margin:0">Главная</h1><div id="breadcrumb" style="font-size:11px;color:var(--text-muted)"></div></div>
                 <div class="toolbar">
                     <button class="btn primary" onclick="openCreateModal()">+ Создать</button>
                     <button class="btn" onclick="exportToCSV()">📥 Экспорт</button>
@@ -151,10 +151,10 @@
                 <div class="user-panel">
                     <input type="text" id="globalSearch" placeholder="Ctrl+F Поиск..." style="padding:6px 10px;border:1px solid var(--border-input,#ddd);border-radius:4px;font-size:13px;width:180px;max-width:100%" onkeydown="if(event.key==='Enter')doGlobalSearch()" oninput="_debouncedSearch()">
                     <button class="btn" onclick="doGlobalSearch()" title="Поиск" aria-label="Поиск">🔍</button>
-                    <button class="btn" onclick="showNotifications()" title="Уведомления" aria-label="Уведомления" style="position:relative">🔔<span id="notifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;border-radius:50%;font-size:10px;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
+                    <button class="btn" onclick="showNotifications()" title="Уведомления" aria-label="Уведомления" style="position:relative">🔔<span id="notifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--danger);color:var(--text-on-primary);border-radius:50%;font-size:10px;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
                     <button class="btn" onclick="toggleTheme()" title="Тема" aria-label="Переключить тему">🌓</button>
                     <button class="btn" onclick="downloadBackup()" title="Скачать резервную копию" aria-label="Скачать резервную копию">💾</button>
-                    <span id="syncStatus" style="color:#4caf50">Облако</span>
+                    <span id="syncStatus" style="color:var(--success)">Облако</span>
                     <span class="user-email" id="userEmail" style="cursor:pointer" onclick="selectPage('profile')"></span>
                     <button class="btn-logout" onclick="DbSync.logout()" aria-label="Выход из системы">Выход</button>
                 </div>
@@ -295,7 +295,7 @@
             <div class="modal-header"><h2>Подбор номенклатуры</h2><button class="modal-close" onclick="tClosePick()">×</button></div>
             <div class="modal-body">
                 <div style="display:flex;gap:8px;margin-bottom:10px">
-                    <input type="text" id="tPickSearch" placeholder="Поиск по наименованию или артикулу…" oninput="tRenderPick()" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px">
+                    <input type="text" id="tPickSearch" placeholder="Поиск по наименованию или артикулу…" oninput="tRenderPick()" style="flex:1;padding:8px 10px;border:1px solid var(--border-input);border-radius:4px">
                     <button class="btn" onclick="tRefOpen('nomenclature', null, function(){tRenderPick()})">+ Новая номенклатура</button>
                 </div>
                 <div class="table-container" id="tPickBody"></div>
@@ -602,7 +602,7 @@
             // Breadcrumb
             const sections = { bank: 'Банк и касса', cash: 'Банк и касса', reports: 'Банк и касса', cashbook: 'Банк и касса', articles: 'Справочники', accounts: 'Справочники', banks: 'Справочники', cashs: 'Справочники', currencies: 'Справочники', users: 'Администрирование', actlog: 'Администрирование' };
             const bc = document.getElementById('breadcrumb');
-            if (bc) bc.innerHTML = sections[currentPage] ? '<a href="#" onclick="selectPage(\'dashboard\');return false" style="color:#999;text-decoration:none">Главная</a> / ' + sections[currentPage] + ' / ' + esc(title) : '';
+            if (bc) bc.innerHTML = sections[currentPage] ? '<a href="#" onclick="selectPage(\'dashboard\');return false" style="color:var(--text-muted);text-decoration:none">Главная</a> / ' + sections[currentPage] + ' / ' + esc(title) : '';
             document.getElementById('content').innerHTML = pages[currentPage]();
             if (currentPage === 'dashboard') initDashCharts();
         }
@@ -627,7 +627,7 @@
                     <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
                     <span style="flex:1"></span>
                     <button class="btn" onclick="exportBankExcel()" title="Экспорт в Excel">📥 Excel</button>
-                    <span style="font-size:13px;color:#666">Приход: <b style="color:#2e7d32">${formatAmount(totalIn)}</b> | Расход: <b style="color:#d32f2f">${formatAmount(totalOut)}</b></span>
+                    <span style="font-size:13px;color:var(--text-secondary)">Приход: <b style="color:var(--success)">${formatAmount(totalIn)}</b> | Расход: <b style="color:var(--danger)">${formatAmount(totalOut)}</b></span>
                 </div>
                 ${docs.length === 0 ? '<div class="empty-state">Нет банковских документов</div>' : `
                 <div class="table-container"><table>
@@ -685,7 +685,7 @@
                     <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
                     <span style="flex:1"></span>
                     <button class="btn" onclick="exportCashExcel()" title="Экспорт в Excel">📥 Excel</button>
-                    <span style="font-size:13px;color:#666">Приход: <b style="color:#2e7d32">${formatAmount(totalIn)}</b> | Расход: <b style="color:#d32f2f">${formatAmount(totalOut)}</b></span>
+                    <span style="font-size:13px;color:var(--text-secondary)">Приход: <b style="color:var(--success)">${formatAmount(totalIn)}</b> | Расход: <b style="color:var(--danger)">${formatAmount(totalOut)}</b></span>
                 </div>
                 ${docs.length === 0 ? '<div class="empty-state">Нет кассовых документов</div>' : `
                 <div class="table-container"><table>
@@ -788,7 +788,7 @@
             let balance = 0, pageNo = 0;
             if (!days.length) return '<div class="empty-state">Кассовых ордеров нет — кассовая книга пуста</div>';
             return `
-                <div class="tcmd"><span style="color:#666;font-size:13px">Кассовая книга (форма КО-4): по одному листу на каждый день с приходными и расходными ордерами</span><span style="flex:1"></span>
+                <div class="tcmd"><span style="color:var(--text-secondary);font-size:13px">Кассовая книга (форма КО-4): по одному листу на каждый день с приходными и расходными ордерами</span><span style="flex:1"></span>
                 <button class="btn" onclick="printCashbook()">🖨 Печать кассовой книги</button></div>
                 <div id="cashbook">
                 ${days.map(date => {
@@ -799,17 +799,17 @@
                     balance = opening + inSum - outSum;
                     return `
                     <div class="table-container" style="margin-bottom:15px">
-                    <div style="padding:10px 15px;display:flex;justify-content:space-between;background:#f5f5f5;border-bottom:1px solid #ddd;font-size:13px"><b>Касса за ${formatDate(date)}</b><span>Лист ${pageNo}</span></div>
+                    <div style="padding:10px 15px;display:flex;justify-content:space-between;background:var(--bg-table-head);border-bottom:1px solid var(--border-input);font-size:13px"><b>Касса за ${formatDate(date)}</b><span>Лист ${pageNo}</span></div>
                     <table>
                         <thead><tr><th>Номер документа</th><th>От кого получено / кому выдано</th><th>Корр. счет</th><th style="text-align:right">Приход</th><th style="text-align:right">Расход</th></tr></thead>
                         <tbody>
                             <tr><td colspan="3"><i>Остаток на начало дня</i></td><td class="num">${formatAmount(opening)}</td><td></td></tr>
                             ${docs.map(d => { const art = db.articles.find(a => a.id === d.article); return `<tr ondblclick="editDoc('${d.id}')" style="cursor:pointer">
-                                <td><strong>${esc(d.number)}</strong> <span style="color:#777">(${d.type === 'pko' ? 'ПКО' : 'РКО'})</span></td>
-                                <td>${esc(d.contractor || '-')}${d.purpose ? '<br><span style="color:#777;font-size:12px">' + esc(d.purpose) + '</span>' : ''}</td>
+                                <td><strong>${esc(d.number)}</strong> <span style="color:var(--text-muted)">(${d.type === 'pko' ? 'ПКО' : 'РКО'})</span></td>
+                                <td>${esc(d.contractor || '-')}${d.purpose ? '<br><span style="color:var(--text-muted);font-size:12px">' + esc(d.purpose) + '</span>' : ''}</td>
                                 <td>${art ? (art.type === 'in' ? '62.01' : '60.01') : (d.type === 'pko' ? '62.01' : '71.01')}</td>
                                 <td class="num">${d.type === 'pko' ? formatAmount(d.sum) : ''}</td><td class="num">${d.type === 'rko' ? formatAmount(d.sum) : ''}</td></tr>`; }).join('')}
-                            <tr style="background:#fafafa"><td colspan="3"><b>Итого за день</b></td><td class="num"><b>${formatAmount(inSum)}</b></td><td class="num"><b>${formatAmount(outSum)}</b></td></tr>
+                            <tr style="background:var(--bg-table-hover)"><td colspan="3"><b>Итого за день</b></td><td class="num"><b>${formatAmount(inSum)}</b></td><td class="num"><b>${formatAmount(outSum)}</b></td></tr>
                             <tr><td colspan="3"><b>Остаток на конец дня</b></td><td class="num amount">${formatAmount(balance)}</td><td></td></tr>
                         </tbody>
                     </table></div>`;
@@ -830,7 +830,7 @@
                 <div style="margin-bottom:12px">
                     <button class="btn primary" onclick="showAddArticle()">+ Добавить статью</button>
                 </div>
-                <div id="articleFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                <div id="articleFormWrap" style="display:none;background:var(--bg-card);padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
                     <h4 id="articleFormTitle" style="margin-bottom:12px">Новая статья ДДС</h4>
                     <input type="hidden" id="artEditId">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -857,7 +857,7 @@
                                 <td><span class="badge ${a.type === 'in' ? 'incoming' : 'draft'}">${a.type === 'in' ? 'Приход' : 'Расход'}</span></td>
                                 <td>
                                     <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editArticle('${a.id}')">✏️</button>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:#d32f2f" onclick="deleteArticle('${a.id}')">🗑</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteArticle('${a.id}')">🗑</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -909,7 +909,7 @@
                 <div style="margin-bottom:12px">
                     <button class="btn primary" onclick="showAddAccount()">+ Добавить счёт</button>
                 </div>
-                <div id="accountFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                <div id="accountFormWrap" style="display:none;background:var(--bg-card);padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
                     <h4 id="accountFormTitle" style="margin-bottom:12px">Новый счёт</h4>
                     <input type="hidden" id="accEditId">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -942,7 +942,7 @@
                                 <td><span class="badge ${a.type === 'bank' ? 'posted' : 'draft'}">${a.type === 'bank' ? 'Банк' : 'Касса'}</span></td>
                                 <td>
                                     <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editAccount('${a.id}')">✏️</button>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:#d32f2f" onclick="deleteAccount('${a.id}')">🗑</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteAccount('${a.id}')">🗑</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -999,7 +999,7 @@
                 <div style="margin-bottom:12px">
                     <button class="btn primary" onclick="showAddBank()">+ Добавить банк</button>
                 </div>
-                <div id="bankFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                <div id="bankFormWrap" style="display:none;background:var(--bg-card);padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
                     <h4 id="bankFormTitle" style="margin-bottom:12px">Новый банк</h4>
                     <input type="hidden" id="bankEditId">
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
@@ -1029,7 +1029,7 @@
                                 <td>${esc(b.corrAccount)}</td>
                                 <td>
                                     <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editBankItem('${b.id}')">✏️</button>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:#d32f2f" onclick="deleteBankItem('${b.id}')">🗑</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteBankItem('${b.id}')">🗑</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -1083,7 +1083,7 @@
                 <div style="margin-bottom:12px">
                     <button class="btn primary" onclick="showAddCash()">+ Добавить кассу</button>
                 </div>
-                <div id="cashFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                <div id="cashFormWrap" style="display:none;background:var(--bg-card);padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
                     <h4 id="cashFormTitle" style="margin-bottom:12px">Новая касса</h4>
                     <input type="hidden" id="cashEditId">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -1110,7 +1110,7 @@
                                 <td>${esc(c.responsible || '-')}</td>
                                 <td>
                                     <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editCashItem('${c.id}')">✏️</button>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:#d32f2f" onclick="deleteCashItem('${c.id}')">🗑</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteCashItem('${c.id}')">🗑</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -1162,7 +1162,7 @@
                 <div style="margin-bottom:12px">
                     <button class="btn primary" onclick="showAddCurrency()">+ Добавить валюту</button>
                 </div>
-                <div id="currFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                <div id="currFormWrap" style="display:none;background:var(--bg-card);padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
                     <h4 id="currFormTitle" style="margin-bottom:12px">Новая валюта</h4>
                     <input type="hidden" id="currEditId">
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
@@ -1192,7 +1192,7 @@
                                 <td class="num">${formatAmount(c.rate)}</td>
                                 <td>
                                     <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editCurrency('${c.id}')">✏️</button>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:#d32f2f" onclick="deleteCurrency('${c.id}')">🗑</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteCurrency('${c.id}')">🗑</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -1255,19 +1255,19 @@
             if (totalDocs === 0 && contractorCount === 0) {
                 return '<div style="padding:40px;text-align:center;max-width:600px;margin:0 auto">' +
                     '<div style="font-size:64px;margin-bottom:20px">📊</div>' +
-                    '<h2 style="margin-bottom:12px;color:#333">Добро пожаловать в 1s Бухгалтерия!</h2>' +
-                    '<p style="color:#666;margin-bottom:30px;line-height:1.6">База данных пуста. Вы можете начать работу с нуля или загрузить тестовые данные для ознакомления с системой.</p>' +
+                    '<h2 style="margin-bottom:12px;color:var(--text)">Добро пожаловать в 1s Бухгалтерия!</h2>' +
+                    '<p style="color:var(--text-secondary);margin-bottom:30px;line-height:1.6">База данных пуста. Вы можете начать работу с нуля или загрузить тестовые данные для ознакомления с системой.</p>' +
                     '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
                     '<button class="btn primary" onclick="tSeedDemo(true)" style="padding:12px 24px;font-size:15px">📦 Загрузить тестовые данные</button>' +
                     '<button class="btn" onclick="selectPage(\'bank\')" style="padding:12px 24px;font-size:15px">➕ Начать с нуля</button>' +
                     '</div>' +
-                    '<div style="margin-top:40px;text-align:left;background:#f8f9fa;border-radius:8px;padding:20px">' +
+                    '<div style="margin-top:40px;text-align:left;background:var(--bg-tcmd-small);border-radius:8px;padding:20px">' +
                     '<h3 style="margin-bottom:12px;font-size:15px">Быстрый старт:</h3>' +
                     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
-                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'accounts\')">🏦 Настроить счета</div>' +
-                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'ref_contractors\')">👥 Добавить контрагентов</div>' +
-                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'ref_nomenclature\')">📋 Создать номенклатуру</div>' +
-                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:#fff;border:1px solid #e0e0e0" onclick="selectPage(\'ref_org\')">🏢 Реквизиты организации</div>' +
+                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border)" onclick="selectPage(\'accounts\')">🏦 Настроить счета</div>' +
+                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border)" onclick="selectPage(\'ref_contractors\')">👥 Добавить контрагентов</div>' +
+                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border)" onclick="selectPage(\'ref_nomenclature\')">📋 Создать номенклатуру</div>' +
+                    '<div style="cursor:pointer;padding:10px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border)" onclick="selectPage(\'ref_org\')">🏢 Реквизиты организации</div>' +
                     '</div></div></div>';
             }
             const nomCount = db.trade && db.trade.nomenclature ? db.trade.nomenclature.length : 0;
@@ -1300,7 +1300,7 @@
                     balanceHtml += '<div class="dash-section"><h3 style="margin-bottom:12px">Остатки по счетам (' + esc(cur) + ')</h3><div class="dash-cards">' +
                         curGroups[cur].map(a => {
                             const bal = accBalances[a.id] || 0;
-                            const color = bal > 0 ? '#2e7d32' : bal < 0 ? '#d32f2f' : '#666';
+                            const color = bal > 0 ? 'var(--success)' : bal < 0 ? 'var(--danger)' : 'var(--text-secondary)';
                             return '<div class="dash-card">' +
                                 '<h3>' + esc(a.name || a.bank || 'Счёт') + '</h3>' +
                                 (a.number ? '<div class="dash-sub" style="margin-bottom:4px">' + esc(a.number) + '</div>' : '') +
@@ -1322,7 +1322,7 @@
                     balanceHtml += '<div class="dash-section" style="margin-top:8px"><div class="dash-cards">' +
                         curKeys.map(cur => {
                             const t = totalsByCur[cur];
-                            const color = t > 0 ? '#2e7d32' : t < 0 ? '#d32f2f' : '#666';
+                            const color = t > 0 ? 'var(--success)' : t < 0 ? 'var(--danger)' : 'var(--text-secondary)';
                             return '<div class="dash-card" style="border-left:4px solid ' + color + '">' +
                                 '<h3>Итого' + (curKeys.length > 1 ? ' (' + esc(cur) + ')' : '') + '</h3>' +
                                 '<div class="dash-value" style="color:' + color + '">' + fmt(t) + '</div>' +
@@ -1341,9 +1341,9 @@
             allDocs.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
             const recent = allDocs.slice(0, 10);
             if (recent.length) {
-                recentRows = recent.map(d => '<tr><td>' + (d.date || '—') + '</td><td>' + (d.type || '') + '</td><td>' + (d.desc || '—') + '</td><td style="text-align:right;color:' + (d.isIn ? '#2e7d32' : '#d32f2f') + '">' + fmt(d.sum || 0) + '</td></tr>').join('');
+                recentRows = recent.map(d => '<tr><td>' + (d.date || '—') + '</td><td>' + (d.type || '') + '</td><td>' + (d.desc || '—') + '</td><td style="text-align:right;color:' + (d.isIn ? 'var(--success)' : 'var(--danger)') + '">' + fmt(d.sum || 0) + '</td></tr>').join('');
             } else {
-                recentRows = '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">Нет документов</td></tr>';
+                recentRows = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">Нет документов</td></tr>';
             }
 
             return '<div style="padding:20px">' +
@@ -1364,7 +1364,7 @@
                 '<div class="dash-card"><h3>Номенклатура</h3><div class="dash-value">' + nomCount + '</div></div>' +
                 '<div class="dash-card"><h3>Сотрудники</h3><div class="dash-value">' + empCount + '</div></div>' +
                 '</div></div>' +
-                (totalDocs > 0 ? '<div class="dash-section" style="margin-top:16px"><h3 style="margin-bottom:12px">Динамика за 6 месяцев</h3><div style="display:grid;grid-template-columns:2fr 1fr;gap:16px"><div style="background:#fff;border-radius:8px;padding:16px;border:1px solid #e0e0e0"><canvas id="dashChart" height="200"></canvas></div><div style="background:#fff;border-radius:8px;padding:16px;border:1px solid #e0e0e0"><canvas id="dashPie" height="200"></canvas></div></div></div>' : '') +
+                (totalDocs > 0 ? '<div class="dash-section" style="margin-top:16px"><h3 style="margin-bottom:12px">Динамика за 6 месяцев</h3><div style="display:grid;grid-template-columns:2fr 1fr;gap:16px"><div style="background:var(--bg-card);border-radius:8px;padding:16px;border:1px solid var(--border)"><canvas id="dashChart" height="200"></canvas></div><div style="background:var(--bg-card);border-radius:8px;padding:16px;border:1px solid var(--border)"><canvas id="dashPie" height="200"></canvas></div></div></div>' : '') +
                 '<div class="dash-recent"><h3>Последние операции</h3><table><thead><tr><th>Дата</th><th>Тип</th><th>Описание</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' + recentRows + '</tbody></table></div></div>';
         }
 
@@ -1472,7 +1472,7 @@
         function renderSearchResults() {
             const q = (document.getElementById('globalSearch').value || '').trim();
             if (!_searchResults.length) return '<div class="empty-state">По запросу «' + esc(q) + '» ничего не найдено</div>';
-            return '<div style="padding:20px"><p style="margin-bottom:15px;color:#666">Найдено: ' + _searchResults.length + ' результатов по запросу «' + esc(q) + '»</p>' +
+            return '<div style="padding:20px"><p style="margin-bottom:15px;color:var(--text-secondary)">Найдено: ' + _searchResults.length + ' результатов по запросу «' + esc(q) + '»</p>' +
                 '<table class="table-container" style="width:100%"><thead><tr><th>Раздел</th><th>Номер</th><th>Дата</th><th>Описание</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' +
                 _searchResults.map(r => '<tr><td>' + esc(r.section) + '</td><td>' + esc(r.number||'') + '</td><td>' + esc(r.date||'') + '</td><td>' + esc(r.desc||'') + '</td><td style="text-align:right">' + (r.sum ? fmt(r.sum) : '') + '</td></tr>').join('') +
                 '</tbody></table></div>';
@@ -1525,7 +1525,7 @@
             dd.id = 'notifDropdown';
             dd.className = 'notif-dropdown open';
             const notifs = getNotifications();
-            dd.innerHTML = '<div style="padding:12px 16px;font-weight:600;border-bottom:1px solid #eee">Уведомления</div>' +
+            dd.innerHTML = '<div style="padding:12px 16px;font-weight:600;border-bottom:1px solid var(--border-light)">Уведомления</div>' +
                 notifs.map(n => '<div class="notif-item"><div class="notif-title">' + esc(n.title) + '</div><div>' + esc(n.text) + '</div><div class="notif-time">' + esc(n.time) + '</div></div>').join('');
             btn.style.position = 'relative';
             btn.appendChild(dd);
@@ -1572,8 +1572,8 @@
 
             const logs = db._activityLog || [];
             if (!logs.length) return '<div class="empty-state">Журнал действий пуст</div>';
-            return '<div style="padding:20px"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Дата и время</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Пользователь</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Действие</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Детали</th></tr></thead><tbody>' +
-                logs.slice(0, 200).map(l => '<tr><td style="padding:8px;border-bottom:1px solid #eee;font-size:12px">' + new Date(l.date).toLocaleString('ru-RU') + '</td><td style="padding:8px;border-bottom:1px solid #eee">' + esc(l.user||'') + '</td><td style="padding:8px;border-bottom:1px solid #eee">' + esc(l.action||'') + '</td><td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;color:#666">' + esc(l.details||'') + '</td></tr>').join('') +
+            return '<div style="padding:20px"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border-input)">Дата и время</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border-input)">Пользователь</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border-input)">Действие</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border-input)">Детали</th></tr></thead><tbody>' +
+                logs.slice(0, 200).map(l => '<tr><td style="padding:8px;border-bottom:1px solid var(--border-light);font-size:12px">' + new Date(l.date).toLocaleString('ru-RU') + '</td><td style="padding:8px;border-bottom:1px solid var(--border-light)">' + esc(l.user||'') + '</td><td style="padding:8px;border-bottom:1px solid var(--border-light)">' + esc(l.action||'') + '</td><td style="padding:8px;border-bottom:1px solid var(--border-light);font-size:12px;color:var(--text-secondary)">' + esc(l.details||'') + '</td></tr>').join('') +
                 '</tbody></table></div>';
         }
 
@@ -1584,9 +1584,9 @@
             return '<div style="padding:20px;max-width:500px">' +
                 '<div class="dash-card" style="margin-bottom:20px"><h3>Профиль</h3><div style="margin-top:10px"><strong>Имя:</strong> ' + (s.name || 'Пользователь') + '</div><div><strong>Роль:</strong> ' + (s.role === 'admin' ? 'Администратор' : 'Пользователь') + '</div></div>' +
                 '<div class="dash-card"><h3>Смена пароля</h3>' +
-                '<div style="margin-top:12px"><label style="font-size:12px;color:#666">Текущий пароль</label><br><input type="password" id="oldPass" style="padding:8px;border:1px solid #ddd;border-radius:4px;width:100%;margin-bottom:10px"></div>' +
-                '<div><label style="font-size:12px;color:#666">Новый пароль</label><br><input type="password" id="newPass1" style="padding:8px;border:1px solid #ddd;border-radius:4px;width:100%;margin-bottom:10px"></div>' +
-                '<div><label style="font-size:12px;color:#666">Подтвердите новый пароль</label><br><input type="password" id="newPass2" style="padding:8px;border:1px solid #ddd;border-radius:4px;width:100%;margin-bottom:10px"></div>' +
+                '<div style="margin-top:12px"><label style="font-size:12px;color:var(--text-secondary)">Текущий пароль</label><br><input type="password" id="oldPass" style="padding:8px;border:1px solid var(--border-input);border-radius:4px;width:100%;margin-bottom:10px"></div>' +
+                '<div><label style="font-size:12px;color:var(--text-secondary)">Новый пароль</label><br><input type="password" id="newPass1" style="padding:8px;border:1px solid var(--border-input);border-radius:4px;width:100%;margin-bottom:10px"></div>' +
+                '<div><label style="font-size:12px;color:var(--text-secondary)">Подтвердите новый пароль</label><br><input type="password" id="newPass2" style="padding:8px;border:1px solid var(--border-input);border-radius:4px;width:100%;margin-bottom:10px"></div>' +
                 '<button class="btn primary" onclick="changePassword()">Сменить пароль</button>' +
                 '<div id="passMsg" style="margin-top:8px;font-size:13px"></div></div></div>';
         }
@@ -1596,26 +1596,26 @@
             const newP1 = document.getElementById('newPass1').value;
             const newP2 = document.getElementById('newPass2').value;
             const msg = document.getElementById('passMsg');
-            if (!oldP || !newP1 || !newP2) { msg.innerHTML = '<span style="color:#d32f2f">Заполните все поля</span>'; return; }
-            if (newP1 !== newP2) { msg.innerHTML = '<span style="color:#d32f2f">Пароли не совпадают</span>'; return; }
-            if (newP1.length < 6) { msg.innerHTML = '<span style="color:#d32f2f">Минимум 6 символов</span>'; return; }
-            msg.innerHTML = '<span style="color:#999">Сохранение...</span>';
+            if (!oldP || !newP1 || !newP2) { msg.innerHTML = '<span style="color:var(--danger)">Заполните все поля</span>'; return; }
+            if (newP1 !== newP2) { msg.innerHTML = '<span style="color:var(--danger)">Пароли не совпадают</span>'; return; }
+            if (newP1.length < 6) { msg.innerHTML = '<span style="color:var(--danger)">Минимум 6 символов</span>'; return; }
+            msg.innerHTML = '<span style="color:var(--text-muted)">Сохранение...</span>';
             const oldHash = await _sha256(oldP);
             const newHash = await _sha256(newP1);
             const users = await DbSync.loadUsers();
-            if (!users || !users.length) { msg.innerHTML = '<span style="color:#d32f2f">Ошибка загрузки пользователей</span>'; return; }
+            if (!users || !users.length) { msg.innerHTML = '<span style="color:var(--danger)">Ошибка загрузки пользователей</span>'; return; }
             let s = {};
             try { s = JSON.parse(localStorage.getItem('auth_session') || '{}'); } catch(e) {}
             const user = users.find(u => u.name === s.name && u.pass === oldHash);
-            if (!user) { msg.innerHTML = '<span style="color:#d32f2f">Неверный текущий пароль</span>'; return; }
+            if (!user) { msg.innerHTML = '<span style="color:var(--danger)">Неверный текущий пароль</span>'; return; }
             user.pass = newHash;
             const ok = await DbSync.saveUsers(users);
             if (ok) {
-                msg.innerHTML = '<span style="color:#2e7d32">Пароль успешно изменён</span>';
+                msg.innerHTML = '<span style="color:var(--success)">Пароль успешно изменён</span>';
                 logActivity('Смена пароля', s.name);
                 saveData();
             } else {
-                msg.innerHTML = '<span style="color:#d32f2f">Ошибка сохранения</span>';
+                msg.innerHTML = '<span style="color:var(--danger)">Ошибка сохранения</span>';
             }
         }
 
@@ -1641,15 +1641,15 @@
             return `
                 <div style="padding:20px" class="table-container">
                     <h3>Управление пользователями</h3>
-                    <p style="margin:15px 0;color:#666">Создание и удаление пользователей системы. Администратор имеет полный доступ ко всем функциям.</p>
-                    <div style="background:#f0f7ff;border:1px solid #c0d8f0;border-radius:8px;padding:15px;margin-bottom:20px">
+                    <p style="margin:15px 0;color:var(--text-secondary)">Создание и удаление пользователей системы. Администратор имеет полный доступ ко всем функциям.</p>
+                    <div style="background:var(--primary-light);border:1px solid var(--primary-border);border-radius:8px;padding:15px;margin-bottom:20px">
                         <h4 style="margin-bottom:10px">Добавить пользователя</h4>
                         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
-                            <div><label style="font-size:12px;color:#666">Имя</label><br><input id="newUserName" placeholder="Имя пользователя" style="padding:8px;border:1px solid #ddd;border-radius:4px"></div>
-                            <div><label style="font-size:12px;color:#666">Логин</label><br><input id="newUserLogin" placeholder="Логин" style="padding:8px;border:1px solid #ddd;border-radius:4px"></div>
-                            <div><label style="font-size:12px;color:#666">Пароль</label><br><input id="newUserPass" type="password" placeholder="Пароль" style="padding:8px;border:1px solid #ddd;border-radius:4px"></div>
-                            <div><label style="font-size:12px;color:#666">Роль</label><br>
-                                <select id="newUserRole" style="padding:8px;border:1px solid #ddd;border-radius:4px">
+                            <div><label style="font-size:12px;color:var(--text-secondary)">Имя</label><br><input id="newUserName" placeholder="Имя пользователя" style="padding:8px;border:1px solid var(--border-input);border-radius:4px"></div>
+                            <div><label style="font-size:12px;color:var(--text-secondary)">Логин</label><br><input id="newUserLogin" placeholder="Логин" style="padding:8px;border:1px solid var(--border-input);border-radius:4px"></div>
+                            <div><label style="font-size:12px;color:var(--text-secondary)">Пароль</label><br><input id="newUserPass" type="password" placeholder="Пароль" style="padding:8px;border:1px solid var(--border-input);border-radius:4px"></div>
+                            <div><label style="font-size:12px;color:var(--text-secondary)">Роль</label><br>
+                                <select id="newUserRole" style="padding:8px;border:1px solid var(--border-input);border-radius:4px">
                                     <option value="user">Пользователь</option>
                                     <option value="admin">Администратор</option>
                                 </select>
@@ -1658,7 +1658,7 @@
                         </div>
                         <div id="addUserMsg" style="margin-top:8px;font-size:13px"></div>
                     </div>
-                    <div id="usersListContainer"><p style="color:#999">Загрузка списка пользователей...</p></div>
+                    <div id="usersListContainer"><p style="color:var(--text-muted)">Загрузка списка пользователей...</p></div>
                 </div>
             `;
         }
@@ -1670,10 +1670,10 @@
             } catch(e) { _usersCache = []; }
             const el = document.getElementById('usersListContainer');
             if (!el) return;
-            if (!_usersCache.length) { el.innerHTML = '<p style="color:#999">Нет пользователей</p>'; return; }
-            el.innerHTML = '<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Имя</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Роль</th><th style="padding:8px;border-bottom:2px solid #ddd">Действие</th></tr></thead><tbody>' +
-                _usersCache.map((u, i) => '<tr><td style="padding:8px;border-bottom:1px solid #eee">' + esc(u.name || '—') + '</td><td style="padding:8px;border-bottom:1px solid #eee">' + (u.role === 'admin' ? 'Администратор' : 'Пользователь') + '</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:center">' +
-                    (u.role === 'admin' && _usersCache.filter(x => x.role === 'admin').length <= 1 ? '<span style="color:#999">Основной админ</span>' : '<button class="btn danger" onclick="deleteUser(' + i + ')">Удалить</button>') +
+            if (!_usersCache.length) { el.innerHTML = '<p style="color:var(--text-muted)">Нет пользователей</p>'; return; }
+            el.innerHTML = '<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border-input)">Имя</th><th style="text-align:left;padding:8px;border-bottom:2px solid var(--border-input)">Роль</th><th style="padding:8px;border-bottom:2px solid var(--border-input)">Действие</th></tr></thead><tbody>' +
+                _usersCache.map((u, i) => '<tr><td style="padding:8px;border-bottom:1px solid var(--border-light)">' + esc(u.name || '—') + '</td><td style="padding:8px;border-bottom:1px solid var(--border-light)">' + (u.role === 'admin' ? 'Администратор' : 'Пользователь') + '</td><td style="padding:8px;border-bottom:1px solid var(--border-light);text-align:center">' +
+                    (u.role === 'admin' && _usersCache.filter(x => x.role === 'admin').length <= 1 ? '<span style="color:var(--text-muted)">Основной админ</span>' : '<button class="btn danger" onclick="deleteUser(' + i + ')">Удалить</button>') +
                 '</td></tr>').join('') +
                 '</tbody></table>';
         }
@@ -1689,33 +1689,33 @@
             const pass = passEl.value || '';
 
             if (!name || !login || !pass) {
-                msgEl.innerHTML = '<span style="color:#d32f2f">Заполните все поля</span>';
+                msgEl.innerHTML = '<span style="color:var(--danger)">Заполните все поля</span>';
                 return;
             }
             if (pass.length < 6) {
-                msgEl.innerHTML = '<span style="color:#d32f2f">Пароль минимум 6 символов</span>';
+                msgEl.innerHTML = '<span style="color:var(--danger)">Пароль минимум 6 символов</span>';
                 return;
             }
 
-            msgEl.innerHTML = '<span style="color:#999">Сохранение...</span>';
+            msgEl.innerHTML = '<span style="color:var(--text-muted)">Сохранение...</span>';
             const loginHash = await _sha256(login);
             const passHash = await _sha256(pass);
 
             // Check duplicate login
             if (_usersCache.find(u => u.login === loginHash)) {
-                msgEl.innerHTML = '<span style="color:#d32f2f">Пользователь с таким логином уже существует</span>';
+                msgEl.innerHTML = '<span style="color:var(--danger)">Пользователь с таким логином уже существует</span>';
                 return;
             }
 
             _usersCache.push({ login: loginHash, pass: passHash, name: name, role: roleEl.value });
             const ok = await DbSync.saveUsers(_usersCache);
             if (ok) {
-                msgEl.innerHTML = '<span style="color:#2e7d32">Пользователь добавлен</span>';
+                msgEl.innerHTML = '<span style="color:var(--success)">Пользователь добавлен</span>';
                 nameEl.value = ''; loginEl.value = ''; passEl.value = '';
                 _loadUsersAndRender();
             } else {
                 _usersCache.pop();
-                msgEl.innerHTML = '<span style="color:#d32f2f">Ошибка сохранения</span>';
+                msgEl.innerHTML = '<span style="color:var(--danger)">Ошибка сохранения</span>';
             }
         }
 
@@ -1738,23 +1738,23 @@
             return `
                 <div style="padding: 20px;" class="table-container">
                     <h3>Импорт данных</h3>
-                    <p style="margin: 15px 0; color: #666;">JSON — полная резервная копия базы (из раздела «Экспорт → JSON»). CSV — банковские и кассовые документы (Номер;Дата;Тип;Контрагент;Сумма;Статус).</p>
+                    <p style="margin: 15px 0; color: var(--text-secondary);">JSON — полная резервная копия базы (из раздела «Экспорт → JSON»). CSV — банковские и кассовые документы (Номер;Дата;Тип;Контрагент;Сумма;Статус).</p>
                     <input type="file" id="importFile" accept=".csv,.json" style="margin: 15px 0;">
                     <button class="btn primary" onclick="performImport()">Импортировать</button>
-                    <div id="importResult" style="margin-top:10px;color:#2e7d32"></div>
+                    <div id="importResult" style="margin-top:10px;color:var(--success)"></div>
                 </div>
                 <div style="padding: 20px; margin-top: 15px;" class="table-container">
                     <h3>Тестовые данные</h3>
-                    <p style="margin: 15px 0; color: #666;">Заполняет базу демонстрационными документами по всем разделам: счета, поступления, реализации, возвраты, корректировки, ГТД, доверенности, акты сверки, розничные продажи, оплаты через банк и кассу.</p>
+                    <p style="margin: 15px 0; color: var(--text-secondary);">Заполняет базу демонстрационными документами по всем разделам: счета, поступления, реализации, возвраты, корректировки, ГТД, доверенности, акты сверки, розничные продажи, оплаты через банк и кассу.</p>
                     <div style="display:flex;gap:10px;flex-wrap:wrap">
                         <button class="btn primary" onclick="tSeedDemo(true)">Загрузить тестовые данные</button>
                         <button class="btn danger" onclick="tClearAll()">Очистить все документы</button>
                     </div>
-                    <p style="margin-top:12px;color:#666;font-size:12px">Документов сейчас: банк — ${(db.bankDocuments||[]).length}, касса — ${(db.cashDocuments||[]).length}, покупки/продажи — ${(db.trade&&db.trade.docs||[]).length}.</p>
+                    <p style="margin-top:12px;color:var(--text-secondary);font-size:12px">Документов сейчас: банк — ${(db.bankDocuments||[]).length}, касса — ${(db.cashDocuments||[]).length}, покупки/продажи — ${(db.trade&&db.trade.docs||[]).length}.</p>
                 </div>
                 <div style="padding: 20px; margin-top: 15px;" class="table-container">
                     <h3>История изменений (GitHub)</h3>
-                    <p style="margin: 15px 0; color: #666;">Каждое сохранение автоматически создаёт точку восстановления в GitHub. Вы можете откатиться к любому предыдущему состоянию.</p>
+                    <p style="margin: 15px 0; color: var(--text-secondary);">Каждое сохранение автоматически создаёт точку восстановления в GitHub. Вы можете откатиться к любому предыдущему состоянию.</p>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px">
                         <button class="btn primary" onclick="DbSync.forceSave(JSON.parse(JSON.stringify(db))).then(()=>showToast('Сохранено в GitHub'))">Сохранить сейчас</button>
                         <button class="btn" onclick="showBackups()">Показать историю</button>
@@ -1767,9 +1767,9 @@
         async function showBackups() {
             const el = document.getElementById('backupsList');
             if (!el) return;
-            el.innerHTML = '<p style="color:#999">Загрузка истории...</p>';
+            el.innerHTML = '<p style="color:var(--text-muted)">Загрузка истории...</p>';
             const commits = await DbSync.getHistory(20);
-            if (!commits.length) { el.innerHTML = '<p style="color:#999">История пуста</p>'; return; }
+            if (!commits.length) { el.innerHTML = '<p style="color:var(--text-muted)">История пуста</p>'; return; }
             el.innerHTML = '<div class="table-container"><table><thead><tr><th>Дата</th><th>Описание</th><th>Действие</th></tr></thead><tbody>' +
                 commits.map(c => '<tr><td>' + esc(new Date(c.commit.author.date).toLocaleString('ru-RU')) + '</td><td>' + esc(c.commit.message || '') + '</td><td><button class="btn" onclick="restoreFromCommit(\'' + esc(c.sha) + '\')">Восстановить</button></td></tr>').join('') +
                 '</tbody></table></div>';
@@ -2386,9 +2386,9 @@
         function tDocTitle(d) { return d ? (TT[d.type].short + ' ' + d.number + ' от ' + formatDate(d.date)) : '—'; }
         function tVatLabel(v) { const r = VAT_RATES.find(x => x.v === Number(v)); return r ? r.l : v + '%'; }
         function tStatusIcon(d) {
-            if (d.status === 'deleted') return '<span title="Помечен на удаление" style="color:#d32f2f">✖</span>';
-            if (d.status === 'posted') return '<span title="Проведен" style="color:#2e7d32">✔</span>';
-            return '<span title="Записан, не проведен" style="color:#999">▢</span>';
+            if (d.status === 'deleted') return '<span title="Помечен на удаление" style="color:var(--danger)">✖</span>';
+            if (d.status === 'posted') return '<span title="Проведен" style="color:var(--success)">✔</span>';
+            return '<span title="Записан, не проведен" style="color:var(--text-muted)">▢</span>';
         }
         function tIsTradePage(p) { return TRADE_JOURNALS[p] || TRADE_PAGES_TITLES[p]; }
 
@@ -2414,7 +2414,7 @@
                 if (d.type === 'inventory') { total = (d.goods || []).reduce((s, r) => s + (Number(r.qtyFact) || 0) * (Number(r.price) || 0), 0); vat = 0; sum = total; }
                 else if (['requisition', 'to_processing', 'spec'].includes(d.type)) { total = S('materials'); vat = 0; sum = total; }
                 else if (d.type === 'shift_report') { total = S('products'); vat = 0; sum = total; }
-                else if (d.type === 'from_processing') { total = S('products'); sum = total - vat; }
+                else if (d.type === 'from_processing') { total = S('products'); vat = 0; sum = total; }
                 else if (d.type === 'wip_inventory') { total = (d.wip || []).reduce((s, r) => s + (Number(r.sum) || 0), 0); vat = 0; sum = total; }
                 else if (d.type === 'month_close') { total = (d.calc || []).reduce((s, g) => s + Math.abs(g.corr || 0), 0); vat = 0; sum = total; }
                 else if (d.type === 'assembly') { total = S('goods'); vat = 0; sum = total; }
@@ -2610,7 +2610,7 @@
                         ${cfg.hasBasis ? `<td>${d.basis ? esc(tDocTitle(tDocById(d.basis))) : '—'}</td>` : ''}
                         ${cfg.noSum ? '' : `<td class="num amount">${formatAmount(d.total)}</td><td class="num">${formatAmount(d.vatTotal)}</td>`}
                         ${cfg.payStatus ? `<td><span class="badge ${ps.cls}">${ps.label}</span></td>` : ''}
-                        ${cfg.sf ? `<td>${d.sf ? '№ ' + esc(d.sf.number) + ' от ' + formatDate(d.sf.date) : '<span style="color:#999">не выписан</span>'}</td>` : ''}
+                        ${cfg.sf ? `<td>${d.sf ? '№ ' + esc(d.sf.number) + ' от ' + formatDate(d.sf.date) : '<span style="color:var(--text-muted)">не выписан</span>'}</td>` : ''}
                         <td>${esc((d.extra && d.extra.comment) || '')}</td>
                         <td><div class="action-buttons">
                             <button class="action-btn" title="Открыть" onclick="event.stopPropagation();tOpen('${d.id}')">✏️</button>
@@ -2707,7 +2707,7 @@
             const title = kind === 'in' ? 'полученные' : 'выданные';
             return `
             <div class="tcmd">
-                <span style="color:#666;font-size:13px">Счета-фактуры ${title} формируются из документов кнопкой «Счет-фактура» (как в 1С). Здесь — журнал зарегистрированных счетов-фактур.</span>
+                <span style="color:var(--text-secondary);font-size:13px">Счета-фактуры ${title} формируются из документов кнопкой «Счет-фактура» (как в 1С). Здесь — журнал зарегистрированных счетов-фактур.</span>
                 <span style="flex:1"></span>
                 <button class="btn" onclick="tPrintSFRegistry('${kind}')">🖨 Журнал учета счетов-фактур</button>
             </div>
@@ -2790,13 +2790,24 @@
             if (cfg.hr && tDoc.employee) tOnEmployeeChange();
             if (cfg.recon) { const d0 = new Date(); tDoc.recon.from = d0.getFullYear() + '-01-01'; tDoc.recon.to = tToday(); }
             if (tDoc.contractor && !tDoc.contract) { const c = db.trade.contracts.find(x => x.contractor === tDoc.contractor); if (c) tDoc.contract = c.id; }
-            tTab = cfg.tabs[0]; tCalcDoc(tDoc); tRenderForm(true);
+            tTab = cfg.tabs[0]; tCalcDoc(tDoc); _tDocSnapshot = JSON.stringify(tDoc); tRenderForm(true);
         }
+        let _tDocSnapshot = '';
         function tOpen(id) {
             const d = tDocById(id); if (!d) return;
-            tDoc = JSON.parse(JSON.stringify(d)); tTab = TT[d.type].tabs[0]; tCalcDoc(tDoc); tRenderForm(false);
+            tDoc = JSON.parse(JSON.stringify(d)); tTab = TT[d.type].tabs[0]; tCalcDoc(tDoc);
+            _tDocSnapshot = JSON.stringify(tDoc);
+            tRenderForm(false);
         }
-        function tCloseForm() { document.getElementById('tModal').classList.remove('active'); tDoc = null; }
+        function tIsDirty() {
+            if (!tDoc) return false;
+            const cur = JSON.parse(JSON.stringify(tDoc)); delete cur._sel;
+            return JSON.stringify(cur) !== _tDocSnapshot;
+        }
+        function tCloseForm() {
+            if (tDoc && tIsDirty() && !confirm('Документ изменён, но не сохранён. Закрыть без сохранения?')) return;
+            document.getElementById('tModal').classList.remove('active'); tDoc = null; _tDocSnapshot = '';
+        }
 
         function tRenderForm(isNew) {
             const d = tDoc, cfg = TT[d.type];
@@ -2847,7 +2858,7 @@
                     ${tHeadExtra(d)}
                     ${cfg.hasBasis ? `<div class="fg wide"><label>${TT[cfg.hasBasis].short} (основание)</label><div style="display:flex;gap:6px"><select onchange="tDoc.basis=this.value" style="flex:1">${basisOpts}</select><button class="btn" onclick="tFillFromBasis()" title="Заполнить по документу-основанию">Заполнить</button></div></div>` : ''}
                     ${cfg.payStatus ? `<div class="fg"><label>Оплата до</label><input type="date" value="${d.payUntil || ''}" onchange="tDoc.payUntil=this.value"></div>
-                        <div class="fg"><label>Состояние оплаты</label><div style="display:flex;gap:6px;align-items:center"><span class="badge ${ps.cls}">${ps.label}</span><small style="color:#666">оплачено ${formatAmount(ps.paid || 0)}</small>
+                        <div class="fg"><label>Состояние оплаты</label><div style="display:flex;gap:6px;align-items:center"><span class="badge ${ps.cls}">${ps.label}</span><small style="color:var(--text-secondary)">оплачено ${formatAmount(ps.paid || 0)}</small>
                         <select onchange="tDoc.invoiceStatus=this.value" style="margin-left:auto"><option value="" ${!d.invoiceStatus ? 'selected' : ''}>Активен</option><option value="cancelled" ${d.invoiceStatus === 'cancelled' ? 'selected' : ''}>Отменен</option></select></div></div>` : ''}
                     ${cfg.discount ? `<div class="fg"><label>Скидка, %</label><input type="number" min="0" max="100" step="0.01" value="${d.discount || 0}" onchange="tDoc.discount=this.value;tRecalcAll()"></div>` : ''}
                     ${cfg.noSum || cfg.gtd || cfg.noSettle ? '' : `
@@ -2883,7 +2894,7 @@
             if (!d) return;
             const sfTxt = cfg.sf ? (d.sf ? `Счет-фактура: № ${esc(d.sf.number)} от ${formatDate(d.sf.date)} <a href="#" onclick="event.preventDefault();tPrint('${d.id}','Счет-фактура')">печать</a>` : `<a href="#" onclick="event.preventDefault();tFormSave(false);tIssueSF(tDoc.id)">${cfg.sf === 'in' ? 'Зарегистрировать счет-фактуру' : 'Выписать счет-фактуру'}</a>`) : '';
             document.getElementById('tFoot').innerHTML = `
-                <div style="flex:1;color:#555;font-size:13px">${sfTxt}</div>
+                <div style="flex:1;color:var(--text-secondary);font-size:13px">${sfTxt}</div>
                 ${cfg.noSum ? '' : cfg.payrollDoc ? `<div class="ttotals"><div>Начислено: <b>${formatAmount(d.total)}</b></div><div>Удержано: <b>${formatAmount((d.sfEmpTotal || 0) + (d.taxTotal || 0) + (d.rows || []).reduce((s, r) => s + (r.otherDed || 0) + (r.advance || 0), 0))}</b></div><div>К выплате: <b>${formatAmount(d.netTotal || 0)}</b></div><div>Взносы работодателя: <b>${formatAmount(d.sfEmployerTotal || 0)}</b></div></div>` :
                 cfg.hr || cfg.group === 'stock' || cfg.group === 'prod' ? `<div class="ttotals">${d.type === 'gph' ? `<div>Подоходный: <b>${formatAmount(d.gphTax || 0)}</b></div><div>К выплате: <b>${formatAmount(d.gphNet || 0)}</b></div>` : ''}<div>${cfg.payoutDoc ? 'К выплате' : d.type === 'vacation' ? 'Отпускные' : d.type === 'sick_leave' ? 'Пособие' : d.type === 'dismissal' ? 'Компенсация' : 'Сумма'}: <b>${formatAmount(d.total)}</b></div>${d.vatTotal ? `<div>НДС: <b>${formatAmount(d.vatTotal)}</b></div>` : ''}</div>` : `<div class="ttotals">
                     ${cfg.commission ? `<div>Вознаграждение: <b>${formatAmount(d.reward || 0)}</b></div>` : ''}
@@ -2952,7 +2963,7 @@
                 <button class="btn" onclick="tMoveRow('${tab}',1)">↓</button>
                 ${d.basis ? `<button class="btn" onclick="tFillFromBasis()">Заполнить по основанию</button>` : ''}
                 ${cfg.sf && tab === 'goods' ? `<button class="btn" onclick="tRefillPrices()">Цены по типу цен</button>` : ''}
-                <span style="flex:1"></span><span style="font-size:12px;color:#777">Строк: ${rows.length}</span>
+                <span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">Строк: ${rows.length}</span>
             </div>
             <div class="table-container"><table class="ttable">
                 <thead><tr>
@@ -2979,7 +2990,7 @@
                     ${tab === 'goods' ? `<td>${inp(i, 'country')}</td><td>${inp(i, 'gtd')}</td>` : ''}
                     ${tab === 'agent' ? `<td>${inp(i, 'principal')}</td>` : ''}
                 </tr>`).join('')}
-                ${rows.length ? '' : `<tr><td colspan="14" style="text-align:center;color:#999;padding:25px">Нет строк. Нажмите «Добавить» или «Подбор».</td></tr>`}</tbody>
+                ${rows.length ? '' : `<tr><td colspan="14" style="text-align:center;color:var(--text-muted);padding:25px">Нет строк. Нажмите «Добавить» или «Подбор».</td></tr>`}</tbody>
                 ${rows.length ? `<tfoot><tr><td colspan="${(tab === 'services' || tab === 'agent' ? 1 : 0) + (corr ? 2 : 0) + 4}" style="text-align:right;font-weight:600">Итого:</td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.sum, 0))}</td><td></td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.vatSum, 0))}</td><td class="num amount">${formatAmount(rows.reduce((s, r) => s + r.total, 0))}</td><td colspan="5"></td></tr></tfoot>` : ''}
             </table></div>`;
         }
@@ -3075,17 +3086,23 @@
         function tClosePick() { document.getElementById('tPickModal').classList.remove('active'); }
 
         // ---------- Запись / проведение ----------
+        let _tSaving = false;
         function tFormSave(close) {
-            const d = tDoc; delete d._sel; tCalcDoc(d);
-            const idx = db.trade.docs.findIndex(x => x.id === d.id);
-            const copy = JSON.parse(JSON.stringify(d));
-            const isNew = idx < 0;
-            if (idx >= 0) db.trade.docs[idx] = copy; else db.trade.docs.push(copy);
-            logActivity(isNew ? 'Создание документа' : 'Изменение документа', (d.type||'') + ' ' + (d.number||''));
-            saveData(); tSelected = d.id; renderPage(); showToast('Документ записан');
-            if (close) tCloseForm(); else tRenderForm(false);
+            if (_tSaving) return;
+            _tSaving = true;
+            try {
+                const d = tDoc; delete d._sel; tCalcDoc(d);
+                const idx = db.trade.docs.findIndex(x => x.id === d.id);
+                const copy = JSON.parse(JSON.stringify(d));
+                const isNew = idx < 0;
+                if (idx >= 0) db.trade.docs[idx] = copy; else db.trade.docs.push(copy);
+                logActivity(isNew ? 'Создание документа' : 'Изменение документа', (d.type||'') + ' ' + (d.number||''));
+                saveData(); tSelected = d.id; _tDocSnapshot = JSON.stringify(d); renderPage(); showToast('Документ записан');
+                if (close) { document.getElementById('tModal').classList.remove('active'); tDoc = null; _tDocSnapshot = ''; } else tRenderForm(false);
+            } finally { _tSaving = false; }
         }
         function tFormPost(close) {
+            if (_tSaving) return;
             const err = tValidate(tDoc); if (err) { alert(err); return; }
             tApplyPrices(tDoc); tApplyMonthClose(tDoc); tApplyHR(tDoc);
             tDoc.status = 'posted'; tFormSave(close); showToast('Документ проведен');
@@ -3120,7 +3137,7 @@
             <div class="table-container"><table>
                 <thead><tr><th>Дата</th><th>Документ</th><th style="text-align:right">Дебет (наша дебиторка)</th><th style="text-align:right">Кредит (наша кредиторка)</th></tr></thead>
                 <tbody>${r.rows.map(x => `<tr><td>${formatDate(x.date)}</td><td>${esc(x.doc)}</td><td class="num">${x.dt ? formatAmount(x.dt) : ''}</td><td class="num">${x.kt ? formatAmount(x.kt) : ''}</td></tr>`).join('')}
-                ${r.rows.length ? '' : '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">Нажмите «Заполнить по данным учета»</td></tr>'}</tbody>
+                ${r.rows.length ? '' : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">Нажмите «Заполнить по данным учета»</td></tr>'}</tbody>
                 <tfoot><tr><td colspan="2" style="text-align:right;font-weight:600">Обороты за период:</td><td class="num">${formatAmount(debit)}</td><td class="num">${formatAmount(credit)}</td></tr>
                 <tr><td colspan="2" style="text-align:right;font-weight:600">Сальдо на конец:</td><td colspan="2" class="num amount">${closing >= 0 ? formatAmount(closing) + ' (в пользу ' + esc(db.trade.org.name) + ')' : formatAmount(-closing) + ' (в пользу контрагента)'}</td></tr></tfoot>
             </table></div>`;
@@ -3300,13 +3317,13 @@
                 return { c, charged, returned, paid, debt, lastDate, overdue };
             }).filter(r => r.charged || r.paid || r.returned);
             const tot = (k) => formatAmount(rows.reduce((s, r) => s + r[k], 0));
-            const overdueClass = (days) => days > 30 ? 'color:#d32f2f;font-weight:bold' : days > 14 ? 'color:#ff9800' : '';
+            const overdueClass = (days) => days > 30 ? 'color:var(--danger);font-weight:bold' : days > 14 ? 'color:var(--warning)' : '';
             const _debtGroup = group;
             window._lastDebtRows = rows; window._lastDebtGroup = group;
             return tReportBar() + `<div id="tReport"><div class="stats">
                 <div class="stat-card"><div class="stat-label">${isSale ? 'ОТГРУЖЕНО' : 'ПОСТУПИЛО'}</div><div class="stat-value">${tot('charged')}</div></div>
                 <div class="stat-card"><div class="stat-label">ОПЛАЧЕНО</div><div class="stat-value">${tot('paid')}</div></div>
-                <div class="stat-card"><div class="stat-label">${isSale ? 'ДОЛГ ПОКУПАТЕЛЕЙ' : 'ДОЛГ ПОСТАВЩИКАМ'}</div><div class="stat-value" style="color:${rows.reduce((s, r) => s + r.debt, 0) > 0 ? '#d32f2f' : '#2e7d32'}">${tot('debt')}</div></div></div>
+                <div class="stat-card"><div class="stat-label">${isSale ? 'ДОЛГ ПОКУПАТЕЛЕЙ' : 'ДОЛГ ПОСТАВЩИКАМ'}</div><div class="stat-value" style="color:${rows.reduce((s, r) => s + r.debt, 0) > 0 ? 'var(--danger)' : 'var(--success)'}">${tot('debt')}</div></div></div>
             <div style="margin-bottom:8px;text-align:right"><button class="btn" onclick="exportDebtExcel()">📥 Excel</button></div>
             <div class="table-container"><table><thead><tr><th>Контрагент</th><th>ИНН</th><th style="text-align:right">${isSale ? 'Отгружено' : 'Поступило'}</th><th style="text-align:right">Возвраты</th><th style="text-align:right">Оплачено</th><th style="text-align:right">${isSale ? 'Долг покупателя' : 'Наш долг'}</th><th style="text-align:right">Аванс</th><th>Последний док.</th><th style="text-align:right">Просрочка</th></tr></thead>
             <tbody>${rows.map(r => `<tr><td><a href="#" onclick="event.preventDefault();tFilters.contractor='${r.c.id}';selectPageById('${isSale ? 'p_sale' : 'p_purchase'}')">${esc(r.c.name)}</a></td><td>${esc(r.c.inn)}</td><td class="num">${formatAmount(r.charged)}</td><td class="num">${formatAmount(r.returned)}</td><td class="num">${formatAmount(r.paid)}</td><td class="num amount ${r.debt > 0 ? 'out' : ''}">${r.debt > 0 ? formatAmount(r.debt) : '—'}</td><td class="num">${r.debt < 0 ? formatAmount(-r.debt) : '—'}</td><td>${r.lastDate ? formatDate(r.lastDate) : '—'}</td><td class="num" style="${overdueClass(r.overdue)}">${r.overdue > 0 ? r.overdue + ' дн.' : '—'}</td></tr>`).join('')}
@@ -3330,7 +3347,7 @@
             docs.forEach(d => (d.goods || []).concat(d.services || []).forEach(r => { const k = r.nom; const n = tNom(k) || {}; map[k] = map[k] || { qty: 0, rev: 0, cost: 0 }; map[k].qty += +r.qty || 0; map[k].rev += r.total - r.vatSum; map[k].cost += (n.cost || 0) * (+r.qty || 0); }));
             const rows = Object.entries(map).map(([k, v]) => ({ n: tNom(k) || { name: '—' }, ...v, gp: v.rev - v.cost })).sort((a, b) => b.gp - a.gp);
             const T = (k) => rows.reduce((s, r) => s + r[k], 0);
-            return tReportBar() + `<div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">ВЫРУЧКА (без НДС)</div><div class="stat-value">${formatAmount(T('rev'))}</div></div><div class="stat-card"><div class="stat-label">СЕБЕСТОИМОСТЬ</div><div class="stat-value">${formatAmount(T('cost'))}</div></div><div class="stat-card"><div class="stat-label">ВАЛОВАЯ ПРИБЫЛЬ</div><div class="stat-value" style="color:${T('gp') >= 0 ? '#2e7d32' : '#d32f2f'}">${formatAmount(T('gp'))}</div></div><div class="stat-card"><div class="stat-label">РЕНТАБЕЛЬНОСТЬ</div><div class="stat-value">${T('rev') ? (T('gp') / T('rev') * 100).toFixed(1) : 0}%</div></div></div>
+            return tReportBar() + `<div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">ВЫРУЧКА (без НДС)</div><div class="stat-value">${formatAmount(T('rev'))}</div></div><div class="stat-card"><div class="stat-label">СЕБЕСТОИМОСТЬ</div><div class="stat-value">${formatAmount(T('cost'))}</div></div><div class="stat-card"><div class="stat-label">ВАЛОВАЯ ПРИБЫЛЬ</div><div class="stat-value" style="color:${T('gp') >= 0 ? 'var(--success)' : 'var(--danger)'}">${formatAmount(T('gp'))}</div></div><div class="stat-card"><div class="stat-label">РЕНТАБЕЛЬНОСТЬ</div><div class="stat-value">${T('rev') ? (T('gp') / T('rev') * 100).toFixed(1) : 0}%</div></div></div>
             <div class="table-container"><table><thead><tr><th>Номенклатура</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Выручка без НДС</th><th style="text-align:right">Себестоимость</th><th style="text-align:right">Валовая прибыль</th><th style="text-align:right">Рентабельность</th></tr></thead>
             <tbody>${rows.map(r => `<tr><td>${esc(r.n.name)}</td><td class="num">${r.qty}</td><td class="num">${formatAmount(r.rev)}</td><td class="num">${formatAmount(r.cost)}</td><td class="num amount ${r.gp < 0 ? 'out' : ''}">${formatAmount(r.gp)}</td><td class="num">${r.rev ? (r.gp / r.rev * 100).toFixed(1) : 0}%</td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="6" class="empty-state">Нет данных</td></tr>'}</tbody></table></div></div>`;
         }
@@ -3370,7 +3387,7 @@
             const q = (tFilters.search || '').toLowerCase();
             const rows = list.filter(it => !q || JSON.stringify(it).toLowerCase().includes(q));
             return `<div class="tcmd"><button class="btn primary" onclick="tRefOpen('${key}')">+ Создать</button><button class="btn" onclick="tRefExport('${key}')">Вывести список</button>
-                <input type="text" placeholder="Поиск…" value="${esc(tFilters.search)}" oninput="tFilters.search=this.value;renderPage();tFocusFilter('refSearch',true)" id="refSearch" style="padding:7px 10px;border:1px solid #ddd;border-radius:4px;margin-left:auto"></div>
+                <input type="text" placeholder="Поиск…" value="${esc(tFilters.search)}" oninput="tFilters.search=this.value;renderPage();tFocusFilter('refSearch',true)" id="refSearch" style="padding:7px 10px;border:1px solid var(--border-input);border-radius:4px;margin-left:auto"></div>
             <div class="table-container"><table><thead><tr>${R.cols.map(c => `<th>${(R.fields.find(f => f.k === c) || {}).l || c}</th>`).join('')}<th>Действия</th></tr></thead>
             <tbody>${rows.map(it => `<tr ondblclick="tRefOpen('${key}','${it.id}')">${R.cols.map(c => `<td>${esc(val(it, c))}</td>`).join('')}<td><div class="action-buttons"><button class="action-btn" onclick="tRefOpen('${key}','${it.id}')">✏️</button><button class="action-btn" onclick="tRefDel('${key}','${it.id}')">🗑️</button></div></td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="10" class="empty-state">Пусто</td></tr>'}</tbody></table></div>`;
         }
@@ -3422,7 +3439,7 @@
             const o = db.trade.org;
             const f = (k, l, wide) => `<div class="fg ${wide ? 'wide' : ''}"><label>${l}</label><input value="${esc(o[k] || '')}" onchange="db.trade.org.${k}=this.value;saveData();showToast('Сохранено')"></div>`;
             return `<div class="table-container" style="padding:20px"><div class="thead-grid">${f('name', 'Наименование организации', true)}${f('inn', 'ИНН')}${f('okpo', 'ОКПО')}${f('address', 'Юридический адрес', true)}${f('phone', 'Телефон')}${f('director', 'Руководитель')}${f('accountant', 'Главный бухгалтер')}</div>
-            <p style="color:#666;font-size:12px;margin-top:10px">Реквизиты подставляются в печатные формы (счета, накладные, акты, счета-фактуры). Банковские реквизиты берутся из раздела «Справочники → Счета».</p></div>`;
+            <p style="color:var(--text-secondary);font-size:12px;margin-top:10px">Реквизиты подставляются в печатные формы (счета, накладные, акты, счета-фактуры). Банковские реквизиты берутся из раздела «Справочники → Счета».</p></div>`;
         }
 
         // ---------- Интеграция с навигацией ----------
@@ -3652,7 +3669,7 @@
             const d = tDoc, cfg = TT[d.type];
             const nomOpts = (kinds, sel) => '<option value="">…</option>' + db.trade.nomenclature.filter(n => kinds.includes(n.kind)).map(n => `<option value="${n.id}" ${sel === n.id ? 'selected' : ''}>${esc(n.name)}</option>`).join('');
             const inp = (arr, i, f, type, extra) => `<input class="tcell" type="${type || 'text'}" ${type === 'number' ? 'step="0.01"' : ''} data-i="${i}" data-f="${f}" data-tab="${arr}" value="${esc(d[arr][i][f] == null ? '' : d[arr][i][f])}" ${extra || ''}>`;
-            const rowsBar = (arr, extraBtns) => `<div class="tcmd small"><button class="btn" onclick="tAddRow('${arr}')">Добавить</button><button class="btn" onclick="tOpenPick('${arr}')">Подбор</button><button class="btn" onclick="tDelRow('${arr}')">Удалить</button><button class="btn" onclick="tMoveRow('${arr}',-1)">↑</button><button class="btn" onclick="tMoveRow('${arr}',1)">↓</button>${extraBtns || ''}<span style="flex:1"></span><span style="font-size:12px;color:#777">Строк: ${d[arr].length}</span></div>`;
+            const rowsBar = (arr, extraBtns) => `<div class="tcmd small"><button class="btn" onclick="tAddRow('${arr}')">Добавить</button><button class="btn" onclick="tOpenPick('${arr}')">Подбор</button><button class="btn" onclick="tDelRow('${arr}')">Удалить</button><button class="btn" onclick="tMoveRow('${arr}',-1)">↑</button><button class="btn" onclick="tMoveRow('${arr}',1)">↓</button>${extraBtns || ''}<span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">Строк: ${d[arr].length}</span></div>`;
             const sumRow = (arr) => d[arr].reduce((s, r) => s + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
             const bal = (nom, wh) => stockQty(nom, wh || d.warehouse, d.date, d.id);
 
@@ -3662,10 +3679,10 @@
                 return rowsBar('materials', fill) + `<div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Материал</th><th>Кол-во</th><th>Ед.</th><th>Остаток на складе</th><th>Цена (себест.)</th><th>Сумма</th><th>Счет учета</th>${cfg.specDoc ? '' : '<th>Счет затрат</th><th>Статья затрат</th>'}</tr></thead>
                 <tbody>${d.materials.map((r, i) => { const n = tNom(r.nom) || {}; const b = cfg.specDoc ? null : bal(r.nom); return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td>
                     <td><select class="tcell" data-i="${i}" data-f="nom" data-tab="materials">${nomOpts(['Материал', 'Товар', 'Продукция'], r.nom)}</select></td>
-                    <td>${inp('materials', i, 'qty', 'number')}</td><td>${n.unit || ''}</td><td class="num" style="color:${b != null && b < (Number(r.qty) || 0) ? '#d32f2f' : '#2e7d32'}">${b == null ? '—' : b}</td>
+                    <td>${inp('materials', i, 'qty', 'number')}</td><td>${n.unit || ''}</td><td class="num" style="color:${b != null && b < (Number(r.qty) || 0) ? 'var(--danger)' : 'var(--success)'}">${b == null ? '—' : b}</td>
                     <td>${inp('materials', i, 'price', 'number')}</td><td class="num">${formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0))}</td><td>${inp('materials', i, 'account')}</td>
                     ${cfg.specDoc ? '' : `<td>${inp('materials', i, 'costAccount', 'text', 'placeholder="' + (d.costAccount || '20.01') + '"')}</td><td><select class="tcell" data-i="${i}" data-f="costItem" data-tab="materials"><option value="">—</option>${(db.trade.costItems || []).map(c => `<option value="${c.id}" ${r.costItem === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></td>`}</tr>`; }).join('')}
-                ${d.materials.length ? '' : '<tr><td colspan="' + (cfg.specDoc ? 8 : 10) + '" style="text-align:center;color:#999;padding:25px">Нет строк. «Добавить», «Подбор»' + (d.type === 'shift_report' ? ' или «Заполнить по спецификации»' : '') + '.</td></tr>'}</tbody>
+                ${d.materials.length ? '' : '<tr><td colspan="' + (cfg.specDoc ? 8 : 10) + '" style="text-align:center;color:var(--text-muted);padding:25px">Нет строк. «Добавить», «Подбор»' + (d.type === 'shift_report' ? ' или «Заполнить по спецификации»' : '') + '.</td></tr>'}</tbody>
                 ${d.materials.length ? `<tfoot><tr><td colspan="6" style="text-align:right;font-weight:600">Итого:</td><td class="num amount">${formatAmount(sumRow('materials'))}</td><td colspan="3"></td></tr></tfoot>` : ''}</table></div>`;
             }
             if (tab === 'products') {
@@ -3676,31 +3693,31 @@
                     <td>${inp('products', i, 'qty', 'number')}</td><td>${n.unit || ''}</td><td>${inp('products', i, 'price', 'number')}</td><td class="num"><b>${formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0))}</b></td>
                     <td><select class="tcell" data-i="${i}" data-f="spec" data-tab="products"><option value="">—</option>${specs.map(s => `<option value="${s.id}" ${r.spec === s.id ? 'selected' : ''}>${esc(s.specName || s.number)}</option>`).join('')}</select></td>
                     <td>${inp('products', i, 'account', 'text', 'placeholder="43"')}</td><td><select class="tcell" data-i="${i}" data-f="nomGroup" data-tab="products"><option value="">—</option>${(db.trade.nomGroups || []).map(g => `<option value="${g.id}" ${(r.nomGroup || n.nomGroup) === g.id ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></td></tr>`; }).join('')}
-                ${d.products.length ? '' : '<tr><td colspan="9" style="text-align:center;color:#999;padding:25px">Нет строк. Добавьте выпускаемую продукцию.</td></tr>'}</tbody>
+                ${d.products.length ? '' : '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:25px">Нет строк. Добавьте выпускаемую продукцию.</td></tr>'}</tbody>
                 ${d.products.length ? `<tfoot><tr><td colspan="5" style="text-align:right;font-weight:600">Итого по плановой стоимости:</td><td class="num amount">${formatAmount(sumRow('products'))}</td><td colspan="3"></td></tr></tfoot>` : ''}</table></div>`;
             }
             if (tab === 'waste') {
                 d.waste = d.waste || [];
                 return rowsBar('waste') + `<div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Номенклатура (отход)</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th><th>Счет учета</th></tr></thead>
                 <tbody>${d.waste.map((r, i) => { const n = tNom(r.nom) || {}; return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="nom" data-tab="waste">${nomOpts(['Материал', 'Товар'], r.nom)}</select></td><td>${inp('waste', i, 'qty', 'number')}</td><td>${n.unit || ''}</td><td>${inp('waste', i, 'price', 'number')}</td><td class="num">${formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0))}</td><td>${inp('waste', i, 'account', 'text', 'placeholder="10.06"')}</td></tr>`; }).join('')}
-                ${d.waste.length ? '' : '<tr><td colspan="7" style="text-align:center;color:#999;padding:25px">Возвратных отходов нет</td></tr>'}</tbody></table></div>`;
+                ${d.waste.length ? '' : '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:25px">Возвратных отходов нет</td></tr>'}</tbody></table></div>`;
             }
             if (tab === 'costacc') return `<div class="thead-grid">
                 <div class="fg"><label>Счет затрат</label><select onchange="tDoc.costAccount=this.value">${['20.01', '23', '25', '26', '44.01', '91.02'].map(a => `<option ${(d.costAccount || '20.01') === a ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
                 <div class="fg"><label>Подразделение затрат</label><select onchange="tDoc.department=this.value"><option value="">—</option>${(db.trade.departments || []).map(w => `<option value="${w.id}" ${d.department === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
                 <div class="fg"><label>Номенклатурная группа</label><select onchange="tDoc.nomGroup=this.value"><option value="">—</option>${(db.trade.nomGroups || []).map(w => `<option value="${w.id}" ${d.nomGroup === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
                 <div class="fg"><label>Статья затрат</label><select onchange="tDoc.costItem=this.value"><option value="">—</option>${(db.trade.costItems || []).map(c => `<option value="${c.id}" ${d.costItem === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>
-                <div class="fg wide2"><p style="color:#666;font-size:12px;margin-top:6px">Материалы списываются проводкой Дт ${d.costAccount || '20.01'} Кт 10.01 (счет учета из строки). Аналитика: подразделение, номенклатурная группа, статья затрат — участвует в расчете себестоимости при закрытии месяца.</p></div></div>`;
+                <div class="fg wide2"><p style="color:var(--text-secondary);font-size:12px;margin-top:6px">Материалы списываются проводкой Дт ${d.costAccount || '20.01'} Кт 10.01 (счет учета из строки). Аналитика: подразделение, номенклатурная группа, статья затрат — участвует в расчете себестоимости при закрытии месяца.</p></div></div>`;
             if (tab === 'inv') {
                 d.goods = d.goods || [];
                 return rowsBar('goods', `<button class="btn primary" onclick="tFillInventory()">Заполнить по остаткам</button>`) + `<div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Номенклатура</th><th>Ед.</th><th>Кол-во по учету</th><th>Кол-во факт</th><th>Отклонение</th><th>Цена</th><th>Сумма учет</th><th>Сумма факт</th><th>Сумма отклонения</th></tr></thead>
                 <tbody>${d.goods.map((r, i) => { const n = tNom(r.nom) || {}; const dev = (Number(r.qtyFact) || 0) - (Number(r.qtyAcc) || 0); return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td>
                     <td><select class="tcell" data-i="${i}" data-f="nom" data-tab="goods">${nomOpts(['Товар', 'Материал', 'Продукция', 'Тара'], r.nom)}</select></td><td>${n.unit || ''}</td>
-                    <td>${inp('goods', i, 'qtyAcc', 'number')}</td><td>${inp('goods', i, 'qtyFact', 'number')}</td><td class="num" style="color:${dev < 0 ? '#d32f2f' : dev > 0 ? '#2e7d32' : '#666'}"><b>${dev > 0 ? '+' : ''}${dev}</b></td>
+                    <td>${inp('goods', i, 'qtyAcc', 'number')}</td><td>${inp('goods', i, 'qtyFact', 'number')}</td><td class="num" style="color:${dev < 0 ? 'var(--danger)' : dev > 0 ? 'var(--success)' : 'var(--text-secondary)'}"><b>${dev > 0 ? '+' : ''}${dev}</b></td>
                     <td>${inp('goods', i, 'price', 'number')}</td><td class="num">${formatAmount((Number(r.qtyAcc) || 0) * (Number(r.price) || 0))}</td><td class="num">${formatAmount((Number(r.qtyFact) || 0) * (Number(r.price) || 0))}</td><td class="num">${formatAmount(dev * (Number(r.price) || 0))}</td></tr>`; }).join('')}
-                ${d.goods.length ? '' : '<tr><td colspan="10" style="text-align:center;color:#999;padding:25px">Нажмите «Заполнить по остаткам» — таблица заполнится учетными остатками склада на дату документа</td></tr>'}</tbody>
+                ${d.goods.length ? '' : '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:25px">Нажмите «Заполнить по остаткам» — таблица заполнится учетными остатками склада на дату документа</td></tr>'}</tbody>
                 ${d.goods.length ? `<tfoot><tr><td colspan="7" style="text-align:right;font-weight:600">Итого:</td><td class="num">${formatAmount(d.goods.reduce((s, r) => s + (Number(r.qtyAcc) || 0) * (Number(r.price) || 0), 0))}</td><td class="num">${formatAmount(d.goods.reduce((s, r) => s + (Number(r.qtyFact) || 0) * (Number(r.price) || 0), 0))}</td><td class="num amount">${formatAmount(d.goods.reduce((s, r) => s + ((Number(r.qtyFact) || 0) - (Number(r.qtyAcc) || 0)) * (Number(r.price) || 0), 0))}</td></tr></tfoot>` : ''}</table></div>
-                <p style="color:#666;font-size:12px;margin-top:8px">Излишки оформляются документом «Оприходование товаров», недостачи — «Списание товаров» (кнопка «Создать на основании»).</p>`;
+                <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">Излишки оформляются документом «Оприходование товаров», недостачи — «Списание товаров» (кнопка «Создать на основании»).</p>`;
             }
             if (tab === 'invhead') { d.inv = d.inv || { from: d.date, to: d.date, orderNo: '', orderDate: d.date, reason: 'Плановая инвентаризация', chair: '', members: '' }; const v = d.inv; return `<div class="thead-grid">
                 <div class="fg"><label>Период проведения с</label><input type="date" value="${v.from}" onchange="tDoc.inv.from=this.value"></div><div class="fg"><label>по</label><input type="date" value="${v.to}" onchange="tDoc.inv.to=this.value"></div>
@@ -3709,25 +3726,25 @@
                 <div class="fg wide"><label>Председатель комиссии</label><input value="${esc(v.chair)}" onchange="tDoc.inv.chair=this.value"></div>
                 <div class="fg wide2"><label>Члены комиссии</label><input value="${esc(v.members)}" onchange="tDoc.inv.members=this.value" placeholder="через запятую"></div></div>`; }
             if (tab === 'kit') { const compSum = sumRow('goods'); const q = Number(d.kitQty) || 1; return `<div class="table-container" style="padding:15px"><table class="nob" style="width:auto"><tr><td style="padding:6px 12px"><b>Комплект:</b></td><td>${esc(tNomName(d.kitNom))}</td></tr><tr><td style="padding:6px 12px"><b>Количество:</b></td><td>${q}</td></tr><tr><td style="padding:6px 12px"><b>Стоимость комплектующих:</b></td><td>${formatAmount(compSum)}</td></tr><tr><td style="padding:6px 12px"><b>Себестоимость 1 комплекта:</b></td><td><b>${formatAmount(compSum / q)}</b></td></tr><tr><td style="padding:6px 12px"><b>Остаток комплекта на складе:</b></td><td>${bal(d.kitNom)}</td></tr></table>
-                <p style="color:#666;font-size:12px;margin-top:10px">${d.opKind === 'Разукомплектация' ? 'При разукомплектации комплект списывается со склада, а комплектующие (вкладка «Товары») оприходуются.' : 'При комплектации комплектующие (вкладка «Товары») списываются, а комплект оприходуется по суммарной стоимости комплектующих.'}</p></div>`; }
+                <p style="color:var(--text-secondary);font-size:12px;margin-top:10px">${d.opKind === 'Разукомплектация' ? 'При разукомплектации комплект списывается со склада, а комплектующие (вкладка «Товары») оприходуются.' : 'При комплектации комплектующие (вкладка «Товары») списываются, а комплект оприходуется по суммарной стоимости комплектующих.'}</p></div>`; }
             if (tab === 'prices') {
                 d.prices = d.prices || [];
                 const isPlan = d.type === 'plan_prices';
                 const fill = `<button class="btn" onclick="tFillPrices()">Заполнить всей номенклатурой</button>`;
-                return `<div class="tcmd small"><button class="btn" onclick="tDoc.prices.push({nom:'',oldPrice:0,price:0});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('prices')">Удалить</button>${fill}<span style="flex:1"></span><span style="font-size:12px;color:#777">Строк: ${d.prices.length}</span></div>
+                return `<div class="tcmd small"><button class="btn" onclick="tDoc.prices.push({nom:'',oldPrice:0,price:0});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('prices')">Удалить</button>${fill}<span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">Строк: ${d.prices.length}</span></div>
                 <div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Номенклатура</th><th>Ед.</th><th>${isPlan ? 'Текущая плановая цена' : 'Текущая цена'}</th><th>${isPlan ? 'Новая плановая цена' : 'Новая цена'}</th><th>Изменение</th></tr></thead>
-                <tbody>${d.prices.map((r, i) => { const n = tNom(r.nom) || {}; const ch = (Number(r.price) || 0) - (Number(r.oldPrice) || 0); return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="nom" data-tab="prices">${nomOpts(isPlan ? ['Продукция'] : ['Товар', 'Продукция', 'Услуга', 'Материал', 'Тара'], r.nom)}</select></td><td>${n.unit || ''}</td><td class="num">${formatAmount(r.oldPrice)}</td><td>${inp('prices', i, 'price', 'number')}</td><td class="num" style="color:${ch > 0 ? '#2e7d32' : ch < 0 ? '#d32f2f' : '#666'}">${ch > 0 ? '+' : ''}${formatAmount(ch)} ${r.oldPrice ? '(' + (ch / r.oldPrice * 100).toFixed(1) + '%)' : ''}</td></tr>`; }).join('')}
-                ${d.prices.length ? '' : '<tr><td colspan="6" style="text-align:center;color:#999;padding:25px">Добавьте номенклатуру или заполните списком</td></tr>'}</tbody></table></div>
-                <p style="color:#666;font-size:12px;margin-top:8px">При проведении новые ${isPlan ? 'плановые цены записываются в карточки продукции и используются в «Отчете производства за смену»' : 'цены записываются в карточки номенклатуры (тип цен «' + esc((db.trade.priceTypes.find(p => p.id === d.priceType) || {}).name || '') + '») и подставляются в документы продаж'}.</p>`;
+                <tbody>${d.prices.map((r, i) => { const n = tNom(r.nom) || {}; const ch = (Number(r.price) || 0) - (Number(r.oldPrice) || 0); return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="nom" data-tab="prices">${nomOpts(isPlan ? ['Продукция'] : ['Товар', 'Продукция', 'Услуга', 'Материал', 'Тара'], r.nom)}</select></td><td>${n.unit || ''}</td><td class="num">${formatAmount(r.oldPrice)}</td><td>${inp('prices', i, 'price', 'number')}</td><td class="num" style="color:${ch > 0 ? 'var(--success)' : ch < 0 ? 'var(--danger)' : 'var(--text-secondary)'}">${ch > 0 ? '+' : ''}${formatAmount(ch)} ${r.oldPrice ? '(' + (ch / r.oldPrice * 100).toFixed(1) + '%)' : ''}</td></tr>`; }).join('')}
+                ${d.prices.length ? '' : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:25px">Добавьте номенклатуру или заполните списком</td></tr>'}</tbody></table></div>
+                <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">При проведении новые ${isPlan ? 'плановые цены записываются в карточки продукции и используются в «Отчете производства за смену»' : 'цены записываются в карточки номенклатуры (тип цен «' + esc((db.trade.priceTypes.find(p => p.id === d.priceType) || {}).name || '') + '») и подставляются в документы продаж'}.</p>`;
             }
             if (tab === 'wip') {
                 d.wip = d.wip || [];
                 return `<div class="tcmd small"><button class="btn" onclick="tDoc.wip.push({nomGroup:'',sum:0});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('wip')">Удалить</button><button class="btn" onclick="tDoc.wip=(db.trade.nomGroups||[]).map(g=>({nomGroup:g.id,sum:0}));tRecalcAll()">Заполнить по номенклатурным группам</button></div>
                 <div class="table-container"><table class="ttable"><thead><tr><th>№</th><th>Номенклатурная группа</th><th>Подразделение</th><th>Сумма НЗП на конец месяца</th></tr></thead>
                 <tbody>${d.wip.map((r, i) => `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="nomGroup" data-tab="wip"><option value="">—</option>${(db.trade.nomGroups || []).map(g => `<option value="${g.id}" ${r.nomGroup === g.id ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></td><td>${esc(tDep(d.department))}</td><td>${inp('wip', i, 'sum', 'number')}</td></tr>`).join('')}
-                ${d.wip.length ? '' : '<tr><td colspan="4" style="text-align:center;color:#999;padding:25px">Укажите остатки незавершенного производства по группам</td></tr>'}</tbody>
+                ${d.wip.length ? '' : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:25px">Укажите остатки незавершенного производства по группам</td></tr>'}</tbody>
                 <tfoot><tr><td colspan="3" style="text-align:right;font-weight:600">Итого НЗП:</td><td class="num amount">${formatAmount(d.wip.reduce((s, r) => s + (Number(r.sum) || 0), 0))}</td></tr></tfoot></table></div>
-                <p style="color:#666;font-size:12px;margin-top:8px">Сумма НЗП исключается из затрат месяца при расчете фактической себестоимости (закрытие месяца).</p>`;
+                <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">Сумма НЗП исключается из затрат месяца при расчете фактической себестоимости (закрытие месяца).</p>`;
             }
             if (tab === 'calc') return tRenderCalcTab();
             return tRenderHRTab(tab);
@@ -3804,8 +3821,8 @@
             const d = tDoc; d.period = d.period || d.date.slice(0, 7);
             const res = tCalcMonth(d.period, d.department, d.id); d.calc = res;
             if (!res.length) return '<div class="empty-state">За ' + d.period + ' нет производственных затрат и выпуска. Проверьте требования-накладные и отчеты производства за смену.</div>';
-            return `<div class="tcmd small"><span style="font-size:13px;color:#555">Расчет выполняется автоматически по проведенным документам месяца. Проведите документ — разница план/факт будет отражена проводками Дт 43 Кт 20.01.</span></div>
-            ${res.map(gr => `<div class="table-container" style="margin-bottom:12px"><div style="padding:10px 15px;background:#f5f5f5;border-bottom:1px solid #ddd"><b>Номенклатурная группа: ${esc(tNG(gr.nomGroup))}</b></div>
+            return `<div class="tcmd small"><span style="font-size:13px;color:var(--text-secondary)">Расчет выполняется автоматически по проведенным документам месяца. Проведите документ — разница план/факт будет отражена проводками Дт 43 Кт 20.01.</span></div>
+            ${res.map(gr => `<div class="table-container" style="margin-bottom:12px"><div style="padding:10px 15px;background:var(--bg-table-head);border-bottom:1px solid var(--border-input)"><b>Номенклатурная группа: ${esc(tNG(gr.nomGroup))}</b></div>
             <table><thead><tr><th>Показатель</th><th style="text-align:right">Сумма</th></tr></thead><tbody>
                 <tr><td>Материальные затраты (Дт 20.01 Кт 10)</td><td class="num">${formatAmount(gr.materials)}</td></tr>
                 <tr><td>Услуги сторонних организаций (Дт 20.01 Кт 60)</td><td class="num">${formatAmount(gr.services)}</td></tr>
@@ -3815,10 +3832,10 @@
                 <tr><td><b>Затраты, относимые на выпуск</b></td><td class="num"><b>${formatAmount(gr.toDistribute)}</b></td></tr>
                 <tr><td>Выпуск по плановой себестоимости (Дт 43 Кт 20.01)</td><td class="num">${formatAmount(gr.planOut)}</td></tr>
                 <tr><td>Коэффициент распределения (факт / план)</td><td class="num">${gr.k.toFixed(4)}</td></tr>
-                <tr style="background:#fafafa"><td><b>Корректировка выпуска до фактической себестоимости</b></td><td class="num amount ${gr.corr < 0 ? '' : 'out'}"><b>${gr.corr >= 0 ? '+' : ''}${formatAmount(gr.corr)}</b></td></tr>
+                <tr style="background:var(--bg-table-hover)"><td><b>Корректировка выпуска до фактической себестоимости</b></td><td class="num amount ${gr.corr < 0 ? '' : 'out'}"><b>${gr.corr >= 0 ? '+' : ''}${formatAmount(gr.corr)}</b></td></tr>
             </tbody></table>
             ${gr.productList.length ? `<table style="margin-top:6px"><thead><tr><th>Продукция</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Плановая цена</th><th style="text-align:right">Плановая сумма</th><th style="text-align:right">Фактическая цена</th><th style="text-align:right">Фактическая сумма</th><th style="text-align:right">Корректировка</th></tr></thead><tbody>
-            ${gr.productList.map(p => `<tr><td>${esc(tNomName(p.nom))}</td><td class="num">${p.qty}</td><td class="num">${formatAmount(p.planPrice)}</td><td class="num">${formatAmount(p.plan)}</td><td class="num"><b>${formatAmount(p.factPrice)}</b></td><td class="num">${formatAmount(p.fact)}</td><td class="num">${p.corr >= 0 ? '+' : ''}${formatAmount(p.corr)}</td></tr>`).join('')}</tbody></table>` : '<p style="padding:10px;color:#999">Выпуска продукции по группе нет — затраты остаются в НЗП.</p>'}</div>`).join('')}`;
+            ${gr.productList.map(p => `<tr><td>${esc(tNomName(p.nom))}</td><td class="num">${p.qty}</td><td class="num">${formatAmount(p.planPrice)}</td><td class="num">${formatAmount(p.plan)}</td><td class="num"><b>${formatAmount(p.factPrice)}</b></td><td class="num">${formatAmount(p.fact)}</td><td class="num">${p.corr >= 0 ? '+' : ''}${formatAmount(p.corr)}</td></tr>`).join('')}</tbody></table>` : '<p style="padding:10px;color:var(--text-muted)">Выпуска продукции по группе нет — затраты остаются в НЗП.</p>'}</div>`).join('')}`;
         }
         function tApplyMonthClose(d) {
             if (d.type !== 'month_close') return;
@@ -3916,9 +3933,9 @@
             return `<div class="filters"><div class="filter-group"><label>На дату</label><input type="date" value="${sFilters.date}" onchange="sFilters.date=this.value;renderPage()"></div>
             <div class="filter-group"><label>Склад</label><select onchange="sFilters.wh=this.value;renderPage()"><option value="">Все склады</option>${db.trade.warehouses.map(w => `<option value="${w.id}" ${sFilters.wh === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
             <button class="quick-btn" onclick="sFilters={wh:'',date:''};renderPage()">Сбросить</button><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
-            <div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">ПОЗИЦИЙ НА ОСТАТКЕ</div><div class="stat-value">${bal.length}</div></div><div class="stat-card"><div class="stat-label">СТОИМОСТЬ ЗАПАСОВ</div><div class="stat-value">${formatAmount(totalSum)}</div></div><div class="stat-card"><div class="stat-label">ОТРИЦАТЕЛЬНЫХ ОСТАТКОВ</div><div class="stat-value" style="color:${bal.some(b => b.qty < 0) ? '#d32f2f' : '#2e7d32'}">${bal.filter(b => b.qty < 0).length}</div></div></div>
-            ${Object.entries(byWh).map(([wh, list]) => `<div class="table-container" style="margin-bottom:15px"><div style="padding:10px 15px;background:#f5f5f5;border-bottom:1px solid #ddd"><b>${esc(tWh(wh))}</b></div><table><thead><tr><th>Артикул</th><th>Номенклатура</th><th>Вид</th><th>Счет</th><th>Ед.</th><th style="text-align:right">Количество</th><th style="text-align:right">Средняя себестоимость</th><th style="text-align:right">Сумма</th></tr></thead>
-            <tbody>${list.map(b => { const n = tNom(b.nom) || {}; return `<tr style="${b.qty < 0 ? 'color:#d32f2f' : ''}"><td>${esc(n.article || '')}</td><td><a href="#" onclick="event.preventDefault();sMoveNom='${b.nom}';selectPageById('r_stock_moves')">${esc(n.name || b.nom)}</a></td><td>${n.kind || ''}</td><td>${n.account || ''}</td><td>${n.unit || ''}</td><td class="num"><b>${b.qty}</b></td><td class="num">${formatAmount(b.qty ? b.sum / b.qty : 0)}</td><td class="num amount">${formatAmount(b.sum)}</td></tr>`; }).join('')}</tbody>
+            <div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">ПОЗИЦИЙ НА ОСТАТКЕ</div><div class="stat-value">${bal.length}</div></div><div class="stat-card"><div class="stat-label">СТОИМОСТЬ ЗАПАСОВ</div><div class="stat-value">${formatAmount(totalSum)}</div></div><div class="stat-card"><div class="stat-label">ОТРИЦАТЕЛЬНЫХ ОСТАТКОВ</div><div class="stat-value" style="color:${bal.some(b => b.qty < 0) ? 'var(--danger)' : 'var(--success)'}">${bal.filter(b => b.qty < 0).length}</div></div></div>
+            ${Object.entries(byWh).map(([wh, list]) => `<div class="table-container" style="margin-bottom:15px"><div style="padding:10px 15px;background:var(--bg-table-head);border-bottom:1px solid var(--border-input)"><b>${esc(tWh(wh))}</b></div><table><thead><tr><th>Артикул</th><th>Номенклатура</th><th>Вид</th><th>Счет</th><th>Ед.</th><th style="text-align:right">Количество</th><th style="text-align:right">Средняя себестоимость</th><th style="text-align:right">Сумма</th></tr></thead>
+            <tbody>${list.map(b => { const n = tNom(b.nom) || {}; return `<tr style="${b.qty < 0 ? 'color:var(--danger)' : ''}"><td>${esc(n.article || '')}</td><td><a href="#" onclick="event.preventDefault();sMoveNom='${b.nom}';selectPageById('r_stock_moves')">${esc(n.name || b.nom)}</a></td><td>${n.kind || ''}</td><td>${n.account || ''}</td><td>${n.unit || ''}</td><td class="num"><b>${b.qty}</b></td><td class="num">${formatAmount(b.qty ? b.sum / b.qty : 0)}</td><td class="num amount">${formatAmount(b.sum)}</td></tr>`; }).join('')}</tbody>
             <tfoot><tr><td colspan="7" style="text-align:right;font-weight:600">Итого по складу:</td><td class="num amount">${formatAmount(list.reduce((s, b) => s + b.sum, 0))}</td></tr></tfoot></table></div>`).join('')}
             ${bal.length ? '' : '<div class="empty-state">Остатков нет. Оформите «Ввод начальных остатков» или «Поступление».</div>'}</div>`;
         }
@@ -3937,9 +3954,9 @@
             <button class="quick-btn" onclick="rFilters={from:'',to:''};sFilters.wh='';sMoveNom='';renderPage()">Сбросить</button><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
             <div id="tReport"><div class="table-container"><table><thead><tr><th rowspan="2">Номенклатура</th><th rowspan="2">Склад</th><th colspan="2" style="text-align:center">Начальный остаток</th><th colspan="2" style="text-align:center">Приход</th><th colspan="2" style="text-align:center">Расход</th><th colspan="2" style="text-align:center">Конечный остаток</th></tr>
             <tr><th style="text-align:right">Кол-во</th><th style="text-align:right">Сумма</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Сумма</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Сумма</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Сумма</th></tr></thead>
-            <tbody>${rows.map(r => `<tr><td>${esc(tNomName(r.nom))}</td><td>${esc(tWh(r.wh))}</td><td class="num">${r.open || ''}</td><td class="num">${r.open ? formatAmount(r.openS) : ''}</td><td class="num" style="color:#2e7d32">${r.inQ || ''}</td><td class="num">${r.inQ ? formatAmount(r.inS) : ''}</td><td class="num" style="color:#d32f2f">${r.outQ || ''}</td><td class="num">${r.outQ ? formatAmount(r.outS) : ''}</td><td class="num"><b>${Math.round(r.close * 1000) / 1000}</b></td><td class="num amount">${formatAmount(r.closeS)}</td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="10" class="empty-state">Движений нет</td></tr>'}</tbody>
+            <tbody>${rows.map(r => `<tr><td>${esc(tNomName(r.nom))}</td><td>${esc(tWh(r.wh))}</td><td class="num">${r.open || ''}</td><td class="num">${r.open ? formatAmount(r.openS) : ''}</td><td class="num" style="color:var(--success)">${r.inQ || ''}</td><td class="num">${r.inQ ? formatAmount(r.inS) : ''}</td><td class="num" style="color:var(--danger)">${r.outQ || ''}</td><td class="num">${r.outQ ? formatAmount(r.outS) : ''}</td><td class="num"><b>${Math.round(r.close * 1000) / 1000}</b></td><td class="num amount">${formatAmount(r.closeS)}</td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="10" class="empty-state">Движений нет</td></tr>'}</tbody>
             <tfoot><tr><td colspan="3" style="text-align:right;font-weight:600">Итого:</td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.openS, 0))}</td><td></td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.inS, 0))}</td><td></td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.outS, 0))}</td><td></td><td class="num amount">${formatAmount(rows.reduce((s, r) => s + r.closeS, 0))}</td></tr></tfoot></table></div>
-            ${sMoveNom ? `<h3 style="margin:18px 0 8px">Карточка движения: ${esc(tNomName(sMoveNom))}</h3><div class="table-container"><table><thead><tr><th>Дата</th><th>Документ</th><th>Склад</th><th style="text-align:right">Приход</th><th style="text-align:right">Расход</th><th style="text-align:right">Сумма</th></tr></thead><tbody>${detail.map(m => `<tr ondblclick="tOpen('${m.docId}')" style="cursor:pointer"><td>${formatDate(m.date)}</td><td>${esc(TT[m.type].short)} ${esc(m.number)}</td><td>${esc(tWh(m.wh))}</td><td class="num" style="color:#2e7d32">${m.qty > 0 ? m.qty : ''}</td><td class="num" style="color:#d32f2f">${m.qty < 0 ? -m.qty : ''}</td><td class="num">${formatAmount(m.sum)}</td></tr>`).join('')}</tbody></table></div>` : ''}</div>`;
+            ${sMoveNom ? `<h3 style="margin:18px 0 8px">Карточка движения: ${esc(tNomName(sMoveNom))}</h3><div class="table-container"><table><thead><tr><th>Дата</th><th>Документ</th><th>Склад</th><th style="text-align:right">Приход</th><th style="text-align:right">Расход</th><th style="text-align:right">Сумма</th></tr></thead><tbody>${detail.map(m => `<tr ondblclick="tOpen('${m.docId}')" style="cursor:pointer"><td>${formatDate(m.date)}</td><td>${esc(TT[m.type].short)} ${esc(m.number)}</td><td>${esc(tWh(m.wh))}</td><td class="num" style="color:var(--success)">${m.qty > 0 ? m.qty : ''}</td><td class="num" style="color:var(--danger)">${m.qty < 0 ? -m.qty : ''}</td><td class="num">${formatAmount(m.sum)}</td></tr>`).join('')}</tbody></table></div>` : ''}</div>`;
         }
         function renderOSV() {
             const from = rFilters.from, to = rFilters.to; const accs = {};
@@ -3949,7 +3966,7 @@
             const rows = Object.values(accs).sort((a, b) => a.a.localeCompare(b.a));
             return tReportBar() + `<div id="tReport"><div class="table-container"><table><thead><tr><th>Счет</th><th>Наименование</th><th style="text-align:right">Сальдо на начало (Дт)</th><th style="text-align:right">Оборот Дт</th><th style="text-align:right">Оборот Кт</th><th style="text-align:right">Сальдо на конец (Дт)</th></tr></thead>
             <tbody>${rows.map(r => `<tr><td><b>${r.a}</b></td><td>${names[r.a] || 'Запасы'}</td><td class="num">${formatAmount(r.open)}</td><td class="num">${formatAmount(r.dt)}</td><td class="num">${formatAmount(r.kt)}</td><td class="num amount">${formatAmount(r.open + r.dt - r.kt)}</td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="6" class="empty-state">Нет данных</td></tr>'}</tbody>
-            <tfoot><tr><td colspan="2"><b>Итого</b></td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.open, 0))}</td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.dt, 0))}</td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.kt, 0))}</td><td class="num amount">${formatAmount(rows.reduce((s, r) => s + r.open + r.dt - r.kt, 0))}</td></tr></tfoot></table></div><p style="color:#666;font-size:12px;margin-top:8px">Ведомость строится по счетам учета номенклатуры (10 — материалы, 41 — товары, 43 — готовая продукция) на основании проведенных складских, торговых и производственных документов.</p></div>`;
+            <tfoot><tr><td colspan="2"><b>Итого</b></td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.open, 0))}</td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.dt, 0))}</td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.kt, 0))}</td><td class="num amount">${formatAmount(rows.reduce((s, r) => s + r.open + r.dt - r.kt, 0))}</td></tr></tfoot></table></div><p style="color:var(--text-secondary);font-size:12px;margin-top:8px">Ведомость строится по счетам учета номенклатуры (10 — материалы, 41 — товары, 43 — готовая продукция) на основании проведенных складских, торговых и производственных документов.</p></div>`;
         }
         function renderStockJournal() {
             const types = Object.keys(TT).filter(t => ['stock', 'prod'].includes(TT[t].group));
@@ -3974,23 +3991,23 @@
             const closed = db.trade.docs.find(d => d.type === 'month_close' && d.status === 'posted' && d.period === sel);
             return `<div class="filters"><div class="filter-group"><label>Месяц</label><select onchange="rFilters.month=this.value;renderPage()">${(months.length ? months : [sel]).map(m => `<option value="${m}" ${m === sel ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
             <div class="filter-group"><label>&nbsp;</label><span class="badge ${closed ? 'posted' : 'draft'}">${closed ? 'Месяц закрыт: ' + closed.number : 'Месяц не закрыт'}</span></div>${closed ? '' : `<div class="filter-group"><label>&nbsp;</label><button class="btn primary" onclick="tCreate('month_close', null, {period:'${sel}', date:'${sel}-${String(new Date(sel.slice(0, 4), sel.slice(5), 0).getDate()).padStart(2, '0')}'})">Выполнить закрытие месяца</button></div>`}<span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
-            <div id="tReport">${calc.length ? calc.map(g => `<div class="table-container" style="margin-bottom:12px"><div style="padding:10px 15px;background:#f5f5f5;border-bottom:1px solid #ddd"><b>${esc(tNG(g.nomGroup))}</b></div><table><thead><tr><th>Статья затрат</th><th style="text-align:right">Сумма</th><th style="text-align:right">Доля</th></tr></thead><tbody>
+            <div id="tReport">${calc.length ? calc.map(g => `<div class="table-container" style="margin-bottom:12px"><div style="padding:10px 15px;background:var(--bg-table-head);border-bottom:1px solid var(--border-input)"><b>${esc(tNG(g.nomGroup))}</b></div><table><thead><tr><th>Статья затрат</th><th style="text-align:right">Сумма</th><th style="text-align:right">Доля</th></tr></thead><tbody>
             <tr><td>Материальные затраты</td><td class="num">${formatAmount(g.materials)}</td><td class="num">${g.total ? (g.materials / g.total * 100).toFixed(1) : 0}%</td></tr><tr><td>Услуги сторонних организаций</td><td class="num">${formatAmount(g.services)}</td><td class="num">${g.total ? (g.services / g.total * 100).toFixed(1) : 0}%</td></tr><tr><td>Возвратные отходы (уменьшают затраты)</td><td class="num">−${formatAmount(g.waste)}</td><td></td></tr>
-            <tr style="background:#fafafa"><td><b>Итого затрат</b></td><td class="num amount">${formatAmount(g.total)}</td><td></td></tr><tr><td>Выпуск по плановой себестоимости</td><td class="num">${formatAmount(g.planOut)}</td><td></td></tr><tr><td>НЗП на конец месяца</td><td class="num">${formatAmount(g.wip)}</td><td></td></tr><tr><td><b>Отклонение факт − план</b></td><td class="num" style="color:${g.corr > 0 ? '#d32f2f' : '#2e7d32'}"><b>${g.corr >= 0 ? '+' : ''}${formatAmount(g.corr)}</b></td><td></td></tr></tbody></table></div>`).join('') : '<div class="empty-state">За ' + sel + ' производственных затрат нет</div>'}</div>`;
+            <tr style="background:var(--bg-table-hover)"><td><b>Итого затрат</b></td><td class="num amount">${formatAmount(g.total)}</td><td></td></tr><tr><td>Выпуск по плановой себестоимости</td><td class="num">${formatAmount(g.planOut)}</td><td></td></tr><tr><td>НЗП на конец месяца</td><td class="num">${formatAmount(g.wip)}</td><td></td></tr><tr><td><b>Отклонение факт − план</b></td><td class="num" style="color:${g.corr > 0 ? 'var(--danger)' : 'var(--success)'}"><b>${g.corr >= 0 ? '+' : ''}${formatAmount(g.corr)}</b></td><td></td></tr></tbody></table></div>`).join('') : '<div class="empty-state">За ' + sel + ' производственных затрат нет</div>'}</div>`;
         }
         function renderWipReport() {
             const months = [...new Set(db.trade.docs.filter(d => ['requisition', 'shift_report', 'from_processing'].includes(d.type) && d.status === 'posted').map(d => d.date.slice(0, 7)))].sort();
             let carry = {}; const rows = [];
             months.forEach(m => { tCalcMonth(m, '').forEach(g => { const open = carry[g.nomGroup] || 0; const closed = db.trade.docs.find(d => d.type === 'month_close' && d.status === 'posted' && d.period === m); const close = closed ? g.wip : Math.max(0, open + g.total - g.planOut); rows.push({ m, g: g.nomGroup, open, costs: g.total, out: closed ? g.toDistribute : g.planOut, close, closed: !!closed }); carry[g.nomGroup] = close; }); });
-            return `<div class="filters"><span style="color:#666;font-size:13px">Состояние незавершенного производства по месяцам и номенклатурным группам (сальдо счета 20.01)</span><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
+            return `<div class="filters"><span style="color:var(--text-secondary);font-size:13px">Состояние незавершенного производства по месяцам и номенклатурным группам (сальдо счета 20.01)</span><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
             <div id="tReport"><div class="table-container"><table><thead><tr><th>Месяц</th><th>Номенклатурная группа</th><th style="text-align:right">НЗП на начало</th><th style="text-align:right">Затраты за месяц</th><th style="text-align:right">Списано на выпуск</th><th style="text-align:right">НЗП на конец</th><th>Закрытие месяца</th></tr></thead>
             <tbody>${rows.map(r => `<tr><td>${r.m}</td><td>${esc(tNG(r.g))}</td><td class="num">${formatAmount(r.open)}</td><td class="num">${formatAmount(r.costs)}</td><td class="num">${formatAmount(r.out)}</td><td class="num amount">${formatAmount(r.close)}</td><td><span class="badge ${r.closed ? 'posted' : 'draft'}">${r.closed ? 'выполнено' : 'не выполнено'}</span></td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="7" class="empty-state">Производственных операций нет</td></tr>'}</tbody></table></div></div>`;
         }
         function renderCostCalcReport() {
             const closes = db.trade.docs.filter(d => d.type === 'month_close' && d.status === 'posted').sort((a, b) => (b.period || '').localeCompare(a.period || ''));
-            return `<div class="filters"><span style="color:#666;font-size:13px">Фактическая себестоимость по результатам закрытия месяца. Для расчета проведите документ «Закрытие месяца» (Производство → Закрытие месяца).</span><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
+            return `<div class="filters"><span style="color:var(--text-secondary);font-size:13px">Фактическая себестоимость по результатам закрытия месяца. Для расчета проведите документ «Закрытие месяца» (Производство → Закрытие месяца).</span><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
             <div id="tReport">${closes.length ? closes.map(d => `<h3 style="margin:10px 0">Период ${d.period} — ${esc(d.number)}${d.department ? ', ' + esc(tDep(d.department)) : ''} <button class="btn" style="margin-left:10px" onclick="tPrint('${d.id}','Справка-расчет «Калькуляция себестоимости»')">🖨 Справка-расчет</button></h3>
-            ${(d.calc || []).map(g => `<div class="table-container" style="margin-bottom:12px"><div style="padding:8px 15px;background:#f5f5f5;border-bottom:1px solid #ddd"><b>${esc(tNG(g.nomGroup))}</b> — затраты ${formatAmount(g.toDistribute)}, план ${formatAmount(g.planOut)}, коэффициент ${g.k.toFixed(4)}</div><table><thead><tr><th>Продукция</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Плановая цена</th><th style="text-align:right">Фактическая цена</th><th style="text-align:right">Плановая сумма</th><th style="text-align:right">Фактическая сумма</th><th style="text-align:right">Отклонение</th></tr></thead><tbody>${g.productList.map(p => `<tr><td>${esc(tNomName(p.nom))}</td><td class="num">${p.qty}</td><td class="num">${formatAmount(p.planPrice)}</td><td class="num"><b>${formatAmount(p.factPrice)}</b></td><td class="num">${formatAmount(p.plan)}</td><td class="num">${formatAmount(p.fact)}</td><td class="num" style="color:${p.corr > 0 ? '#d32f2f' : '#2e7d32'}">${p.corr >= 0 ? '+' : ''}${formatAmount(p.corr)}</td></tr>`).join('')}</tbody></table></div>`).join('')}`).join('') : '<div class="empty-state">Закрытие месяца еще не выполнялось</div>'}</div>`;
+            ${(d.calc || []).map(g => `<div class="table-container" style="margin-bottom:12px"><div style="padding:8px 15px;background:var(--bg-table-head);border-bottom:1px solid var(--border-input)"><b>${esc(tNG(g.nomGroup))}</b> — затраты ${formatAmount(g.toDistribute)}, план ${formatAmount(g.planOut)}, коэффициент ${g.k.toFixed(4)}</div><table><thead><tr><th>Продукция</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Плановая цена</th><th style="text-align:right">Фактическая цена</th><th style="text-align:right">Плановая сумма</th><th style="text-align:right">Фактическая сумма</th><th style="text-align:right">Отклонение</th></tr></thead><tbody>${g.productList.map(p => `<tr><td>${esc(tNomName(p.nom))}</td><td class="num">${p.qty}</td><td class="num">${formatAmount(p.planPrice)}</td><td class="num"><b>${formatAmount(p.factPrice)}</b></td><td class="num">${formatAmount(p.plan)}</td><td class="num">${formatAmount(p.fact)}</td><td class="num" style="color:${p.corr > 0 ? 'var(--danger)' : 'var(--success)'}">${p.corr >= 0 ? '+' : ''}${formatAmount(p.corr)}</td></tr>`).join('')}</tbody></table></div>`).join('')}`).join('') : '<div class="empty-state">Закрытие месяца еще не выполнялось</div>'}</div>`;
         }
         function renderStockPage(page) {
             switch (page) {
@@ -4236,7 +4253,7 @@
             const depOpts = (sel) => '<option value="">Все подразделения</option>' + (db.trade.departments || []).map(w => `<option value="${w.id}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
             let h = '';
             if (cfg.empDoc) { const e = tEmp(d.employee) || {}; h += `<div class="fg wide"><label>Сотрудник *</label><div style="display:flex;gap:6px"><select onchange="tDoc.employee=this.value;tOnEmployeeChange();tRenderForm(false)" style="flex:1">${empOpts(d.employee, d.type !== 'hire')}</select><button class="btn" title="Новый сотрудник" onclick="tQuickRef('employees')">+</button></div></div>
-                ${d.employee ? `<div class="fg wide"><label>Текущие данные</label><div style="font-size:12px;color:#555;padding:6px 0">${esc(tDep(e.department))} · ${esc(tPos(e.position))} · оклад ${formatAmount(e.salary)} · ${esc(e.status || '')}${e.hireDate ? ' с ' + formatDate(e.hireDate) : ''}</div></div>` : ''}`; }
+                ${d.employee ? `<div class="fg wide"><label>Текущие данные</label><div style="font-size:12px;color:var(--text-secondary);padding:6px 0">${esc(tDep(e.department))} · ${esc(tPos(e.position))} · оклад ${formatAmount(e.salary)} · ${esc(e.status || '')}${e.hireDate ? ' с ' + formatDate(e.hireDate) : ''}</div></div>` : ''}`; }
             if (cfg.monthDoc) h += `<div class="fg"><label>Месяц начисления *</label><input type="month" value="${d.period || d.date.slice(0, 7)}" onchange="tDoc.period=this.value;tDoc.rows=[];tRenderForm(false)"></div><div class="fg"><label>Подразделение</label><select onchange="tDoc.department=this.value;tDoc.rows=[];tRenderForm(false)">${depOpts(d.department)}</select></div>`;
             if (cfg.payoutDoc) h += `<div class="fg"><label>${d.type === 'payout_bank' ? 'Банковский счет организации' : 'Касса'}</label><select onchange="tDoc.payAccount=this.value">${db.accounts.filter(a => a.type === (d.type === 'payout_bank' ? 'bank' : 'cash')).map(a => `<option value="${a.id}" ${d.payAccount === a.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></div>`;
             return h;
@@ -4268,10 +4285,10 @@
                 <div class="fg"><label>Трудовой договор №</label><input value="${esc(d.contractNo || '')}" onchange="tDoc.contractNo=this.value"></div>
                 <div class="fg"><label>Дата договора</label><input type="date" value="${d.contractDate || d.date}" onchange="tDoc.contractDate=this.value"></div>
                 <div class="fg wide"><label>Условия работы</label><input value="${esc(d.conditions || 'Нормальные, полный рабочий день')}" onchange="tDoc.conditions=this.value"></div>
-                <div class="fg wide2"><p style="color:#666;font-size:12px">При проведении данные (подразделение, должность, оклад, график, дата приема) записываются в карточку сотрудника; сотрудник получает статус «Работает».</p></div></div>`;
+                <div class="fg wide2"><p style="color:var(--text-secondary);font-size:12px">При проведении данные (подразделение, должность, оклад, график, дата приема) записываются в карточку сотрудника; сотрудник получает статус «Работает».</p></div></div>`;
             if (tab === 'hr_transfer') return `<div class="thead-grid">
                 <div class="fg"><label>Дата перевода</label><input type="date" value="${d.date}" onchange="tDoc.date=this.value"></div>
-                <div class="fg wide"><label>Было</label><div style="font-size:12px;color:#555;padding:6px 0">${esc(tDep(e.department))} · ${esc(tPos(e.position))} · оклад ${formatAmount(e.salary)}, премия ${formatAmount(e.bonus)}</div></div>
+                <div class="fg wide"><label>Было</label><div style="font-size:12px;color:var(--text-secondary);padding:6px 0">${esc(tDep(e.department))} · ${esc(tPos(e.position))} · оклад ${formatAmount(e.salary)}, премия ${formatAmount(e.bonus)}</div></div>
                 <div class="fg"><label>&nbsp;</label></div>
                 <div class="fg"><label>Новое подразделение</label><select onchange="tDoc.department=this.value">${depOpts(d.department)}</select></div>
                 <div class="fg"><label>Новая должность</label><select onchange="tDoc.position=this.value">${posOpts(d.position)}</select></div>
@@ -4288,7 +4305,7 @@
                 <div class="fg"><label>Компенсация за отпуск</label><input value="${formatAmount(d.total)}" disabled></div>
                 <div class="fg"><label>Выходное пособие (окладов)</label><input type="number" step="1" min="0" value="${d.severanceMonths || 0}" onchange="tDoc.severanceMonths=this.value"></div>
                 <div class="fg wide2"><label>Документ-основание</label><input value="${esc(d.baseDoc || '')}" onchange="tDoc.baseDoc=this.value" placeholder="Заявление от …"></div>
-                <div class="fg wide2"><p style="color:#666;font-size:12px">Компенсация за неиспользованный отпуск начисляется в документе «Начисление зарплаты» за месяц увольнения. При проведении сотрудник получает статус «Уволен».</p></div></div>`;
+                <div class="fg wide2"><p style="color:var(--text-secondary);font-size:12px">Компенсация за неиспользованный отпуск начисляется в документе «Начисление зарплаты» за месяц увольнения. При проведении сотрудник получает статус «Уволен».</p></div></div>`;
             if (tab === 'vacation') return `<div class="thead-grid">
                 <div class="fg"><label>Отпуск с *</label><input type="date" value="${d.absFrom || ''}" onchange="tDoc.absFrom=this.value;tRecalcAll()"></div>
                 <div class="fg"><label>по *</label><input type="date" value="${d.absTo || ''}" onchange="tDoc.absTo=this.value;tRecalcAll()"></div>
@@ -4298,7 +4315,7 @@
                 <div class="fg"><label>Сумма отпускных</label><input value="${formatAmount(d.total)}" disabled></div>
                 <div class="fg"><label>Дата выплаты</label><input type="date" value="${d.payDate || ''}" onchange="tDoc.payDate=this.value"></div>
                 <div class="fg"><label>Выплата</label><select onchange="tDoc.payWith=this.value">${['С зарплатой за месяц', 'В межрасчетный период'].map(o => `<option ${(d.payWith || 'С зарплатой за месяц') === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
-                <div class="fg wide2"><p style="color:#666;font-size:12px">Средний дневной заработок = (оклад + премия) / ${P.avgMonthDays}. Отпускные начисляются в «Начислении зарплаты» за месяц, на который приходится отпуск; рабочие дни отпуска исключаются из отработанных.</p></div></div>`;
+                <div class="fg wide2"><p style="color:var(--text-secondary);font-size:12px">Средний дневной заработок = (оклад + премия) / ${P.avgMonthDays}. Отпускные начисляются в «Начислении зарплаты» за месяц, на который приходится отпуск; рабочие дни отпуска исключаются из отработанных.</p></div></div>`;
             if (tab === 'sick') return `<div class="thead-grid">
                 <div class="fg"><label>Освобождение от работы с *</label><input type="date" value="${d.absFrom || ''}" onchange="tDoc.absFrom=this.value;tRecalcAll()"></div>
                 <div class="fg"><label>по *</label><input type="date" value="${d.absTo || ''}" onchange="tDoc.absTo=this.value;tRecalcAll()"></div>
@@ -4308,13 +4325,13 @@
                 <div class="fg"><label>Средний дневной заработок</label><input type="number" step="0.01" value="${d.avgDay || 0}" onchange="tDoc.avgDay=this.value;tDoc.avgDayManual=true;tRecalcAll()"></div>
                 <div class="fg"><label>Сумма пособия</label><input value="${formatAmount(d.total)}" disabled></div>
                 <div class="fg"><label>Медучреждение</label><input value="${esc(d.clinic || '')}" onchange="tDoc.clinic=this.value"></div>
-                <div class="fg wide2"><p style="color:#666;font-size:12px">Пособие рассчитывается по рабочим дням: средний дневной (оклад + премия) / 21.6 × дни × %. Пособие облагается подоходным налогом, взносами в Соцфонд не облагается.</p></div></div>`;
-            if (tab === 'timesheet') { d.rows = d.rows || []; const r = d.period ? tMonthRange(d.period) : null; return `<div class="tcmd small"><button class="btn primary" onclick="tFillTimesheet()">Заполнить</button><button class="btn" onclick="tDoc.rows.push({employee:'',norm:0,days:0,hours:0,vac:0,sick:0,absent:0});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('rows')">Удалить</button><span style="flex:1"></span><span style="font-size:12px;color:#777">${r ? 'Норма рабочих дней (5-дневка): ' + tWorkDays(r.from, r.to, 5) : ''}</span></div>
+                <div class="fg wide2"><p style="color:var(--text-secondary);font-size:12px">Пособие рассчитывается по рабочим дням: средний дневной (оклад + премия) / 21.6 × дни × %. Пособие облагается подоходным налогом, взносами в Соцфонд не облагается.</p></div></div>`;
+            if (tab === 'timesheet') { d.rows = d.rows || []; const r = d.period ? tMonthRange(d.period) : null; return `<div class="tcmd small"><button class="btn primary" onclick="tFillTimesheet()">Заполнить</button><button class="btn" onclick="tDoc.rows.push({employee:'',norm:0,days:0,hours:0,vac:0,sick:0,absent:0});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('rows')">Удалить</button><span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">${r ? 'Норма рабочих дней (5-дневка): ' + tWorkDays(r.from, r.to, 5) : ''}</span></div>
                 <div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Сотрудник</th><th>Подразделение</th><th>Норма дней</th><th>Отработано дней</th><th>Часов</th><th>Отпуск (дн.)</th><th>Болезнь (дн.)</th><th>Неявки (дн.)</th></tr></thead>
                 <tbody>${d.rows.map((row, i) => `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="employee" data-tab="rows"><option value="">…</option>${(db.trade.employees || []).map(x => `<option value="${x.id}" ${row.employee === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td><td>${esc(tDep((tEmp(row.employee) || {}).department))}</td><td>${inp(i, 'norm', 'number')}</td><td>${inp(i, 'days', 'number')}</td><td>${inp(i, 'hours', 'number')}</td><td>${inp(i, 'vac', 'number')}</td><td>${inp(i, 'sick', 'number')}</td><td>${inp(i, 'absent', 'number')}</td></tr>`).join('')}
-                ${d.rows.length ? '' : '<tr><td colspan="9" style="text-align:center;color:#999;padding:25px">Нажмите «Заполнить» — табель заполнится по графикам, отпускам и больничным</td></tr>'}</tbody></table></div>
-                <p style="color:#666;font-size:12px;margin-top:8px">Проведенный табель используется документом «Начисление зарплаты» как источник отработанных дней.</p>`; }
-            if (tab === 'payroll') { d.rows = d.rows || []; return `<div class="tcmd small"><button class="btn primary" onclick="tFillPayroll()">Заполнить</button><button class="btn" onclick="tRecalcAll()">Пересчитать</button><button class="btn" onclick="tDoc.rows.push({employee:'',other:0,advance:0});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('rows')">Удалить</button><span style="flex:1"></span><span style="font-size:12px;color:#777">Сотрудников: ${d.rows.length}</span></div>
+                ${d.rows.length ? '' : '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:25px">Нажмите «Заполнить» — табель заполнится по графикам, отпускам и больничным</td></tr>'}</tbody></table></div>
+                <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">Проведенный табель используется документом «Начисление зарплаты» как источник отработанных дней.</p>`; }
+            if (tab === 'payroll') { d.rows = d.rows || []; return `<div class="tcmd small"><button class="btn primary" onclick="tFillPayroll()">Заполнить</button><button class="btn" onclick="tRecalcAll()">Пересчитать</button><button class="btn" onclick="tDoc.rows.push({employee:'',other:0,advance:0});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('rows')">Удалить</button><span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">Сотрудников: ${d.rows.length}</span></div>
                 <div class="table-container" style="overflow-x:auto"><table class="ttable" style="min-width:1500px"><thead><tr><th>№</th><th style="min-width:180px">Сотрудник</th><th>Должность</th><th>Оклад</th><th>Норма дн.</th><th title="Пусто — автоматически по табелю/графику">Отработано</th><th>По окладу</th><th title="Пусто — по карточке пропорционально дням">Премия</th><th>Отпускные</th><th>Больничный</th><th>Компенс.</th><th>Прочее</th><th><b>Начислено</b></th><th>Вычет</th><th>Соцфонд ${P.sfEmployee}%</th><th>Подоходный ${P.incomeTax}%</th><th title="Пусто — по карточке">Удержания</th><th>Аванс</th><th><b>К выплате</b></th></tr></thead>
                 <tbody>${d.rows.map((row, i) => `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td>
                     <td><select class="tcell" data-i="${i}" data-f="employee" data-tab="rows"><option value="">…</option>${(db.trade.employees || []).map(x => `<option value="${x.id}" ${row.employee === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td>
@@ -4323,25 +4340,25 @@
                     <td>${inp(i, 'bonusManual', 'number', 'placeholder="' + formatAmount(row.bonus) + '" style="width:90px"')}</td><td class="num">${formatAmount(row.vacPay)}</td><td class="num">${formatAmount(row.sickPay)}</td><td class="num">${formatAmount(row.compensation)}</td>
                     <td>${inp(i, 'other', 'number', 'style="width:90px"')}</td><td class="num"><b>${formatAmount(row.gross)}</b></td><td class="num">${formatAmount(row.deduction)}</td><td class="num">${formatAmount(row.sfEmp)}</td><td class="num">${formatAmount(row.tax)}</td>
                     <td>${inp(i, 'otherDedManual', 'number', 'placeholder="' + formatAmount(row.otherDed) + '" style="width:90px"')}</td><td>${inp(i, 'advance', 'number', 'style="width:90px"')}</td><td class="num amount"><b>${formatAmount(row.net)}</b></td></tr>`).join('')}
-                ${d.rows.length ? '' : '<tr><td colspan="19" style="text-align:center;color:#999;padding:25px">Нажмите «Заполнить» — попадут все работающие сотрудники за месяц</td></tr>'}</tbody>
+                ${d.rows.length ? '' : '<tr><td colspan="19" style="text-align:center;color:var(--text-muted);padding:25px">Нажмите «Заполнить» — попадут все работающие сотрудники за месяц</td></tr>'}</tbody>
                 ${d.rows.length ? `<tfoot><tr><td colspan="6" style="text-align:right;font-weight:600">Итого:</td><td class="num">${formatAmount(d.rows.reduce((s, r) => s + r.salaryPay, 0))}</td><td class="num">${formatAmount(d.rows.reduce((s, r) => s + r.bonus, 0))}</td><td class="num">${formatAmount(d.rows.reduce((s, r) => s + r.vacPay, 0))}</td><td class="num">${formatAmount(d.rows.reduce((s, r) => s + r.sickPay, 0))}</td><td class="num">${formatAmount(d.rows.reduce((s, r) => s + r.compensation, 0))}</td><td class="num">${formatAmount(d.rows.reduce((s, r) => s + r.other, 0))}</td><td class="num"><b>${formatAmount(d.total)}</b></td><td class="num">${formatAmount(d.rows.reduce((s, r) => s + r.deduction, 0))}</td><td class="num">${formatAmount(d.sfEmpTotal)}</td><td class="num">${formatAmount(d.taxTotal)}</td><td class="num">${formatAmount(d.rows.reduce((s, r) => s + r.otherDed, 0))}</td><td class="num">${formatAmount(d.rows.reduce((s, r) => s + r.advance, 0))}</td><td class="num amount"><b>${formatAmount(d.netTotal)}</b></td></tr></tfoot>` : ''}</table></div>
-                <p style="color:#666;font-size:12px;margin-top:8px">Подоходный налог = (Начислено − Соцфонд работника − вычеты) × ${P.incomeTax}%. Вычет: стандартный ${P.stdDeduction} сом + ${P.dependentDeduction} сом за иждивенца. Пустые поля «Отработано», «Премия», «Удержания» считаются автоматически.</p>`; }
+                <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">Подоходный налог = (Начислено − Соцфонд работника − вычеты) × ${P.incomeTax}%. Вычет: стандартный ${P.stdDeduction} сом + ${P.dependentDeduction} сом за иждивенца. Пустые поля «Отработано», «Премия», «Удержания» считаются автоматически.</p>`; }
             if (tab === 'payroll_tax') { const rows = d.rows || []; const S = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0); const sfBase = S('gross') - S('sickPay'); return `<div class="table-container"><table><thead><tr><th>Показатель</th><th style="text-align:right">Ставка</th><th style="text-align:right">База</th><th style="text-align:right">Сумма</th><th>Проводка</th></tr></thead><tbody>
                 <tr><td>Взносы в Пенсионный фонд (работодатель)</td><td class="num">${P.sfEmployerPF}%</td><td class="num">${formatAmount(sfBase)}</td><td class="num">${formatAmount(sfBase * P.sfEmployerPF / 100)}</td><td>Дт 26/20.01/44.01 Кт 69.01</td></tr>
                 <tr><td>Взносы в ФОМС (работодатель)</td><td class="num">${P.sfEmployerFOMS}%</td><td class="num">${formatAmount(sfBase)}</td><td class="num">${formatAmount(sfBase * P.sfEmployerFOMS / 100)}</td><td>Дт 26/20.01/44.01 Кт 69.03</td></tr>
                 <tr><td>Фонд оздоровления трудящихся</td><td class="num">${P.sfEmployerFOT}%</td><td class="num">${formatAmount(sfBase)}</td><td class="num">${formatAmount(sfBase * P.sfEmployerFOT / 100)}</td><td>Дт 26/20.01/44.01 Кт 69.04</td></tr>
-                <tr style="background:#fafafa"><td><b>Итого взносы работодателя</b></td><td class="num"><b>${P.sfEmployer}%</b></td><td class="num">${formatAmount(sfBase)}</td><td class="num amount"><b>${formatAmount(d.sfEmployerTotal || 0)}</b></td><td></td></tr>
+                <tr style="background:var(--bg-table-hover)"><td><b>Итого взносы работодателя</b></td><td class="num"><b>${P.sfEmployer}%</b></td><td class="num">${formatAmount(sfBase)}</td><td class="num amount"><b>${formatAmount(d.sfEmployerTotal || 0)}</b></td><td></td></tr>
                 <tr><td>Удержано с работников: Пенсионный фонд</td><td class="num">${P.sfEmployeePF}%</td><td class="num">${formatAmount(sfBase)}</td><td class="num">${formatAmount(sfBase * P.sfEmployeePF / 100)}</td><td>Дт 70 Кт 69.01</td></tr>
                 <tr><td>Удержано с работников: ГНПФ (накопительный)</td><td class="num">${P.sfEmployeeGNPF}%</td><td class="num">${formatAmount(sfBase)}</td><td class="num">${formatAmount(sfBase * P.sfEmployeeGNPF / 100)}</td><td>Дт 70 Кт 69.02</td></tr>
                 <tr><td>Подоходный налог</td><td class="num">${P.incomeTax}%</td><td class="num">${formatAmount(S('taxBase'))}</td><td class="num">${formatAmount(d.taxTotal || 0)}</td><td>Дт 70 Кт 68.01</td></tr>
-                <tr style="background:#fafafa"><td><b>Всего к перечислению в бюджет и Соцфонд</b></td><td></td><td></td><td class="num amount"><b>${formatAmount((d.sfEmployerTotal || 0) + (d.sfEmpTotal || 0) + (d.taxTotal || 0))}</b></td><td></td></tr></tbody></table></div>
+                <tr style="background:var(--bg-table-hover)"><td><b>Всего к перечислению в бюджет и Соцфонд</b></td><td></td><td></td><td class="num amount"><b>${formatAmount((d.sfEmployerTotal || 0) + (d.sfEmpTotal || 0) + (d.taxTotal || 0))}</b></td><td></td></tr></tbody></table></div>
                 <div class="stats" style="margin-top:12px"><div class="stat-card"><div class="stat-label">ФОТ (НАЧИСЛЕНО)</div><div class="stat-value">${formatAmount(d.total)}</div></div><div class="stat-card"><div class="stat-label">К ВЫПЛАТЕ</div><div class="stat-value">${formatAmount(d.netTotal || 0)}</div></div><div class="stat-card"><div class="stat-label">ПОЛНАЯ СТОИМОСТЬ ДЛЯ РАБОТОДАТЕЛЯ</div><div class="stat-value">${formatAmount((d.total || 0) + (d.sfEmployerTotal || 0))}</div></div></div>`; }
-            if (tab === 'payout') { d.rows = d.rows || []; const isBank = d.type === 'payout_bank'; return `<div class="tcmd small"><button class="btn primary" onclick="tFillPayout()">Заполнить по начислению</button><button class="btn" onclick="tDoc.rows.push({employee:'',sum:0,account:''});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('rows')">Удалить</button><span style="flex:1"></span><span style="font-size:12px;color:#777">Сотрудников: ${d.rows.length}</span></div>
+            if (tab === 'payout') { d.rows = d.rows || []; const isBank = d.type === 'payout_bank'; return `<div class="tcmd small"><button class="btn primary" onclick="tFillPayout()">Заполнить по начислению</button><button class="btn" onclick="tDoc.rows.push({employee:'',sum:0,account:''});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('rows')">Удалить</button><span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">Сотрудников: ${d.rows.length}</span></div>
                 <div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Сотрудник</th><th>Подразделение</th>${isBank ? '<th>Счет / карта</th>' : ''}<th>Сумма к выплате</th>${isBank ? '' : '<th>Подпись в получении</th>'}</tr></thead>
-                <tbody>${d.rows.map((row, i) => `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="employee" data-tab="rows"><option value="">…</option>${(db.trade.employees || []).map(x => `<option value="${x.id}" ${row.employee === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td><td>${esc(tDep((tEmp(row.employee) || {}).department))}</td>${isBank ? `<td>${inp(i, 'account')}</td>` : ''}<td>${inp(i, 'sum', 'number')}</td>${isBank ? '' : '<td style="color:#bbb">______________</td>'}</tr>`).join('')}
-                ${d.rows.length ? '' : '<tr><td colspan="6" style="text-align:center;color:#999;padding:25px">Нажмите «Заполнить по начислению» — подставятся суммы к выплате из проведенного начисления за месяц</td></tr>'}</tbody>
+                <tbody>${d.rows.map((row, i) => `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="employee" data-tab="rows"><option value="">…</option>${(db.trade.employees || []).map(x => `<option value="${x.id}" ${row.employee === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td><td>${esc(tDep((tEmp(row.employee) || {}).department))}</td>${isBank ? `<td>${inp(i, 'account')}</td>` : ''}<td>${inp(i, 'sum', 'number')}</td>${isBank ? '' : '<td style="color:var(--text-muted)">______________</td>'}</tr>`).join('')}
+                ${d.rows.length ? '' : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:25px">Нажмите «Заполнить по начислению» — подставятся суммы к выплате из проведенного начисления за месяц</td></tr>'}</tbody>
                 ${d.rows.length ? `<tfoot><tr><td colspan="${isBank ? 4 : 3}" style="text-align:right;font-weight:600">Итого к выплате:</td><td class="num amount">${formatAmount(d.total)}</td>${isBank ? '' : '<td></td>'}</tr></tfoot>` : ''}</table></div>
-                <p style="color:#666;font-size:12px;margin-top:8px">После проведения используйте «Создать на основании → ${isBank ? 'Списание с расчетного счета' : 'Расходный кассовый ордер'}» — оплата попадет в раздел «Банк и касса» (Дт 70 Кт ${isBank ? '51' : '50'}).</p>`; }
+                <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">После проведения используйте «Создать на основании → ${isBank ? 'Списание с расчетного счета' : 'Расходный кассовый ордер'}» — оплата попадет в раздел «Банк и касса» (Дт 70 Кт ${isBank ? '51' : '50'}).</p>`; }
             if (tab === 'gph') return `<div class="thead-grid">
                 <div class="fg wide"><label>Исполнитель (физическое лицо) *</label><input value="${esc(d.gphPerson || '')}" onchange="tDoc.gphPerson=this.value" placeholder="ФИО"></div>
                 <div class="fg"><label>ИНН исполнителя</label><input value="${esc(d.gphInn || '')}" onchange="tDoc.gphInn=this.value"></div>
@@ -4353,7 +4370,7 @@
                 <div class="fg"><label>Подоходный налог ${P.incomeTax}%</label><input value="${formatAmount(d.gphTax)}" disabled></div>
                 <div class="fg"><label>К выплате</label><input value="${formatAmount(d.gphNet)}" disabled></div>
                 <div class="fg"><label>Дата акта</label><input type="date" value="${d.actDate || ''}" onchange="tDoc.actDate=this.value"></div>
-                <div class="fg wide2"><p style="color:#666;font-size:12px">Вознаграждение по ГПХ облагается подоходным налогом у источника выплаты; взносы в Соцфонд исполнитель уплачивает самостоятельно. Проводки: Дт ${d.costAccount || '26'} Кт 76.10; Дт 76.10 Кт 68.01.</p></div></div>`;
+                <div class="fg wide2"><p style="color:var(--text-secondary);font-size:12px">Вознаграждение по ГПХ облагается подоходным налогом у источника выплаты; взносы в Соцфонд исполнитель уплачивает самостоятельно. Проводки: Дт ${d.costAccount || '26'} Кт 76.10; Дт 76.10 Кт 68.01.</p></div></div>`;
             return '';
         }
 
@@ -4452,7 +4469,7 @@
             const rows = tPayrollRowsFor(hFilters.month || tPayrollMonths()[0] || ''); const P = db.trade.payroll; const S = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
             const byDep = {}; rows.forEach(r => { const k = (tEmp(r.employee) || {}).department || 'none'; (byDep[k] = byDep[k] || []).push(r); });
             return tMonthBar() + `<div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">НАЧИСЛЕНО (ФОТ)</div><div class="stat-value">${formatAmount(S('gross'))}</div></div><div class="stat-card"><div class="stat-label">УДЕРЖАНО</div><div class="stat-value out">${formatAmount(S('sfEmp') + S('tax') + S('otherDed'))}</div></div><div class="stat-card"><div class="stat-label">К ВЫПЛАТЕ</div><div class="stat-value">${formatAmount(S('net'))}</div></div><div class="stat-card"><div class="stat-label">ВЗНОСЫ РАБОТОДАТЕЛЯ</div><div class="stat-value">${formatAmount(S('sfEmployer'))}</div></div></div>
-            ${Object.entries(byDep).map(([dep, list]) => `<div class="table-container" style="margin-bottom:12px;overflow-x:auto"><div style="padding:8px 15px;background:#f5f5f5;border-bottom:1px solid #ddd"><b>${esc(tDep(dep))}</b></div><table><thead><tr><th>Таб. №</th><th>Сотрудник</th><th>Должность</th><th style="text-align:right">Дни</th><th style="text-align:right">По окладу</th><th style="text-align:right">Премия</th><th style="text-align:right">Отпуск</th><th style="text-align:right">Больн.</th><th style="text-align:right">Прочее</th><th style="text-align:right">Начислено</th><th style="text-align:right">Соцфонд</th><th style="text-align:right">Подоходный</th><th style="text-align:right">Удерж.</th><th style="text-align:right">К выплате</th></tr></thead>
+            ${Object.entries(byDep).map(([dep, list]) => `<div class="table-container" style="margin-bottom:12px;overflow-x:auto"><div style="padding:8px 15px;background:var(--bg-table-head);border-bottom:1px solid var(--border-input)"><b>${esc(tDep(dep))}</b></div><table><thead><tr><th>Таб. №</th><th>Сотрудник</th><th>Должность</th><th style="text-align:right">Дни</th><th style="text-align:right">По окладу</th><th style="text-align:right">Премия</th><th style="text-align:right">Отпуск</th><th style="text-align:right">Больн.</th><th style="text-align:right">Прочее</th><th style="text-align:right">Начислено</th><th style="text-align:right">Соцфонд</th><th style="text-align:right">Подоходный</th><th style="text-align:right">Удерж.</th><th style="text-align:right">К выплате</th></tr></thead>
             <tbody>${list.map(r => { const e = tEmp(r.employee) || {}; return `<tr ondblclick="tOpen('${r.doc.id}')" style="cursor:pointer"><td>${esc(e.tabNo || '')}</td><td>${esc(e.name || '')}</td><td>${esc(tPos(r.position))}</td><td class="num">${r.workedDays}/${r.normDays}</td><td class="num">${formatAmount(r.salaryPay)}</td><td class="num">${formatAmount(r.bonus)}</td><td class="num">${formatAmount(r.vacPay)}</td><td class="num">${formatAmount(r.sickPay)}</td><td class="num">${formatAmount(r.other + r.compensation)}</td><td class="num"><b>${formatAmount(r.gross)}</b></td><td class="num">${formatAmount(r.sfEmp)}</td><td class="num">${formatAmount(r.tax)}</td><td class="num">${formatAmount(r.otherDed + r.advance)}</td><td class="num amount">${formatAmount(r.net)}</td></tr>`; }).join('')}</tbody>
             <tfoot><tr><td colspan="9" style="text-align:right;font-weight:600">Итого по подразделению:</td><td class="num"><b>${formatAmount(list.reduce((s, r) => s + r.gross, 0))}</b></td><td class="num">${formatAmount(list.reduce((s, r) => s + r.sfEmp, 0))}</td><td class="num">${formatAmount(list.reduce((s, r) => s + r.tax, 0))}</td><td class="num">${formatAmount(list.reduce((s, r) => s + r.otherDed + r.advance, 0))}</td><td class="num amount"><b>${formatAmount(list.reduce((s, r) => s + r.net, 0))}</b></td></tr></tfoot></table></div>`).join('')}
             ${rows.length ? '' : '<div class="empty-state">За выбранный месяц нет проведенного начисления зарплаты</div>'}</div>`;
@@ -4466,17 +4483,17 @@
         function renderFotReport() {
             const months = tPayrollMonths().slice().reverse(); const deps = db.trade.departments || [];
             const cell = (m, dep) => { const rows = tPayrollRowsFor(m).filter(r => (tEmp(r.employee) || {}).department === dep.id); return { n: rows.length, gross: rows.reduce((s, r) => s + r.gross, 0), emp: rows.reduce((s, r) => s + r.sfEmployer, 0) }; };
-            return `<div class="filters"><span style="color:#666;font-size:13px">Фонд оплаты труда по подразделениям и месяцам (по проведенным начислениям)</span><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
+            return `<div class="filters"><span style="color:var(--text-secondary);font-size:13px">Фонд оплаты труда по подразделениям и месяцам (по проведенным начислениям)</span><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
             <div id="tReport"><div class="table-container"><table><thead><tr><th>Подразделение</th>${months.map(m => `<th style="text-align:right">${m}</th>`).join('')}<th style="text-align:right">Итого</th></tr></thead><tbody>
-            ${deps.map(dep => { const cells = months.map(m => cell(m, dep)); const tot = cells.reduce((s, c) => s + c.gross, 0); return `<tr><td><b>${esc(dep.name)}</b><br><span style="color:#777;font-size:12px">${esc(dep.kind || '')}</span></td>${cells.map(c => `<td class="num">${c.n ? formatAmount(c.gross) + '<br><span style="color:#777;font-size:11px">' + c.n + ' чел., ср. ' + formatAmount(c.gross / c.n) + '</span>' : '—'}</td>`).join('')}<td class="num amount">${formatAmount(tot)}</td></tr>`; }).join('')}
-            <tr style="background:#fafafa"><td><b>Итого ФОТ</b></td>${months.map(m => `<td class="num"><b>${formatAmount(tPayrollRowsFor(m).reduce((s, r) => s + r.gross, 0))}</b></td>`).join('')}<td class="num amount"><b>${formatAmount(months.reduce((s, m) => s + tPayrollRowsFor(m).reduce((q, r) => q + r.gross, 0), 0))}</b></td></tr>
+            ${deps.map(dep => { const cells = months.map(m => cell(m, dep)); const tot = cells.reduce((s, c) => s + c.gross, 0); return `<tr><td><b>${esc(dep.name)}</b><br><span style="color:var(--text-muted);font-size:12px">${esc(dep.kind || '')}</span></td>${cells.map(c => `<td class="num">${c.n ? formatAmount(c.gross) + '<br><span style="color:var(--text-muted);font-size:11px">' + c.n + ' чел., ср. ' + formatAmount(c.gross / c.n) + '</span>' : '—'}</td>`).join('')}<td class="num amount">${formatAmount(tot)}</td></tr>`; }).join('')}
+            <tr style="background:var(--bg-table-hover)"><td><b>Итого ФОТ</b></td>${months.map(m => `<td class="num"><b>${formatAmount(tPayrollRowsFor(m).reduce((s, r) => s + r.gross, 0))}</b></td>`).join('')}<td class="num amount"><b>${formatAmount(months.reduce((s, m) => s + tPayrollRowsFor(m).reduce((q, r) => q + r.gross, 0), 0))}</b></td></tr>
             <tr><td>Взносы работодателя</td>${months.map(m => `<td class="num">${formatAmount(tPayrollRowsFor(m).reduce((s, r) => s + r.sfEmployer, 0))}</td>`).join('')}<td class="num">${formatAmount(months.reduce((s, m) => s + tPayrollRowsFor(m).reduce((q, r) => q + r.sfEmployer, 0), 0))}</td></tr>
             <tr><td><b>Полная стоимость труда</b></td>${months.map(m => `<td class="num"><b>${formatAmount(tPayrollRowsFor(m).reduce((s, r) => s + r.gross + r.sfEmployer, 0))}</b></td>`).join('')}<td class="num amount"><b>${formatAmount(months.reduce((s, m) => s + tPayrollRowsFor(m).reduce((q, r) => q + r.gross + r.sfEmployer, 0), 0))}</b></td></tr></tbody></table></div>${months.length ? '' : '<div class="empty-state">Нет проведенных начислений</div>'}</div>`;
         }
         function renderTaxesReport() {
             const P = db.trade.payroll; const months = tPayrollMonths().slice().reverse();
             const gph = (m) => db.trade.docs.filter(d => d.type === 'gph' && d.status === 'posted' && d.date.slice(0, 7) === m).reduce((s, d) => s + (d.gphTax || 0), 0);
-            return `<div class="filters"><span style="color:#666;font-size:13px">Налоги и взносы с фонда оплаты труда по месяцам: подоходный ${P.incomeTax}%, Соцфонд работника ${P.sfEmployee}%, работодателя ${P.sfEmployer}%</span><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
+            return `<div class="filters"><span style="color:var(--text-secondary);font-size:13px">Налоги и взносы с фонда оплаты труда по месяцам: подоходный ${P.incomeTax}%, Соцфонд работника ${P.sfEmployee}%, работодателя ${P.sfEmployer}%</span><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
             <div id="tReport"><div class="table-container"><table><thead><tr><th>Месяц</th><th style="text-align:right">ФОТ</th><th style="text-align:right">Подоходный (зарплата)</th><th style="text-align:right">Подоходный (ГПХ)</th><th style="text-align:right">Соцфонд работников</th><th style="text-align:right">Соцфонд работодателя</th><th style="text-align:right">Всего к перечислению</th><th style="text-align:right">Нагрузка на ФОТ</th></tr></thead><tbody>
             ${months.map(m => { const rows = tPayrollRowsFor(m); const S = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0); const tot = S('tax') + gph(m) + S('sfEmp') + S('sfEmployer'); return `<tr><td><b>${m}</b></td><td class="num">${formatAmount(S('gross'))}</td><td class="num">${formatAmount(S('tax'))}</td><td class="num">${formatAmount(gph(m))}</td><td class="num">${formatAmount(S('sfEmp'))}</td><td class="num">${formatAmount(S('sfEmployer'))}</td><td class="num amount">${formatAmount(tot)}</td><td class="num">${S('gross') ? (tot / S('gross') * 100).toFixed(1) : 0}%</td></tr>`; }).join('')}${months.length ? '' : '<tr><td colspan="8" class="empty-state">Нет данных</td></tr>'}</tbody></table></div>
             <h3 style="margin:18px 0 8px">Ставки (Настройки зарплаты)</h3><div class="table-container"><table><tbody><tr><td>Подоходный налог</td><td class="num">${P.incomeTax}%</td><td>Стандартный вычет</td><td class="num">${P.stdDeduction} сом</td><td>Вычет на иждивенца</td><td class="num">${P.dependentDeduction} сом</td></tr><tr><td>Соцфонд работника</td><td class="num">${P.sfEmployee}% (ПФ ${P.sfEmployeePF}% + ГНПФ ${P.sfEmployeeGNPF}%)</td><td>Соцфонд работодателя</td><td class="num">${P.sfEmployer}% (ПФ ${P.sfEmployerPF}% + ФОМС ${P.sfEmployerFOMS}% + ФОТ ${P.sfEmployerFOT}%)</td><td>Минимальная зарплата</td><td class="num">${P.minSalary} сом</td></tr></tbody></table></div></div>`;
@@ -4484,9 +4501,9 @@
         function renderStaffReport() {
             const emps = db.trade.employees || [], pos = db.trade.positions || [];
             const active = emps.filter(e => e.status !== 'Уволен');
-            return `<div class="filters"><span style="color:#666;font-size:13px">Штатное расписание (форма Т-3) и список сотрудников с личными карточками (Т-2)</span><span style="flex:1"></span><button class="btn" onclick="selectPageById('ref_employees')">Справочник «Сотрудники»</button><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
+            return `<div class="filters"><span style="color:var(--text-secondary);font-size:13px">Штатное расписание (форма Т-3) и список сотрудников с личными карточками (Т-2)</span><span style="flex:1"></span><button class="btn" onclick="selectPageById('ref_employees')">Справочник «Сотрудники»</button><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
             <div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">РАБОТАЕТ</div><div class="stat-value">${active.length}</div></div><div class="stat-card"><div class="stat-label">ШТАТНЫХ ЕДИНИЦ</div><div class="stat-value">${pos.reduce((s, p) => s + (Number(p.count) || 0), 0)}</div></div><div class="stat-card"><div class="stat-label">ВАКАНСИЙ</div><div class="stat-value">${Math.max(0, pos.reduce((s, p) => s + (Number(p.count) || 0), 0) - active.length)}</div></div><div class="stat-card"><div class="stat-label">ФОТ ПО ОКЛАДАМ / МЕС.</div><div class="stat-value">${formatAmount(active.reduce((s, e) => s + (Number(e.salary) || 0) + (Number(e.bonus) || 0), 0))}</div></div></div>
-            <h3 style="margin:10px 0">Штатное расписание</h3><div class="table-container"><table><thead><tr><th>Подразделение</th><th>Должность</th><th style="text-align:right">Штатных единиц</th><th style="text-align:right">Занято</th><th style="text-align:right">Оклад по ШР</th><th style="text-align:right">Месячный фонд</th></tr></thead><tbody>${pos.map(p => { const n = active.filter(e => e.position === p.id).length; return `<tr><td>${esc(tDep(p.department))}</td><td>${esc(p.name)}</td><td class="num">${p.count || 0}</td><td class="num" style="color:${n < (p.count || 0) ? '#d32f2f' : '#2e7d32'}">${n}</td><td class="num">${formatAmount(p.baseSalary)}</td><td class="num">${formatAmount((p.count || 0) * (p.baseSalary || 0))}</td></tr>`; }).join('')}</tbody></table></div>
+            <h3 style="margin:10px 0">Штатное расписание</h3><div class="table-container"><table><thead><tr><th>Подразделение</th><th>Должность</th><th style="text-align:right">Штатных единиц</th><th style="text-align:right">Занято</th><th style="text-align:right">Оклад по ШР</th><th style="text-align:right">Месячный фонд</th></tr></thead><tbody>${pos.map(p => { const n = active.filter(e => e.position === p.id).length; return `<tr><td>${esc(tDep(p.department))}</td><td>${esc(p.name)}</td><td class="num">${p.count || 0}</td><td class="num" style="color:${n < (p.count || 0) ? 'var(--danger)' : 'var(--success)'}">${n}</td><td class="num">${formatAmount(p.baseSalary)}</td><td class="num">${formatAmount((p.count || 0) * (p.baseSalary || 0))}</td></tr>`; }).join('')}</tbody></table></div>
             <h3 style="margin:18px 0 8px">Сотрудники</h3><div class="table-container"><table><thead><tr><th>Таб. №</th><th>ФИО</th><th>Подразделение</th><th>Должность</th><th style="text-align:right">Оклад</th><th>Дата приема</th><th>Статус</th><th>Личная карточка</th></tr></thead><tbody>${emps.map(e => `<tr><td>${esc(e.tabNo || '')}</td><td>${esc(e.name)}</td><td>${esc(tDep(e.department))}</td><td>${esc(tPos(e.position))}</td><td class="num">${formatAmount(e.salary)}</td><td>${e.hireDate ? formatDate(e.hireDate) : ''}</td><td><span class="badge ${e.status === 'Уволен' ? 'draft' : 'posted'}">${esc(e.status || '')}</span></td><td><button class="action-btn" onclick="tPrintT2('${e.id}')">🖨 Т-2</button></td></tr>`).join('')}</tbody></table></div></div>`;
         }
         function tPrintT2(empId) {
@@ -4505,7 +4522,7 @@
         function renderDebt70Report() {
             const emps = db.trade.employees || [];
             const rows = emps.map(e => { const accrued = db.trade.docs.filter(d => d.type === 'payroll' && d.status === 'posted').reduce((s, d) => s + ((d.rows || []).find(r => r.employee === e.id) || {}).net * 1 || 0, 0); const paid = db.trade.docs.filter(d => (d.type === 'payout_bank' || d.type === 'payout_cash') && d.status === 'posted').reduce((s, d) => s + Number(((d.rows || []).find(r => r.employee === e.id) || {}).sum || 0), 0); return { e, accrued, paid, debt: Math.round((accrued - paid) * 100) / 100 }; }).filter(r => r.accrued || r.paid);
-            return `<div class="filters"><span style="color:#666;font-size:13px">Расчеты с персоналом по оплате труда (счет 70): начислено к выплате по проведенным начислениям минус выплачено по ведомостям</span><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
+            return `<div class="filters"><span style="color:var(--text-secondary);font-size:13px">Расчеты с персоналом по оплате труда (счет 70): начислено к выплате по проведенным начислениям минус выплачено по ведомостям</span><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
             <div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">К ВЫПЛАТЕ ВСЕГО</div><div class="stat-value">${formatAmount(rows.reduce((s, r) => s + r.accrued, 0))}</div></div><div class="stat-card"><div class="stat-label">ВЫПЛАЧЕНО</div><div class="stat-value">${formatAmount(rows.reduce((s, r) => s + r.paid, 0))}</div></div><div class="stat-card"><div class="stat-label">ЗАДОЛЖЕННОСТЬ (КТ 70)</div><div class="stat-value ${rows.reduce((s, r) => s + r.debt, 0) > 0 ? 'out' : ''}">${formatAmount(rows.reduce((s, r) => s + r.debt, 0))}</div></div></div>
             <div class="table-container"><table><thead><tr><th>Таб. №</th><th>Сотрудник</th><th>Подразделение</th><th style="text-align:right">Начислено к выплате</th><th style="text-align:right">Выплачено</th><th style="text-align:right">Задолженность</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r.e.tabNo || '')}</td><td>${esc(r.e.name)}</td><td>${esc(tDep(r.e.department))}</td><td class="num">${formatAmount(r.accrued)}</td><td class="num">${formatAmount(r.paid)}</td><td class="num amount ${r.debt > 0.005 ? 'out' : ''}">${formatAmount(r.debt)}</td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="6" class="empty-state">Нет данных</td></tr>'}</tbody></table></div></div>`;
         }
@@ -4516,7 +4533,7 @@
             <h3 style="margin:18px 0 12px">Взносы в Социальный фонд — работник (удержание)</h3><div class="thead-grid">${f('sfEmployeePF', 'Пенсионный фонд, %')}${f('sfEmployeeGNPF', 'ГНПФ (накопительный), %')}<div class="fg"><label>Итого с работника</label><input value="${P.sfEmployee}%" disabled></div></div>
             <h3 style="margin:18px 0 12px">Взносы в Социальный фонд — работодатель</h3><div class="thead-grid">${f('sfEmployerPF', 'Пенсионный фонд, %')}${f('sfEmployerFOMS', 'ФОМС, %')}${f('sfEmployerFOT', 'Фонд оздоровления трудящихся, %')}<div class="fg"><label>Итого с работодателя</label><input value="${P.sfEmployer}%" disabled></div></div>
             <h3 style="margin:18px 0 12px">Расчет среднего заработка и пособий</h3><div class="thead-grid">${f('avgMonthDays', 'Среднемесячное число календарных дней (отпуск)')}${f('sickPct', 'Оплата больничного по умолчанию, %', 1)}<div class="fg"><label>Счет затрат: администрация</label><input value="${P.costAccount26}" onchange="db.trade.payroll.costAccount26=this.value;saveData()"></div><div class="fg"><label>Счет затрат: производство</label><input value="${P.costAccount20}" onchange="db.trade.payroll.costAccount20=this.value;saveData()"></div><div class="fg"><label>Счет затрат: торговля</label><input value="${P.costAccount44}" onchange="db.trade.payroll.costAccount44=this.value;saveData()"></div></div>
-            <p style="color:#666;font-size:12px;margin-top:14px">Итоговые проценты пересчитываются автоматически при сохранении составных ставок. Изменения применяются к новым расчетам; уже проведенные начисления не пересчитываются (как в 1С — откройте документ и нажмите «Пересчитать»).</p><div style="margin-top:10px"><button class="btn primary" onclick="tRecalcRates()">Пересчитать итоговые ставки</button></div></div>`;
+            <p style="color:var(--text-secondary);font-size:12px;margin-top:14px">Итоговые проценты пересчитываются автоматически при сохранении составных ставок. Изменения применяются к новым расчетам; уже проведенные начисления не пересчитываются (как в 1С — откройте документ и нажмите «Пересчитать»).</p><div style="margin-top:10px"><button class="btn primary" onclick="tRecalcRates()">Пересчитать итоговые ставки</button></div></div>`;
         }
         function tRecalcRates() { const P = db.trade.payroll; P.sfEmployee = Math.round((P.sfEmployeePF + P.sfEmployeeGNPF) * 100) / 100; P.sfEmployer = Math.round((P.sfEmployerPF + P.sfEmployerFOMS + P.sfEmployerFOT) * 100) / 100; saveData(); renderPage(); showToast('Ставки пересчитаны'); }
         function renderHRPage(page) {
@@ -4706,15 +4723,23 @@
                 e.preventDefault();
                 if (isTrade && tSelected) { const _d = tDocById(tSelected); if (_d && TT[_d.type] && TT[_d.type].prints && TT[_d.type].prints[0]) tPrint(tSelected, TT[_d.type].prints[0]); }
             } else if (e.key === 'Escape') {
-                // Close only the topmost modal (highest z-index)
+                // Close only the topmost modal using proper close functions
                 const modals = [...document.querySelectorAll('.modal.active')];
                 if (modals.length) {
                     const top = modals.reduce((a, b) => (parseInt(getComputedStyle(a).zIndex)||0) >= (parseInt(getComputedStyle(b).zIndex)||0) ? a : b);
-                    top.classList.remove('active');
+                    if (top.id === 'tPickModal') tClosePick();
+                    else if (top.id === 'tModal') tCloseForm();
+                    else if (top.id === 'documentModal' && typeof closeModal === 'function') closeModal();
+                    else top.classList.remove('active');
                 }
             } else if (e.ctrlKey && e.shiftKey && e.key === 'n' && !isTrade && (currentPage === 'bank' || currentPage === 'cash')) {
                 e.preventDefault(); openCreateModal();
             }
+        });
+
+        // Предупреждение при закрытии вкладки с несохранёнными данными
+        window.addEventListener('beforeunload', function(e) {
+            if (tDoc && tIsDirty()) { e.preventDefault(); e.returnValue = ''; }
         });
 
         // ==================== STARTUP ====================

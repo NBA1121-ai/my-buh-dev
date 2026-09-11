@@ -47,6 +47,14 @@
     --border-light: #f0f0f0;
     --border-input: #ddd;
     --border-input-focus: var(--primary);
+    --border-sidebar: #333;
+    --border-tsub: #e6e9ee;
+
+    /* Дополнительные */
+    --quick-btn-hover: #d0e3f1;
+    --badge-posted-text: #155724;
+    --badge-draft-text: #856404;
+    --active-border: #5eb3ff;
 
     /* Тени */
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
@@ -94,6 +102,17 @@ body.dark {
     --border: #333;
     --border-light: #333;
     --border-input: #444;
+    --border-sidebar: #444;
+    --border-tsub: #3a3a50;
+
+    --quick-btn-hover: #2a2a45;
+    --badge-posted-text: #81c784;
+    --badge-draft-text: #ffb74d;
+    --active-border: #5eb3ff;
+
+    --success-bg: #1b3d1b;
+    --warning-bg: #3d3020;
+    --info-bg: #1a3040;
 
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
     --shadow-md: 0 2px 8px rgba(0,0,0,0.3);
@@ -145,7 +164,7 @@ body {
     font-weight: bold;
     margin-bottom: 30px;
     padding-bottom: 15px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--border-sidebar);
 }
 
 .section-title {
@@ -160,7 +179,7 @@ body {
     transition: color var(--transition);
 }
 
-.section-title:hover { color: #ccc; }
+.section-title:hover { color: var(--text-sidebar); }
 .section-title.collapsed::after { content: ' \25B8'; }
 
 .nav-item {
@@ -177,7 +196,7 @@ body {
 }
 
 .nav-item:hover { background: var(--bg-sidebar-hover); }
-.nav-item.active { background: var(--primary); border-left-color: #5eb3ff; }
+.nav-item.active { background: var(--primary); border-left-color: var(--active-border); }
 
 /* === Main Content === */
 .main {
@@ -234,7 +253,7 @@ body {
 
 .btn:hover {
     background: var(--bg-table-head);
-    border-color: #999;
+    border-color: var(--text-muted);
 }
 
 .btn:active { transform: scale(0.97); }
@@ -249,7 +268,7 @@ body {
 
 .btn.danger {
     background: var(--danger);
-    color: #fff;
+    color: var(--text-on-primary);
     border-color: var(--danger);
 }
 
@@ -331,8 +350,8 @@ body {
     transition: all var(--transition);
 }
 
-.quick-btn:hover { background: #d0e3f1; }
-.quick-btn.active { background: var(--primary); color: #fff; }
+.quick-btn:hover { background: var(--quick-btn-hover); }
+.quick-btn.active { background: var(--primary); color: var(--text-on-primary); }
 
 /* === Tables === */
 .table-container {
@@ -398,8 +417,8 @@ tr:hover { background: var(--bg-table-hover); }
     font-weight: 600;
 }
 
-.badge.posted { background: var(--success-bg); color: #155724; }
-.badge.draft { background: var(--warning-bg); color: #856404; }
+.badge.posted { background: var(--success-bg); color: var(--badge-posted-text); }
+.badge.draft { background: var(--warning-bg); color: var(--badge-draft-text); }
 .badge.incoming { background: var(--info-bg); color: var(--info); }
 
 /* === Modals === */
@@ -570,8 +589,8 @@ tr:hover { background: var(--bg-table-hover); }
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background: #4caf50;
-    color: white;
+    background: var(--success);
+    color: var(--text-on-primary);
     padding: 15px 20px;
     border-radius: var(--radius);
     z-index: 2000;
@@ -676,9 +695,9 @@ tr:hover { background: var(--bg-table-hover); }
 }
 
 .tdd-item:hover { background: var(--primary-light); }
-.tdd-item.disabled { color: #aaa; cursor: default; }
+.tdd-item.disabled { color: var(--text-muted); cursor: default; }
 .tdd-item.disabled:hover { background: none; }
-.tdd-sep { border-top: 1px solid #eee; margin: 4px 0; }
+.tdd-sep { border-top: 1px solid var(--border-light); margin: 4px 0; }
 
 /* Trade rows */
 tr.trow { cursor: pointer; }
@@ -741,7 +760,7 @@ tr.trow.del td { color: var(--text-muted); text-decoration: line-through; }
 
 .tsub {
     background: var(--bg-tcmd-small);
-    border: 1px solid #e6e9ee;
+    border: 1px solid var(--border-tsub);
     border-radius: var(--radius);
     padding: 10px 12px;
     margin-top: 10px;
@@ -852,7 +871,7 @@ tr.trow.del td { color: var(--text-muted); text-decoration: line-through; }
 /* === Sync Status === */
 #syncStatus {
     font-size: 12px;
-    color: #4caf50;
+    color: var(--success);
     margin-left: 10px;
     transition: color var(--transition);
 }
