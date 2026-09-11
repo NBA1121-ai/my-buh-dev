@@ -803,6 +803,10 @@ tr.trow.del td { color: var(--text-muted); text-decoration: line-through; }
 .empty-state a, td a { color: var(--primary); }
 
 /* === Dashboard === */
+.dash-section {
+    margin-bottom: 16px;
+}
+
 .dash-cards {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

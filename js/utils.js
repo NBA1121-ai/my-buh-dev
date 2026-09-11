@@ -117,8 +117,9 @@ function amountInWords(n) {
     const teens = ['десять','одиннадцать','двенадцать','тринадцать','четырнадцать','пятнадцать','шестнадцать','семнадцать','восемнадцать','девятнадцать'];
     const tens = ['','','двадцать','тридцать','сорок','пятьдесят','шестьдесят','семьдесят','восемьдесят','девяносто'];
     const hundreds = ['','сто','двести','триста','четыреста','пятьсот','шестьсот','семьсот','восемьсот','девятьсот'];
-    const intPart = Math.floor(n);
-    const kopPart = Math.round((n - intPart) * 100);
+    const totalKop = Math.round(n * 100);
+    const intPart = Math.floor(totalKop / 100);
+    const kopPart = totalKop % 100;
     if (intPart === 0) return 'ноль сом ' + String(kopPart).padStart(2,'0') + ' тыйын';
     function group(num) {
         let r = '';

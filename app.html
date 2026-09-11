@@ -828,7 +828,7 @@
         function renderArticles() {
             return `
                 <div style="margin-bottom:12px">
-                    <button class="btn btn-primary" onclick="showAddArticle()">+ Добавить статью</button>
+                    <button class="btn primary" onclick="showAddArticle()">+ Добавить статью</button>
                 </div>
                 <div id="articleFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
                     <h4 id="articleFormTitle" style="margin-bottom:12px">Новая статья ДДС</h4>
@@ -838,7 +838,7 @@
                         <div class="form-group"><label>Тип</label><select id="artType" class="form-control"><option value="in">Приход</option><option value="out">Расход</option></select></div>
                     </div>
                     <div style="margin-top:10px;display:flex;gap:8px">
-                        <button class="btn btn-primary" onclick="saveArticle()">Сохранить</button>
+                        <button class="btn primary" onclick="saveArticle()">Сохранить</button>
                         <button class="btn" onclick="document.getElementById('articleFormWrap').style.display='none'">Отмена</button>
                     </div>
                 </div>
@@ -907,7 +907,7 @@
         function renderAccounts() {
             return `
                 <div style="margin-bottom:12px">
-                    <button class="btn btn-primary" onclick="showAddAccount()">+ Добавить счёт</button>
+                    <button class="btn primary" onclick="showAddAccount()">+ Добавить счёт</button>
                 </div>
                 <div id="accountFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
                     <h4 id="accountFormTitle" style="margin-bottom:12px">Новый счёт</h4>
@@ -919,7 +919,7 @@
                         <div class="form-group"><label>Тип</label><select id="accType" class="form-control"><option value="bank">Банковский</option><option value="cash">Касса</option></select></div>
                     </div>
                     <div style="margin-top:10px;display:flex;gap:8px">
-                        <button class="btn btn-primary" onclick="saveAccount()">Сохранить</button>
+                        <button class="btn primary" onclick="saveAccount()">Сохранить</button>
                         <button class="btn" onclick="document.getElementById('accountFormWrap').style.display='none'">Отмена</button>
                     </div>
                 </div>
@@ -997,7 +997,7 @@
         function renderBanks() {
             return `
                 <div style="margin-bottom:12px">
-                    <button class="btn btn-primary" onclick="showAddBank()">+ Добавить банк</button>
+                    <button class="btn primary" onclick="showAddBank()">+ Добавить банк</button>
                 </div>
                 <div id="bankFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
                     <h4 id="bankFormTitle" style="margin-bottom:12px">Новый банк</h4>
@@ -1008,7 +1008,7 @@
                         <div class="form-group"><label>Корр. счёт</label><input id="bankCorr" class="form-control" placeholder="1234567890"></div>
                     </div>
                     <div style="margin-top:10px;display:flex;gap:8px">
-                        <button class="btn btn-primary" onclick="saveBankItem()">Сохранить</button>
+                        <button class="btn primary" onclick="saveBankItem()">Сохранить</button>
                         <button class="btn" onclick="document.getElementById('bankFormWrap').style.display='none'">Отмена</button>
                     </div>
                 </div>
@@ -1081,7 +1081,7 @@
         function renderCashs() {
             return `
                 <div style="margin-bottom:12px">
-                    <button class="btn btn-primary" onclick="showAddCash()">+ Добавить кассу</button>
+                    <button class="btn primary" onclick="showAddCash()">+ Добавить кассу</button>
                 </div>
                 <div id="cashFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
                     <h4 id="cashFormTitle" style="margin-bottom:12px">Новая касса</h4>
@@ -1091,7 +1091,7 @@
                         <div class="form-group"><label>Ответственный</label><input id="cashResp" class="form-control" placeholder="Иванов И.И."></div>
                     </div>
                     <div style="margin-top:10px;display:flex;gap:8px">
-                        <button class="btn btn-primary" onclick="saveCashItem()">Сохранить</button>
+                        <button class="btn primary" onclick="saveCashItem()">Сохранить</button>
                         <button class="btn" onclick="document.getElementById('cashFormWrap').style.display='none'">Отмена</button>
                     </div>
                 </div>
@@ -1160,7 +1160,7 @@
         function renderCurrencies() {
             return `
                 <div style="margin-bottom:12px">
-                    <button class="btn btn-primary" onclick="showAddCurrency()">+ Добавить валюту</button>
+                    <button class="btn primary" onclick="showAddCurrency()">+ Добавить валюту</button>
                 </div>
                 <div id="currFormWrap" style="display:none;background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
                     <h4 id="currFormTitle" style="margin-bottom:12px">Новая валюта</h4>
@@ -1171,7 +1171,7 @@
                         <div class="form-group"><label>Курс</label><input id="currRate" class="form-control" type="number" step="0.0001" placeholder="1.0000"></div>
                     </div>
                     <div style="margin-top:10px;display:flex;gap:8px">
-                        <button class="btn btn-primary" onclick="saveCurrency()">Сохранить</button>
+                        <button class="btn primary" onclick="saveCurrency()">Сохранить</button>
                         <button class="btn" onclick="document.getElementById('currFormWrap').style.display='none'">Отмена</button>
                     </div>
                 </div>
