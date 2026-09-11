@@ -112,45 +112,32 @@ async function sha256(text) {
 
 // --- Сумма прописью (русский) ---
 function amountInWords(n) {
-    const units = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
-    const teens = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
-    const tens = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'];
-    const hundreds = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот'];
-    const int = Math.floor(Math.abs(n));
-    const kop = Math.round((Math.abs(n) - int) * 100);
-    if (int === 0) return 'ноль сом ' + String(kop).padStart(2, '0') + ' тыйын';
-    const parts = [];
-    const h = Math.floor(int / 100) % 10;
-    const t = Math.floor(int / 10) % 10;
-    const u = int % 10;
-    if (h) parts.push(hundreds[h]);
-    if (t === 1) parts.push(teens[u]);
-    else { if (t) parts.push(tens[t]); if (u) parts.push(units[u]); }
-    let th = Math.floor(int / 1000);
-    if (th > 0) {
-        const thParts = [];
-        const thH = Math.floor(th / 100) % 10;
-        const thT = Math.floor(th / 10) % 10;
-        const thU = th % 10;
-        if (thH) thParts.push(hundreds[thH]);
-        if (thT === 1) thParts.push(teens[thU]);
-        else { if (thT) thParts.push(tens[thT]); if (thU) thParts.push(thU === 1 ? 'одна' : thU === 2 ? 'две' : units[thU]); }
-        const word = (thU === 1 && thT !== 1) ? 'тысяча' : ([2, 3, 4].includes(thU) && thT !== 1) ? 'тысячи' : 'тысяч';
-        thParts.push(word);
-        parts.unshift(...thParts);
+    n = Math.abs(Number(n || 0));
+    const units = ['','один','два','три','четыре','пять','шесть','семь','восемь','девять'];
+    const teens = ['десять','одиннадцать','двенадцать','тринадцать','четырнадцать','пятнадцать','шестнадцать','семнадцать','восемнадцать','девятнадцать'];
+    const tens = ['','','двадцать','тридцать','сорок','пятьдесят','шестьдесят','семьдесят','восемьдесят','девяносто'];
+    const hundreds = ['','сто','двести','триста','четыреста','пятьсот','шестьсот','семьсот','восемьсот','девятьсот'];
+    const intPart = Math.floor(n);
+    const kopPart = Math.round((n - intPart) * 100);
+    if (intPart === 0) return 'ноль сом ' + String(kopPart).padStart(2,'0') + ' тыйын';
+    function group(num) {
+        let r = '';
+        r += hundreds[Math.floor(num / 100)];
+        const rem = num % 100;
+        if (rem >= 10 && rem < 20) { r += (r ? ' ' : '') + teens[rem - 10]; }
+        else { if (tens[Math.floor(rem / 10)]) r += (r ? ' ' : '') + tens[Math.floor(rem / 10)]; if (units[rem % 10]) r += (r ? ' ' : '') + units[rem % 10]; }
+        return r;
     }
-    let ml = Math.floor(int / 1000000);
-    if (ml > 0) {
-        const mlU = ml % 10;
-        const mlT = Math.floor(ml / 10) % 10;
-        const p = [];
-        if (mlT === 1) p.push(teens[mlU]);
-        else { if (mlT) p.push(tens[mlT]); if (mlU) p.push(units[mlU]); }
-        const w = (mlU === 1 && mlT !== 1) ? 'миллион' : ([2, 3, 4].includes(mlU) && mlT !== 1) ? 'миллиона' : 'миллионов';
-        p.push(w);
-        parts.unshift(...p);
-    }
-    return parts.join(' ') + ' сом ' + String(kop).padStart(2, '0') + ' тыйын';
+    let result = '';
+    const millions = Math.floor(intPart / 1000000);
+    const thousands = Math.floor((intPart % 1000000) / 1000);
+    const rest = intPart % 1000;
+    if (millions) result += group(millions) + ' млн ';
+    if (thousands) result += group(thousands) + ' тыс. ';
+    if (rest || !result) result += group(rest);
+    result = result.trim();
+    result = result.charAt(0).toUpperCase() + result.slice(1);
+    return result + ' сом ' + String(kopPart).padStart(2,'0') + ' тыйын';
 }
 
 // --- Дебаунс ---
