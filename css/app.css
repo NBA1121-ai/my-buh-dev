@@ -110,6 +110,8 @@ body.dark {
     --badge-draft-text: #ffb74d;
     --active-border: #5eb3ff;
 
+    --primary-light: #1e2a40;
+    --primary-border: #2a4060;
     --success-bg: #1b3d1b;
     --warning-bg: #3d3020;
     --info-bg: #1a3040;
