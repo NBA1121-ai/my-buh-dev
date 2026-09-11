@@ -75,6 +75,7 @@
     /* Анимации */
     --transition: 0.2s ease;
     --transition-slow: 0.3s ease;
+    --focus-ring: 0 0 0 3px rgba(42, 111, 184, 0.15);
 }
 
 /* === Тёмная тема === */
@@ -115,6 +116,7 @@ body.dark {
     --success-bg: #1b3d1b;
     --warning-bg: #3d3020;
     --info-bg: #1a3040;
+    --focus-ring: 0 0 0 3px rgba(90, 160, 255, 0.25);
 
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
     --shadow-md: 0 2px 8px rgba(0,0,0,0.3);
@@ -336,7 +338,7 @@ body {
 .filter-group select:focus {
     outline: none;
     border-color: var(--border-input-focus);
-    box-shadow: 0 0 0 3px rgba(42, 111, 184, 0.1);
+    box-shadow: var(--focus-ring);
 }
 
 .quick-filters { display: flex; gap: 8px; }
@@ -545,7 +547,7 @@ tr:hover { background: var(--bg-table-hover); }
 .form-group textarea:focus {
     outline: none;
     border-color: var(--border-input-focus);
-    box-shadow: 0 0 0 3px rgba(42, 111, 184, 0.1);
+    box-shadow: var(--focus-ring);
 }
 
 /* === Numbers & Amounts === */
@@ -965,7 +967,7 @@ tr.trow.del td { color: var(--text-muted); text-decoration: line-through; }
     max-width: calc(100vw - 20px);
     max-height: 400px;
     overflow-y: auto;
-    z-index: 1000;
+    z-index: 1050;
     animation: slideIn 0.15s ease;
 }
 

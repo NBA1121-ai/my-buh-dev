@@ -57,7 +57,7 @@ function fmt(n) {
 
 // --- Сортировка документов (по дате desc, потом по номеру desc) ---
 function docCmp(a, b) {
-    const dc = b.date.localeCompare(a.date);
+    const dc = (b.date || '').localeCompare(a.date || '');
     if (dc !== 0) return dc;
     const na = parseInt((String(a.number).match(/(\d+)$/) || [0, 0])[1]);
     const nb = parseInt((String(b.number).match(/(\d+)$/) || [0, 0])[1]);
