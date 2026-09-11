@@ -842,7 +842,7 @@
                         <button class="btn" onclick="document.getElementById('articleFormWrap').style.display='none'">Отмена</button>
                     </div>
                 </div>
-                <table class="table-container">
+                <div class="table-container"><table>
                     <thead>
                         <tr>
                             <th>Статья</th>
@@ -862,7 +862,7 @@
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>
+                </table></div>
             `;
         }
         function showAddArticle() {
@@ -923,7 +923,7 @@
                         <button class="btn" onclick="document.getElementById('accountFormWrap').style.display='none'">Отмена</button>
                     </div>
                 </div>
-                <table class="table-container">
+                <div class="table-container"><table>
                     <thead>
                         <tr>
                             <th>Название</th>
@@ -947,7 +947,7 @@
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>
+                </table></div>
             `;
         }
 
@@ -1012,7 +1012,7 @@
                         <button class="btn" onclick="document.getElementById('bankFormWrap').style.display='none'">Отмена</button>
                     </div>
                 </div>
-                <table class="table-container">
+                <div class="table-container"><table>
                     <thead>
                         <tr>
                             <th>Название банка</th>
@@ -1034,7 +1034,7 @@
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>
+                </table></div>
             `;
         }
 
@@ -1095,7 +1095,7 @@
                         <button class="btn" onclick="document.getElementById('cashFormWrap').style.display='none'">Отмена</button>
                     </div>
                 </div>
-                <table class="table-container">
+                <div class="table-container"><table>
                     <thead>
                         <tr>
                             <th>Название кассы</th>
@@ -1115,7 +1115,7 @@
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>
+                </table></div>
             `;
         }
 
@@ -1175,7 +1175,7 @@
                         <button class="btn" onclick="document.getElementById('currFormWrap').style.display='none'">Отмена</button>
                     </div>
                 </div>
-                <table class="table-container">
+                <div class="table-container"><table>
                     <thead>
                         <tr>
                             <th>Код</th>
@@ -1197,7 +1197,7 @@
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>
+                </table></div>
             `;
         }
         function showAddCurrency() {
@@ -1750,7 +1750,7 @@
                         <button class="btn primary" onclick="tSeedDemo(true)">Загрузить тестовые данные</button>
                         <button class="btn danger" onclick="tClearAll()">Очистить все документы</button>
                     </div>
-                    <p style="margin-top:12px;color:#666;font-size:12px">Документов сейчас: банк — ${db.bankDocuments.length}, касса — ${db.cashDocuments.length}, покупки/продажи — ${db.trade.docs.length}.</p>
+                    <p style="margin-top:12px;color:#666;font-size:12px">Документов сейчас: банк — ${(db.bankDocuments||[]).length}, касса — ${(db.cashDocuments||[]).length}, покупки/продажи — ${(db.trade&&db.trade.docs||[]).length}.</p>
                 </div>
                 <div style="padding: 20px; margin-top: 15px;" class="table-container">
                     <h3>История изменений (GitHub)</h3>
@@ -1770,9 +1770,9 @@
             el.innerHTML = '<p style="color:#999">Загрузка истории...</p>';
             const commits = await DbSync.getHistory(20);
             if (!commits.length) { el.innerHTML = '<p style="color:#999">История пуста</p>'; return; }
-            el.innerHTML = '<table class="table-container"><thead><tr><th>Дата</th><th>Описание</th><th>Действие</th></tr></thead><tbody>' +
+            el.innerHTML = '<div class="table-container"><table><thead><tr><th>Дата</th><th>Описание</th><th>Действие</th></tr></thead><tbody>' +
                 commits.map(c => '<tr><td>' + esc(new Date(c.commit.author.date).toLocaleString('ru-RU')) + '</td><td>' + esc(c.commit.message || '') + '</td><td><button class="btn" onclick="restoreFromCommit(\'' + esc(c.sha) + '\')">Восстановить</button></td></tr>').join('') +
-                '</tbody></table>';
+                '</tbody></table></div>';
         }
 
         async function restoreFromCommit(sha) {
@@ -1941,7 +1941,7 @@
             if (filtered.find(a => a.id === current)) accountSelect.value = current;
             // Filter articles by type
             const artSelect = document.getElementById('docArticle');
-            const artFiltered = db.articles.filter(a => isCash ? true : true); // show all articles
+            const artFiltered = db.articles;
             const currentArt = artSelect.value;
             artSelect.innerHTML = '<option value="">Выбрать...</option>' +
                 artFiltered.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
@@ -3665,7 +3665,7 @@
                     <td>${inp('materials', i, 'qty', 'number')}</td><td>${n.unit || ''}</td><td class="num" style="color:${b != null && b < (Number(r.qty) || 0) ? '#d32f2f' : '#2e7d32'}">${b == null ? '—' : b}</td>
                     <td>${inp('materials', i, 'price', 'number')}</td><td class="num">${formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0))}</td><td>${inp('materials', i, 'account')}</td>
                     ${cfg.specDoc ? '' : `<td>${inp('materials', i, 'costAccount', 'text', 'placeholder="' + (d.costAccount || '20.01') + '"')}</td><td><select class="tcell" data-i="${i}" data-f="costItem" data-tab="materials"><option value="">—</option>${(db.trade.costItems || []).map(c => `<option value="${c.id}" ${r.costItem === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></td>`}</tr>`; }).join('')}
-                ${d.materials.length ? '' : '<tr><td colspan="10" style="text-align:center;color:#999;padding:25px">Нет строк. «Добавить», «Подбор»' + (d.type === 'shift_report' ? ' или «Заполнить по спецификации»' : '') + '.</td></tr>'}</tbody>
+                ${d.materials.length ? '' : '<tr><td colspan="' + (cfg.specDoc ? 8 : 10) + '" style="text-align:center;color:#999;padding:25px">Нет строк. «Добавить», «Подбор»' + (d.type === 'shift_report' ? ' или «Заполнить по спецификации»' : '') + '.</td></tr>'}</tbody>
                 ${d.materials.length ? `<tfoot><tr><td colspan="6" style="text-align:right;font-weight:600">Итого:</td><td class="num amount">${formatAmount(sumRow('materials'))}</td><td colspan="3"></td></tr></tfoot>` : ''}</table></div>`;
             }
             if (tab === 'products') {
@@ -4704,7 +4704,7 @@
                 if (el) el.focus();
             } else if (e.ctrlKey && e.shiftKey && e.key === 'p') {
                 e.preventDefault();
-                if (isTrade && tSelected) tPrint(tSelected, TT[tDocById(tSelected).type].prints[0]);
+                if (isTrade && tSelected) { const _d = tDocById(tSelected); if (_d && TT[_d.type] && TT[_d.type].prints && TT[_d.type].prints[0]) tPrint(tSelected, TT[_d.type].prints[0]); }
             } else if (e.key === 'Escape') {
                 // Close only the topmost modal (highest z-index)
                 const modals = [...document.querySelectorAll('.modal.active')];
