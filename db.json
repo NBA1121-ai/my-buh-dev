@@ -17,22 +17,6 @@
       "created": "2026-09-15T09:35:19.302Z"
     },
     {
-      "id": "_1789464763270_2q8rg9",
-      "type": "payment_in",
-      "number": "ПП-0002",
-      "date": "2026-09-15",
-      "status": "draft",
-      "account": "",
-      "contractor": "",
-      "article": "",
-      "currency": "",
-      "sum": 100000,
-      "rate": 1,
-      "purpose": "",
-      "note": "",
-      "created": "2026-09-15T09:32:43.270Z"
-    },
-    {
       "id": "_1789465190082_py58ca",
       "type": "payment_in",
       "number": "ПП-0003",
@@ -47,6 +31,22 @@
       "purpose": "",
       "note": "",
       "created": "2026-09-15T09:39:50.082Z"
+    },
+    {
+      "id": "_1789465226422_w0ei6z",
+      "type": "payment_in",
+      "number": "ПП-0004",
+      "date": "2026-09-15",
+      "status": "draft",
+      "account": "_2",
+      "contractor": "",
+      "article": "",
+      "currency": "",
+      "sum": 100000,
+      "rate": 1,
+      "purpose": "",
+      "note": "",
+      "created": "2026-09-15T09:40:26.422Z"
     }
   ],
   "cashDocuments": [],
@@ -970,5 +970,13 @@
         "deductionSum": 0
       }
     ]
-  }
+  },
+  "_activityLog": [
+    {
+      "date": "2026-09-15T09:40:01.894Z",
+      "user": "Администратор",
+      "action": "Удаление документа",
+      "details": "payment_in ПП-0002"
+    }
+  ]
 }
