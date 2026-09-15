@@ -400,12 +400,10 @@
 
             // Poll for changes from other devices (every 30 sec)
             DbSync.startPolling((newData) => {
-                if (confirm('Данные были изменены с другого устройства. Загрузить обновлённые данные?\n\nОК — загрузить новые данные\nОтмена — оставить текущие (ваши изменения сохранятся при следующем сохранении)')) {
-                    Object.keys(db).forEach(k => delete db[k]);
-                    Object.assign(db, newData);
-                    renderPage();
-                    showToast('Данные синхронизированы с другого устройства');
-                }
+                Object.keys(db).forEach(k => delete db[k]);
+                Object.assign(db, newData);
+                renderPage();
+                showToast('Данные синхронизированы');
             });
 
             // Periodic session check (every 5 min)
