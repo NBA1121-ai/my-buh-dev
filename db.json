@@ -1,5 +1,22 @@
 {
-  "bankDocuments": [],
+  "bankDocuments": [
+    {
+      "id": "_1789464919301_gcl9n3",
+      "type": "payment_in",
+      "number": "ПП-0001",
+      "date": "2026-09-15",
+      "status": "draft",
+      "account": "_2",
+      "contractor": "",
+      "article": "_1",
+      "currency": "",
+      "sum": 10000,
+      "rate": 1,
+      "purpose": "",
+      "note": "",
+      "created": "2026-09-15T09:35:19.302Z"
+    }
+  ],
   "cashDocuments": [],
   "accounts": [
     {
@@ -134,6 +151,792 @@
     "noDemo": true,
     "demoSeeded": true,
     "stockSeeded": true,
-    "hrSeeded": true
+    "hrSeeded": true,
+    "org": {
+      "name": "ОсОО «Эльмырза»",
+      "inn": "01234567890123",
+      "kpp": "",
+      "address": "г. Бишкек, ул. Киевская, 1",
+      "phone": "+996 312 000000",
+      "director": "Директор",
+      "accountant": "Главный бухгалтер",
+      "okpo": ""
+    },
+    "contractors": [
+      {
+        "id": "c1",
+        "name": "ОсОО «Альфа Трейд»",
+        "full": "Общество с ограниченной ответственностью «Альфа Трейд»",
+        "inn": "02001201010101",
+        "kind": "Юридическое лицо",
+        "address": "г. Бишкек, пр. Чуй, 100",
+        "phone": "+996 555 111111",
+        "account": "1280010000000001",
+        "bank": "АБ Кыргызстан"
+      },
+      {
+        "id": "c2",
+        "name": "ОсОО «Бета Снаб»",
+        "full": "Общество с ограниченной ответственностью «Бета Снаб»",
+        "inn": "02002202020202",
+        "kind": "Юридическое лицо",
+        "address": "г. Ош, ул. Ленина, 5",
+        "phone": "+996 555 222222",
+        "account": "1280010000000002",
+        "bank": "НИСПА"
+      },
+      {
+        "id": "c3",
+        "name": "ИП Асанов А.А.",
+        "full": "Индивидуальный предприниматель Асанов Асан Асанович",
+        "inn": "20101199000001",
+        "kind": "Индивидуальный предприниматель",
+        "address": "г. Бишкек, ул. Ахунбаева, 45",
+        "phone": "+996 700 333333",
+        "account": "",
+        "bank": ""
+      }
+    ],
+    "contracts": [
+      {
+        "id": "d1",
+        "contractor": "c1",
+        "kind": "С покупателем",
+        "number": "1",
+        "date": "2026-01-10",
+        "name": "Основной договор с покупателем",
+        "currency": "KGS",
+        "priceType": "pt1"
+      },
+      {
+        "id": "d2",
+        "contractor": "c2",
+        "kind": "С поставщиком",
+        "number": "7",
+        "date": "2026-01-15",
+        "name": "Договор поставки №7",
+        "currency": "KGS",
+        "priceType": "pt2"
+      },
+      {
+        "id": "d3",
+        "contractor": "c3",
+        "kind": "С покупателем",
+        "number": "3",
+        "date": "2026-02-01",
+        "name": "Договор №3",
+        "currency": "KGS",
+        "priceType": "pt1"
+      }
+    ],
+    "nomenclature": [
+      {
+        "id": "n1",
+        "name": "Ноутбук Lenovo IdeaPad 3",
+        "article": "NB-001",
+        "kind": "Товар",
+        "unit": "шт",
+        "vat": 12,
+        "price": 48000,
+        "cost": 40000,
+        "account": "41.01",
+        "country": "Китай",
+        "nomGroup": "ng2"
+      },
+      {
+        "id": "n2",
+        "name": "Монитор 24\" Samsung",
+        "article": "MN-024",
+        "kind": "Товар",
+        "unit": "шт",
+        "vat": 12,
+        "price": 15000,
+        "cost": 12000,
+        "account": "41.01",
+        "country": "Корея",
+        "nomGroup": "ng2"
+      },
+      {
+        "id": "n3",
+        "name": "Мышь беспроводная",
+        "article": "MS-010",
+        "kind": "Товар",
+        "unit": "шт",
+        "vat": 12,
+        "price": 900,
+        "cost": 600,
+        "account": "41.01",
+        "country": "Китай",
+        "nomGroup": "ng2"
+      },
+      {
+        "id": "n4",
+        "name": "Бумага А4, 500 л.",
+        "article": "PP-A4",
+        "kind": "Материал",
+        "unit": "пач",
+        "vat": 12,
+        "price": 450,
+        "cost": 350,
+        "account": "10.01",
+        "country": "Россия",
+        "nomGroup": "ng2"
+      },
+      {
+        "id": "n5",
+        "name": "Настройка рабочего места",
+        "article": "SRV-01",
+        "kind": "Услуга",
+        "unit": "усл",
+        "vat": 12,
+        "price": 3000,
+        "cost": 0,
+        "account": "26",
+        "country": "",
+        "nomGroup": "ng3"
+      },
+      {
+        "id": "n6",
+        "name": "Доставка",
+        "article": "SRV-02",
+        "kind": "Услуга",
+        "unit": "усл",
+        "vat": 12,
+        "price": 1500,
+        "cost": 0,
+        "account": "44.01",
+        "country": "",
+        "nomGroup": "ng3"
+      },
+      {
+        "id": "n7",
+        "name": "Аренда помещения",
+        "article": "SRV-03",
+        "kind": "Услуга",
+        "unit": "мес",
+        "vat": 12,
+        "price": 35000,
+        "cost": 0,
+        "account": "26",
+        "country": "",
+        "nomGroup": "ng3"
+      },
+      {
+        "id": "n8",
+        "name": "Паллета деревянная",
+        "article": "TR-01",
+        "kind": "Тара",
+        "unit": "шт",
+        "vat": -1,
+        "price": 800,
+        "cost": 800,
+        "account": "41.03",
+        "country": "",
+        "nomGroup": "ng2"
+      },
+      {
+        "id": "m1",
+        "name": "Корпус ПК ATX",
+        "article": "MAT-001",
+        "kind": "Материал",
+        "unit": "шт",
+        "vat": 12,
+        "price": 0,
+        "cost": 3500,
+        "account": "10.01",
+        "country": "Китай",
+        "nomGroup": "ng1"
+      },
+      {
+        "id": "m2",
+        "name": "Материнская плата B450",
+        "article": "MAT-002",
+        "kind": "Материал",
+        "unit": "шт",
+        "vat": 12,
+        "price": 0,
+        "cost": 7800,
+        "account": "10.01",
+        "country": "Тайвань",
+        "nomGroup": "ng1"
+      },
+      {
+        "id": "m3",
+        "name": "Процессор Ryzen 5",
+        "article": "MAT-003",
+        "kind": "Материал",
+        "unit": "шт",
+        "vat": 12,
+        "price": 0,
+        "cost": 12500,
+        "account": "10.01",
+        "country": "Малайзия",
+        "nomGroup": "ng1"
+      },
+      {
+        "id": "m4",
+        "name": "Память DDR4 16 ГБ",
+        "article": "MAT-004",
+        "kind": "Материал",
+        "unit": "шт",
+        "vat": 12,
+        "price": 0,
+        "cost": 4200,
+        "account": "10.01",
+        "country": "Корея",
+        "nomGroup": "ng1"
+      },
+      {
+        "id": "m5",
+        "name": "SSD 512 ГБ",
+        "article": "MAT-005",
+        "kind": "Материал",
+        "unit": "шт",
+        "vat": 12,
+        "price": 0,
+        "cost": 3900,
+        "account": "10.01",
+        "country": "Китай",
+        "nomGroup": "ng1"
+      },
+      {
+        "id": "m6",
+        "name": "Блок питания 600W",
+        "article": "MAT-006",
+        "kind": "Материал",
+        "unit": "шт",
+        "vat": 12,
+        "price": 0,
+        "cost": 2900,
+        "account": "10.01",
+        "country": "Китай",
+        "nomGroup": "ng1"
+      },
+      {
+        "id": "m7",
+        "name": "Кабель питания",
+        "article": "MAT-007",
+        "kind": "Материал",
+        "unit": "шт",
+        "vat": 12,
+        "price": 0,
+        "cost": 150,
+        "account": "10.01",
+        "country": "Китай",
+        "nomGroup": "ng1"
+      },
+      {
+        "id": "p1",
+        "name": "Системный блок «Офис»",
+        "article": "PRD-001",
+        "kind": "Продукция",
+        "unit": "шт",
+        "vat": 12,
+        "price": 52000,
+        "cost": 35000,
+        "planPrice": 35000,
+        "account": "43",
+        "country": "Кыргызстан",
+        "nomGroup": "ng1"
+      },
+      {
+        "id": "p2",
+        "name": "Системный блок «Про»",
+        "article": "PRD-002",
+        "kind": "Продукция",
+        "unit": "шт",
+        "vat": 12,
+        "price": 78000,
+        "cost": 55000,
+        "planPrice": 55000,
+        "account": "43",
+        "country": "Кыргызстан",
+        "nomGroup": "ng1"
+      },
+      {
+        "id": "w1",
+        "name": "Упаковка картонная (отход)",
+        "article": "OTH-001",
+        "kind": "Материал",
+        "unit": "кг",
+        "vat": -1,
+        "price": 0,
+        "cost": 20,
+        "account": "10.06",
+        "country": "",
+        "nomGroup": "ng1"
+      },
+      {
+        "id": "k1",
+        "name": "Рабочее место «Стандарт» (комплект)",
+        "article": "KIT-001",
+        "kind": "Товар",
+        "unit": "шт",
+        "vat": 12,
+        "price": 65000,
+        "cost": 52600,
+        "account": "41.01",
+        "country": "",
+        "nomGroup": "ng2"
+      },
+      {
+        "id": "srv_proc",
+        "name": "Услуги переработки (сборка)",
+        "article": "SRV-20",
+        "kind": "Услуга",
+        "unit": "усл",
+        "vat": 12,
+        "price": 2000,
+        "cost": 2000,
+        "account": "20.01",
+        "country": "",
+        "nomGroup": "ng1"
+      }
+    ],
+    "warehouses": [
+      {
+        "id": "w1",
+        "name": "Основной склад",
+        "kind": "Оптовый склад",
+        "responsible": "Иванов И.И."
+      },
+      {
+        "id": "w2",
+        "name": "Розничный магазин",
+        "kind": "Розничный магазин",
+        "responsible": "Петрова М.М."
+      }
+    ],
+    "priceTypes": [
+      {
+        "id": "pt1",
+        "name": "Оптовая",
+        "vatIncluded": true,
+        "markup": 20
+      },
+      {
+        "id": "pt2",
+        "name": "Закупочная",
+        "vatIncluded": true,
+        "markup": 0
+      },
+      {
+        "id": "pt3",
+        "name": "Розничная",
+        "vatIncluded": true,
+        "markup": 35
+      }
+    ],
+    "sfCounter": {
+      "in": 0,
+      "out": 0
+    },
+    "departments": [
+      {
+        "id": "dep1",
+        "name": "Основной цех",
+        "head": "Сыдыков Б.Т.",
+        "kind": "Основное производство"
+      },
+      {
+        "id": "dep2",
+        "name": "Администрация",
+        "head": "Директор",
+        "kind": "Административное"
+      },
+      {
+        "id": "dep3",
+        "name": "Отдел продаж",
+        "head": "Петрова М.М.",
+        "kind": "Торговое"
+      }
+    ],
+    "nomGroups": [
+      {
+        "id": "ng1",
+        "name": "Компьютеры в сборе",
+        "comment": "Собственная продукция"
+      },
+      {
+        "id": "ng2",
+        "name": "Оргтехника",
+        "comment": "Товары для перепродажи"
+      },
+      {
+        "id": "ng3",
+        "name": "Услуги",
+        "comment": ""
+      }
+    ],
+    "costItems": [
+      {
+        "id": "ci1",
+        "name": "Материальные затраты",
+        "kind": "Материальные расходы"
+      },
+      {
+        "id": "ci2",
+        "name": "Оплата труда производственных рабочих",
+        "kind": "Оплата труда"
+      },
+      {
+        "id": "ci3",
+        "name": "Услуги сторонних организаций",
+        "kind": "Прочие расходы"
+      },
+      {
+        "id": "ci4",
+        "name": "Амортизация оборудования",
+        "kind": "Амортизация"
+      }
+    ],
+    "units": [
+      {
+        "id": "u1",
+        "code": "796",
+        "name": "шт",
+        "full": "Штука"
+      },
+      {
+        "id": "u2",
+        "code": "778",
+        "name": "пач",
+        "full": "Пачка"
+      },
+      {
+        "id": "u3",
+        "code": "876",
+        "name": "усл",
+        "full": "Условная единица"
+      },
+      {
+        "id": "u4",
+        "code": "006",
+        "name": "м",
+        "full": "Метр"
+      },
+      {
+        "id": "u5",
+        "code": "166",
+        "name": "кг",
+        "full": "Килограмм"
+      },
+      {
+        "id": "u6",
+        "code": "362",
+        "name": "мес",
+        "full": "Месяц"
+      }
+    ],
+    "payroll": {
+      "incomeTax": 10,
+      "sfEmployee": 10,
+      "sfEmployeePF": 8,
+      "sfEmployeeGNPF": 2,
+      "sfEmployer": 17.25,
+      "sfEmployerPF": 15,
+      "sfEmployerFOMS": 2,
+      "sfEmployerFOT": 0.25,
+      "stdDeduction": 650,
+      "dependentDeduction": 100,
+      "minSalary": 2460,
+      "avgMonthDays": 29.6,
+      "sickPct": 100,
+      "costAccount26": "26",
+      "costAccount20": "20.01",
+      "costAccount44": "44.01"
+    },
+    "positions": [
+      {
+        "id": "pos1",
+        "name": "Директор",
+        "count": 1,
+        "baseSalary": 90000,
+        "department": "dep2"
+      },
+      {
+        "id": "pos2",
+        "name": "Главный бухгалтер",
+        "count": 1,
+        "baseSalary": 70000,
+        "department": "dep2"
+      },
+      {
+        "id": "pos3",
+        "name": "Сборщик ПК",
+        "count": 3,
+        "baseSalary": 45000,
+        "department": "dep1"
+      },
+      {
+        "id": "pos4",
+        "name": "Начальник цеха",
+        "count": 1,
+        "baseSalary": 60000,
+        "department": "dep1"
+      },
+      {
+        "id": "pos5",
+        "name": "Менеджер по продажам",
+        "count": 2,
+        "baseSalary": 40000,
+        "department": "dep3"
+      },
+      {
+        "id": "pos6",
+        "name": "Кладовщик",
+        "count": 1,
+        "baseSalary": 35000,
+        "department": "dep3"
+      }
+    ],
+    "schedules": [
+      {
+        "id": "sch1",
+        "name": "Пятидневка 40 ч",
+        "hoursPerDay": 8,
+        "daysPerWeek": 5
+      },
+      {
+        "id": "sch2",
+        "name": "Неполный день 20 ч",
+        "hoursPerDay": 4,
+        "daysPerWeek": 5
+      },
+      {
+        "id": "sch3",
+        "name": "Шестидневка 36 ч",
+        "hoursPerDay": 6,
+        "daysPerWeek": 6
+      }
+    ],
+    "accruals": [
+      {
+        "id": "acc1",
+        "name": "Оплата по окладу",
+        "kind": "Оклад по дням",
+        "taxable": true,
+        "sf": true,
+        "account": "26"
+      },
+      {
+        "id": "acc2",
+        "name": "Ежемесячная премия",
+        "kind": "Премия",
+        "taxable": true,
+        "sf": true,
+        "account": "26"
+      },
+      {
+        "id": "acc3",
+        "name": "Отпуск основной",
+        "kind": "Отпуск",
+        "taxable": true,
+        "sf": true,
+        "account": "26"
+      },
+      {
+        "id": "acc4",
+        "name": "Больничный лист",
+        "kind": "Больничный",
+        "taxable": true,
+        "sf": false,
+        "account": "26"
+      },
+      {
+        "id": "acc5",
+        "name": "Компенсация за неиспользованный отпуск",
+        "kind": "Компенсация отпуска",
+        "taxable": true,
+        "sf": true,
+        "account": "26"
+      },
+      {
+        "id": "acc6",
+        "name": "Вознаграждение по договору ГПХ",
+        "kind": "Договор ГПХ",
+        "taxable": true,
+        "sf": false,
+        "account": "26"
+      }
+    ],
+    "deductions": [
+      {
+        "id": "ded1",
+        "name": "Подоходный налог 10%",
+        "kind": "Подоходный налог",
+        "account": "68.01"
+      },
+      {
+        "id": "ded2",
+        "name": "Взносы в Соцфонд (работник) 10%",
+        "kind": "Взносы в Соцфонд",
+        "account": "69.01"
+      },
+      {
+        "id": "ded3",
+        "name": "Алименты",
+        "kind": "Алименты",
+        "account": "76.41"
+      },
+      {
+        "id": "ded4",
+        "name": "Профсоюзный взнос 1%",
+        "kind": "Профсоюзный взнос",
+        "account": "76.49"
+      },
+      {
+        "id": "ded5",
+        "name": "Погашение займа",
+        "kind": "Погашение займа",
+        "account": "73.01"
+      }
+    ],
+    "employees": [
+      {
+        "id": "e1",
+        "tabNo": "0001",
+        "name": "Абдылдаев Бакыт Токтогулович",
+        "inn": "21504198500123",
+        "birth": "1985-04-15",
+        "gender": "М",
+        "passport": "ID 2233445, МКК 50-03, 10.02.2020",
+        "address": "г. Бишкек, ул. Токтогула, 15",
+        "phone": "+996 555 100001",
+        "department": "dep2",
+        "position": "pos1",
+        "salary": 90000,
+        "bonus": 0,
+        "schedule": "sch1",
+        "hireDate": "2024-01-10",
+        "fireDate": "",
+        "status": "Работает",
+        "stdDeduction": true,
+        "dependents": 2,
+        "account": "4169 5855 0000 0001",
+        "deductionKind": "",
+        "deductionSum": 0
+      },
+      {
+        "id": "e2",
+        "tabNo": "0002",
+        "name": "Петрова Марина Михайловна",
+        "inn": "11209197800456",
+        "birth": "1978-09-12",
+        "gender": "Ж",
+        "passport": "ID 1122334, МКК 50-01, 05.06.2019",
+        "address": "г. Бишкек, ул. Ахунбаева, 100",
+        "phone": "+996 555 100002",
+        "department": "dep2",
+        "position": "pos2",
+        "salary": 70000,
+        "bonus": 5000,
+        "schedule": "sch1",
+        "hireDate": "2024-01-10",
+        "fireDate": "",
+        "status": "Работает",
+        "stdDeduction": true,
+        "dependents": 1,
+        "account": "4169 5855 0000 0002",
+        "deductionKind": "",
+        "deductionSum": 0
+      },
+      {
+        "id": "e3",
+        "tabNo": "0003",
+        "name": "Сыдыков Бекжан Тилекович",
+        "inn": "22011199000789",
+        "birth": "1990-11-20",
+        "gender": "М",
+        "passport": "ID 3344556, МКК 50-02, 12.03.2021",
+        "address": "г. Бишкек, мкр. Джал, 23-4",
+        "phone": "+996 555 100003",
+        "department": "dep1",
+        "position": "pos4",
+        "salary": 60000,
+        "bonus": 3000,
+        "schedule": "sch1",
+        "hireDate": "2024-03-01",
+        "fireDate": "",
+        "status": "Работает",
+        "stdDeduction": true,
+        "dependents": 0,
+        "account": "4169 5855 0000 0003",
+        "deductionKind": "ded4",
+        "deductionSum": 600
+      },
+      {
+        "id": "e4",
+        "tabNo": "0004",
+        "name": "Иванов Иван Иванович",
+        "inn": "20305199200321",
+        "birth": "1992-05-03",
+        "gender": "М",
+        "passport": "ID 4455667, МКК 50-04, 22.08.2022",
+        "address": "г. Бишкек, ул. Киевская, 77",
+        "phone": "+996 555 100004",
+        "department": "dep1",
+        "position": "pos3",
+        "salary": 45000,
+        "bonus": 0,
+        "schedule": "sch1",
+        "hireDate": "2025-02-17",
+        "fireDate": "",
+        "status": "Работает",
+        "stdDeduction": true,
+        "dependents": 0,
+        "account": "4169 5855 0000 0004",
+        "deductionKind": "ded3",
+        "deductionSum": 5000
+      },
+      {
+        "id": "e5",
+        "tabNo": "0005",
+        "name": "Асанова Айгуль Асановна",
+        "inn": "12207199500654",
+        "birth": "1995-07-22",
+        "gender": "Ж",
+        "passport": "ID 5566778, МКК 50-05, 14.01.2023",
+        "address": "г. Бишкек, ул. Манаса, 40",
+        "phone": "+996 555 100005",
+        "department": "dep3",
+        "position": "pos5",
+        "salary": 40000,
+        "bonus": 8000,
+        "schedule": "sch1",
+        "hireDate": "2025-06-02",
+        "fireDate": "",
+        "status": "Работает",
+        "stdDeduction": true,
+        "dependents": 1,
+        "account": "4169 5855 0000 0005",
+        "deductionKind": "",
+        "deductionSum": 0
+      },
+      {
+        "id": "e6",
+        "tabNo": "0006",
+        "name": "Токтосунов Азамат Русланович",
+        "inn": "21812199800987",
+        "birth": "1998-12-18",
+        "gender": "М",
+        "passport": "ID 6677889, МКК 50-06, 30.09.2023",
+        "address": "г. Бишкек, ул. Гагарина, 5",
+        "phone": "+996 555 100006",
+        "department": "dep3",
+        "position": "pos6",
+        "salary": 35000,
+        "bonus": 0,
+        "schedule": "sch1",
+        "hireDate": "2025-09-01",
+        "fireDate": "",
+        "status": "Работает",
+        "stdDeduction": false,
+        "dependents": 0,
+        "account": "",
+        "deductionKind": "",
+        "deductionSum": 0
+      }
+    ]
   }
 }
