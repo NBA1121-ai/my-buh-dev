@@ -1,12 +1,13 @@
-const CACHE_NAME = 'buh-offline-v1';
+const CACHE_NAME = 'buh-offline-v2';
+const BASE = '/my-buh-dev/';
 const ASSETS = [
-    '/',
-    '/index.html',
-    '/app.html',
-    '/css/app.css',
-    '/js/db-sync.js',
-    '/js/utils.js',
-    '/manifest.json'
+    BASE,
+    BASE + 'index.html',
+    BASE + 'app.html',
+    BASE + 'css/app.css',
+    BASE + 'js/db-sync.js',
+    BASE + 'js/utils.js',
+    BASE + 'manifest.json'
 ];
 const CDN_ASSETS = [
     'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
