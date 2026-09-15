@@ -31,6 +31,22 @@
       "purpose": "",
       "note": "",
       "created": "2026-09-15T09:32:43.270Z"
+    },
+    {
+      "id": "_1789465190082_py58ca",
+      "type": "payment_in",
+      "number": "ПП-0003",
+      "date": "2026-09-15",
+      "status": "draft",
+      "account": "",
+      "contractor": "",
+      "article": "",
+      "currency": "",
+      "sum": 100000,
+      "rate": 1,
+      "purpose": "",
+      "note": "",
+      "created": "2026-09-15T09:39:50.082Z"
     }
   ],
   "cashDocuments": [],
