@@ -317,6 +317,13 @@
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(() => {});
+            navigator.serviceWorker.addEventListener('message', (e) => {
+                if (e.data && e.data.type === 'CLEAR_CACHE') {
+                    localStorage.removeItem('db_cache');
+                    localStorage.removeItem('db_cache_sha');
+                    location.reload();
+                }
+            });
         }
     </script>
 </body>

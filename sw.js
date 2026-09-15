@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buh-offline-v3';
+const CACHE_NAME = 'buh-offline-v4';
 const BASE = '/my-buh-dev/';
 const ASSETS = [
     BASE,
@@ -38,6 +38,13 @@ self.addEventListener('activate', (event) => {
             return Promise.all(
                 keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
             );
+        }).then(() => {
+            // Tell all open tabs to clear localStorage cache
+            return self.clients.matchAll().then((clients) => {
+                clients.forEach((client) => {
+                    client.postMessage({ type: 'CLEAR_CACHE' });
+                });
+            });
         })
     );
     self.clients.claim();
@@ -51,11 +58,28 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // HTML, CSS, JS, CDN — cache first, then network
+    // HTML files — network first, fallback to cache (always get fresh version)
+    if (event.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
+        event.respondWith(
+            fetch(event.request).then((resp) => {
+                if (resp && resp.ok) {
+                    const clone = resp.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, clone);
+                    });
+                }
+                return resp;
+            }).catch(() => {
+                return caches.match(event.request);
+            })
+        );
+        return;
+    }
+
+    // CSS, JS, CDN — cache first, update in background
     event.respondWith(
         caches.match(event.request).then((cached) => {
             if (cached) {
-                // Update cache in background
                 fetch(event.request).then((resp) => {
                     if (resp && resp.ok) {
                         caches.open(CACHE_NAME).then((cache) => {
