@@ -4743,10 +4743,10 @@
 
         // ==================== STARTUP ====================
         // One-time cache reset
-        if (localStorage.getItem('cache_version') !== 'v2') {
+        if (localStorage.getItem('cache_version') !== 'v3') {
             localStorage.removeItem('db_cache');
             localStorage.removeItem('db_cache_sha');
-            localStorage.setItem('cache_version', 'v2');
+            localStorage.setItem('cache_version', 'v3');
         }
         window.addEventListener('DOMContentLoaded', init);
     </script>
