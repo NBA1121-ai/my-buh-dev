@@ -401,7 +401,7 @@
             // Poll for changes from other devices (every 30 sec)
             DbSync.startPolling((newData) => {
                 Object.keys(db).forEach(k => delete db[k]);
-                Object.assign(db, newData);
+                Object.assign(db, DB_DEFAULTS, newData);
                 renderPage();
                 showToast('Данные синхронизированы');
             });
@@ -417,11 +417,13 @@
             }, 300000);
         }
 
+        const DB_DEFAULTS = { bankDocuments: [], cashDocuments: [], accounts: [], banks: [], cashs: [], currencies: [], articles: [] };
+
         async function loadData() {
             const cloudData = await DbSync.loadData();
             if (cloudData && typeof cloudData === 'object') {
                 Object.keys(db).forEach(k => delete db[k]);
-                Object.assign(db, cloudData);
+                Object.assign(db, DB_DEFAULTS, cloudData);
             }
         }
 
@@ -446,7 +448,7 @@
                 try {
                     const newData = JSON.parse(e.newValue);
                     Object.keys(db).forEach(k => delete db[k]);
-                    Object.assign(db, newData);
+                    Object.assign(db, DB_DEFAULTS, newData);
                     renderPage();
                 } catch(err) {}
             }
@@ -1779,7 +1781,7 @@
             const data = await DbSync.restoreFromCommit(sha);
             if (data) {
                 Object.keys(db).forEach(k => delete db[k]);
-                Object.assign(db, data);
+                Object.assign(db, DB_DEFAULTS, data);
                 initializeDefaults();
                 tradeInit();
                 saveData();
@@ -2108,7 +2110,7 @@
                         } else {
                             delete data.exportDate; delete data.format;
                             Object.keys(db).forEach(k => delete db[k]);
-                            Object.assign(db, data);
+                            Object.assign(db, DB_DEFAULTS, data);
                             initializeDefaults(); tradeInit();
                         }
                     } else {
