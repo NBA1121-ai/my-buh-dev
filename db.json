@@ -47,6 +47,38 @@
       "purpose": "",
       "note": "",
       "created": "2026-09-15T09:40:26.422Z"
+    },
+    {
+      "id": "_1789465278772_y3sd69",
+      "type": "payment_in",
+      "number": "ПП-0005",
+      "date": "2026-09-15",
+      "status": "draft",
+      "account": "_2",
+      "contractor": "",
+      "article": "",
+      "currency": "",
+      "sum": 500000,
+      "rate": 1,
+      "purpose": "",
+      "note": "",
+      "created": "2026-09-15T09:41:18.772Z"
+    },
+    {
+      "id": "_1789465444460_0rkrqy",
+      "type": "payment_in",
+      "number": "ПП-0006",
+      "date": "2026-09-15",
+      "status": "draft",
+      "account": "_2",
+      "contractor": "",
+      "article": "",
+      "currency": "",
+      "sum": 1000000,
+      "rate": 1,
+      "purpose": "",
+      "note": "",
+      "created": "2026-09-15T09:44:04.460Z"
     }
   ],
   "cashDocuments": [],
@@ -972,6 +1004,12 @@
     ]
   },
   "_activityLog": [
+    {
+      "date": "2026-09-15T09:41:18.774Z",
+      "user": "Администратор",
+      "action": "Создание документа",
+      "details": "payment_in ПП-0005 на 500000"
+    },
     {
       "date": "2026-09-15T09:40:01.894Z",
       "user": "Администратор",
