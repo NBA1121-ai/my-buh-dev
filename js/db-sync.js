@@ -23,6 +23,14 @@ const DbSync = (function() {
     let _offlinePending = null; // data queued while offline
     let _inited = false;
 
+    function _loadOfflinePending() {
+        try {
+            const s = localStorage.getItem('offline_pending');
+            if (s) return JSON.parse(s);
+        } catch(e) {}
+        return null;
+    }
+
     function init() {
         if (_inited) { _token = localStorage.getItem('gh_token'); return; }
         _inited = true;
@@ -35,13 +43,24 @@ const DbSync = (function() {
         }
         // When browser comes back online, send queued offline data
         window.addEventListener('online', () => {
-            if (_offlinePending) {
-                const data = _offlinePending;
+            const pending = _offlinePending || _loadOfflinePending();
+            if (pending) {
                 _offlinePending = null;
+                localStorage.removeItem('offline_pending');
                 showSyncStatus('saving');
-                setTimeout(() => saveData(data), 1000);
+                _lastHash = ''; // force save
+                setTimeout(() => saveData(pending), 1000);
             }
         });
+        // On startup: if online and have pending offline data, sync immediately
+        if (navigator.onLine) {
+            const pending = _loadOfflinePending();
+            if (pending) {
+                localStorage.removeItem('offline_pending');
+                _lastHash = '';
+                setTimeout(() => saveData(pending), 2000);
+            }
+        }
     }
 
     function getToken() { return _token; }
@@ -222,6 +241,7 @@ const DbSync = (function() {
                 showSyncStatus('offline');
                 _saving = false;
                 _offlinePending = dbObject;
+                try { localStorage.setItem('offline_pending', JSON.stringify(dbObject)); } catch(e) {}
                 return;
             }
 
