@@ -70,6 +70,22 @@
       "note": "Создано на основании Ведомость в банк ВБ-000001 от 05.09.2026",
       "created": "2026-09-15T09:12:32.633Z",
       "basis": "tmu2gea2h3zpjdl6"
+    },
+    {
+      "id": "_1789463942515_efxj0t",
+      "type": "payment_in",
+      "number": "ПП-0007",
+      "date": "2026-09-15",
+      "status": "draft",
+      "account": "_1",
+      "contractor": "",
+      "article": "",
+      "currency": "",
+      "sum": 100000,
+      "rate": 1,
+      "purpose": "",
+      "note": "",
+      "created": "2026-09-15T09:19:02.515Z"
     }
   ],
   "cashDocuments": [
@@ -7004,7 +7020,8 @@
         "price": 22000,
         "cost": 17500,
         "account": "41.01",
-        "country": "Китай"
+        "country": "Китай",
+        "nomGroup": "ng2"
       },
       {
         "id": "n10",
@@ -7016,7 +7033,8 @@
         "price": 5000,
         "cost": 0,
         "account": "44.01",
-        "country": ""
+        "country": "",
+        "nomGroup": "ng3"
       },
       {
         "id": "n11",
@@ -7028,7 +7046,8 @@
         "price": 4500,
         "cost": 0,
         "account": "20.01",
-        "country": ""
+        "country": "",
+        "nomGroup": "ng3"
       }
     ],
     "warehouses": [
