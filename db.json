@@ -1087,7 +1087,7 @@
         "type": "supplier_invoice",
         "number": "СП-000003",
         "date": "2026-09-01",
-        "status": "draft",
+        "status": "deleted",
         "opKind": "",
         "contractor": "c2",
         "contract": "d2",
