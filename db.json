@@ -15,6 +15,22 @@
       "purpose": "",
       "note": "",
       "created": "2026-09-15T09:35:19.302Z"
+    },
+    {
+      "id": "_1789464763270_2q8rg9",
+      "type": "payment_in",
+      "number": "ПП-0002",
+      "date": "2026-09-15",
+      "status": "draft",
+      "account": "",
+      "contractor": "",
+      "article": "",
+      "currency": "",
+      "sum": 100000,
+      "rate": 1,
+      "purpose": "",
+      "note": "",
+      "created": "2026-09-15T09:32:43.270Z"
     }
   ],
   "cashDocuments": [],
