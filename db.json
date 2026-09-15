@@ -1,80 +1,8 @@
 {
-  "bankDocuments": [
-    {
-      "id": "_1789455108544_0cin",
-      "type": "payment_out",
-      "number": "ПП-0001",
-      "date": "2026-08-09",
-      "status": "posted",
-      "account": "_1",
-      "contractor": "ОсОО «Бета Снаб»",
-      "contractorId": "c2",
-      "article": "_5",
-      "currency": "_1",
-      "sum": 538000,
-      "rate": 1,
-      "purpose": "Оплата по документу Поступление ПТ-000001 от 08.08.2026, в т.ч. НДС 57 642,85",
-      "note": "Оплата поставщику",
-      "created": "2026-09-15T06:51:48.544Z",
-      "basis": "tmu2bdakgtrixu7q"
-    },
-    {
-      "id": "_1789455108544_1rlh",
-      "type": "payment_out",
-      "number": "ПП-0003",
-      "date": "2026-08-25",
-      "status": "posted",
-      "account": "_1",
-      "contractor": "ОсОО «Бета Снаб»",
-      "contractorId": "c2",
-      "article": "_5",
-      "currency": "_1",
-      "sum": 51550,
-      "rate": 1,
-      "purpose": "Оплата по документу Поступление ПТ-000003 от 18.08.2026, в т.ч. НДС 10 875,00",
-      "note": "Частичная оплата",
-      "created": "2026-09-15T06:51:48.544Z",
-      "basis": "tmu2bdakgx1e0pp4"
-    },
-    {
-      "id": "_1789455108544_2xt6",
-      "type": "payment_in",
-      "number": "ПП-0004",
-      "date": "2026-08-16",
-      "status": "posted",
-      "account": "_1",
-      "contractor": "ОсОО «Альфа Трейд»",
-      "contractorId": "c1",
-      "article": "_1",
-      "currency": "_1",
-      "sum": 198000,
-      "rate": 1,
-      "purpose": "Оплата по документу Реализация РТ-000001 от 12.08.2026, в т.ч. НДС 21 214,29",
-      "note": "Оплата от покупателя",
-      "created": "2026-09-15T06:51:48.544Z",
-      "basis": "tmu2bdakgemu193h"
-    },
-    {
-      "id": "_1789455108546_yy0",
-      "type": "payment_out",
-      "number": "ПП-0006",
-      "date": "2026-09-15",
-      "status": "posted",
-      "account": "_1",
-      "contractor": "Сотрудники организации",
-      "article": "_7",
-      "currency": "_1",
-      "sum": 235346.3,
-      "rate": 1,
-      "purpose": "Выплата заработной платы за 2026-08 по ведомости ВБ-000001",
-      "note": "Создано на основании Ведомость в банк ВБ-000001 от 05.09.2026",
-      "created": "2026-09-15T06:51:48.546Z",
-      "basis": "tmu2bdakiup1bndp"
-    }
-  ],
+  "bankDocuments": [],
   "cashDocuments": [
     {
-      "id": "_1789455108544_0d3o",
+      "id": "_1789456019487_09kb",
       "type": "rko",
       "number": "РКО-0002",
       "date": "2026-08-14",
@@ -88,11 +16,11 @@
       "rate": 1,
       "purpose": "Оплата по документу Поступление ПТ-000002 от 14.08.2026",
       "note": "Оплата наличными",
-      "created": "2026-09-15T06:51:48.544Z",
-      "basis": "tmu2bdakghoplv4l"
+      "created": "2026-09-15T07:06:59.487Z",
+      "basis": "tmu2bwtgf57rgn5l"
     },
     {
-      "id": "_1789455108544_10cl",
+      "id": "_1789456019487_1tdt",
       "type": "pko",
       "number": "ПКО-0005",
       "date": "2026-08-20",
@@ -106,11 +34,11 @@
       "rate": 1,
       "purpose": "Оплата по документу Счет покупателю СЧ-000002 от 19.08.2026, в т.ч. НДС 2 422,50",
       "note": "Аванс наличными",
-      "created": "2026-09-15T06:51:48.544Z",
-      "basis": "tmu2bdakga7u0yto"
+      "created": "2026-09-15T07:06:59.487Z",
+      "basis": "tmu2bwtgfdjvtu6g"
     },
     {
-      "id": "_1789455108547_yrr",
+      "id": "_1789456019490_7v7",
       "type": "rko",
       "number": "РКО-0007",
       "date": "2026-09-15",
@@ -123,8 +51,8 @@
       "rate": 1,
       "purpose": "Выплата заработной платы за 2026-08 по ведомости ВК-000001",
       "note": "Создано на основании Ведомость в кассу ВК-000001 от 05.09.2026",
-      "created": "2026-09-15T06:51:48.547Z",
-      "basis": "tmu2bdakj8lfsc8w"
+      "created": "2026-09-15T07:06:59.490Z",
+      "basis": "tmu2bwtgilutww55"
     }
   ],
   "accounts": [
@@ -258,7 +186,7 @@
   "trade": {
     "docs": [
       {
-        "id": "tmu2bdakgldmfv8j",
+        "id": "tmu2bwtgeng8hqcm",
         "type": "supplier_invoice",
         "number": "СП-000001",
         "date": "2026-08-03",
@@ -364,7 +292,7 @@
         "total": 538000
       },
       {
-        "id": "tmu2bdakgtrixu7q",
+        "id": "tmu2bwtgfq12axud",
         "type": "purchase",
         "number": "ПТ-000001",
         "date": "2026-08-08",
@@ -373,7 +301,7 @@
         "contractor": "c2",
         "contract": "d2",
         "warehouse": "w1",
-        "basis": "tmu2bdakgldmfv8j",
+        "basis": "tmu2bwtgeng8hqcm",
         "payTerm": "",
         "settle": {
           "acc": "60.01",
@@ -474,7 +402,7 @@
         "total": 538000
       },
       {
-        "id": "tmu2bdakgblfcto7",
+        "id": "tmu2bwtgfg124x14",
         "type": "supplier_invoice",
         "number": "СП-000002",
         "date": "2026-08-12",
@@ -554,7 +482,7 @@
         "total": 0
       },
       {
-        "id": "tmu2bdakghoplv4l",
+        "id": "tmu2bwtgf57rgn5l",
         "type": "purchase",
         "number": "ПТ-000002",
         "date": "2026-08-14",
@@ -563,7 +491,7 @@
         "contractor": "c4",
         "contract": "d4",
         "warehouse": "w1",
-        "basis": "tmu2bdakgblfcto7",
+        "basis": "tmu2bwtgfg124x14",
         "payTerm": "",
         "settle": {
           "acc": "60.01",
@@ -638,7 +566,7 @@
         "total": 0
       },
       {
-        "id": "tmu2bdakgx1e0pp4",
+        "id": "tmu2bwtgf963tpea",
         "type": "purchase",
         "number": "ПТ-000003",
         "date": "2026-08-18",
@@ -749,7 +677,7 @@
         "total": 103100
       },
       {
-        "id": "tmu2bdakg4v8k2iv",
+        "id": "tmu2bwtgf6n3ke6z",
         "type": "add_expenses",
         "number": "ДР-000001",
         "date": "2026-08-15",
@@ -758,7 +686,7 @@
         "contractor": "c4",
         "contract": "d4",
         "warehouse": "w1",
-        "basis": "tmu2bdakgtrixu7q",
+        "basis": "tmu2bwtgfq12axud",
         "payTerm": "",
         "settle": {
           "acc": "60.01",
@@ -850,7 +778,7 @@
         "total": 5000
       },
       {
-        "id": "tmu2bdakgio34mzw",
+        "id": "tmu2bwtgfwonvl8d",
         "type": "purchase_return",
         "number": "ВП-000001",
         "date": "2026-08-22",
@@ -859,7 +787,7 @@
         "contractor": "c2",
         "contract": "d2",
         "warehouse": "w1",
-        "basis": "tmu2bdakgtrixu7q",
+        "basis": "tmu2bwtgfq12axud",
         "payTerm": "",
         "settle": {
           "acc": "60.01",
@@ -934,7 +862,7 @@
         "total": 1200
       },
       {
-        "id": "tmu2bdakgylkv0h7",
+        "id": "tmu2bwtgfygcp12r",
         "type": "purchase_correction",
         "number": "КП-000001",
         "date": "2026-09-02",
@@ -943,7 +871,7 @@
         "contractor": "c2",
         "contract": "d2",
         "warehouse": "w1",
-        "basis": "tmu2bdakgx1e0pp4",
+        "basis": "tmu2bwtgf963tpea",
         "payTerm": "",
         "settle": {
           "acc": "60.01",
@@ -1035,7 +963,7 @@
         "total": 99000
       },
       {
-        "id": "tmu2bdakgsqyhyh4",
+        "id": "tmu2bwtgfg2haest",
         "type": "gtd",
         "number": "ГТД-000001",
         "date": "2026-08-09",
@@ -1044,7 +972,7 @@
         "contractor": "c6",
         "contract": "",
         "warehouse": "w1",
-        "basis": "tmu2bdakgtrixu7q",
+        "basis": "tmu2bwtgfq12axud",
         "payTerm": "",
         "settle": {
           "acc": "60.01",
@@ -1103,7 +1031,7 @@
         "total": 94520
       },
       {
-        "id": "tmu2bdakgt2rls71",
+        "id": "tmu2bwtgffn2erat",
         "type": "power_of_attorney",
         "number": "ДВ-000001",
         "date": "2026-08-07",
@@ -1112,7 +1040,7 @@
         "contractor": "c2",
         "contract": "d2",
         "warehouse": "w1",
-        "basis": "tmu2bdakgldmfv8j",
+        "basis": "tmu2bwtgeng8hqcm",
         "payTerm": "",
         "settle": {
           "acc": "60.01",
@@ -1209,7 +1137,7 @@
         "total": 538000
       },
       {
-        "id": "tmu2bdakgrvi8rum",
+        "id": "tmu2bwtgfsfh3ycn",
         "type": "supplier_invoice",
         "number": "СП-000003",
         "date": "2026-09-01",
@@ -1289,7 +1217,7 @@
         "total": 52500
       },
       {
-        "id": "tmu2bdakg1b16hsv",
+        "id": "tmu2bwtgfxdueuz4",
         "type": "customer_invoice",
         "number": "СЧ-000001",
         "date": "2026-08-10",
@@ -1396,7 +1324,7 @@
         "total": 198000
       },
       {
-        "id": "tmu2bdakgemu193h",
+        "id": "tmu2bwtgfbncqm91",
         "type": "sale",
         "number": "РТ-000001",
         "date": "2026-08-12",
@@ -1405,7 +1333,7 @@
         "contractor": "c1",
         "contract": "d1",
         "warehouse": "w1",
-        "basis": "tmu2bdakg1b16hsv",
+        "basis": "tmu2bwtgfxdueuz4",
         "payTerm": "",
         "settle": {
           "acc": "62.01",
@@ -1507,7 +1435,7 @@
         "total": 198000
       },
       {
-        "id": "tmu2bdakga7u0yto",
+        "id": "tmu2bwtgfdjvtu6g",
         "type": "customer_invoice",
         "number": "СЧ-000002",
         "date": "2026-08-19",
@@ -1600,7 +1528,7 @@
         "total": 22610
       },
       {
-        "id": "tmu2bdakgu1rm1x9",
+        "id": "tmu2bwtgfq1il68r",
         "type": "sale",
         "number": "РТ-000002",
         "date": "2026-08-21",
@@ -1609,7 +1537,7 @@
         "contractor": "c3",
         "contract": "d3",
         "warehouse": "w1",
-        "basis": "tmu2bdakga7u0yto",
+        "basis": "tmu2bwtgfdjvtu6g",
         "payTerm": "",
         "settle": {
           "acc": "62.01",
@@ -1697,7 +1625,7 @@
         "total": 23800
       },
       {
-        "id": "tmu2bdakg4laikvd",
+        "id": "tmu2bwtgfk9d8or2",
         "type": "customer_invoice",
         "number": "СЧ-000003",
         "date": "2026-09-01",
@@ -1777,7 +1705,7 @@
         "total": 75000
       },
       {
-        "id": "tmu2bdakg5asqzp1",
+        "id": "tmu2bwtgfykdvao4",
         "type": "sale",
         "number": "РТ-000003",
         "date": "2026-08-27",
@@ -1861,7 +1789,7 @@
         "total": 35000
       },
       {
-        "id": "tmu2bdakh06171ox",
+        "id": "tmu2bwtgftxczmu0",
         "type": "production_services",
         "number": "ПУ-000001",
         "date": "2026-08-24",
@@ -1945,7 +1873,7 @@
         "total": 18000
       },
       {
-        "id": "tmu2bdakhyd6hakd",
+        "id": "tmu2bwtgflvjqz60",
         "type": "commission_report",
         "number": "ОК-000001",
         "date": "2026-08-30",
@@ -2043,7 +1971,7 @@
         "total": 45250
       },
       {
-        "id": "tmu2bdakhicfzw6r",
+        "id": "tmu2bwtgf0tb51q4",
         "type": "sale_return",
         "number": "ВР-000001",
         "date": "2026-08-25",
@@ -2052,7 +1980,7 @@
         "contractor": "c1",
         "contract": "d1",
         "warehouse": "w1",
-        "basis": "tmu2bdakgemu193h",
+        "basis": "tmu2bwtgfbncqm91",
         "payTerm": "",
         "settle": {
           "acc": "62.01",
@@ -2127,7 +2055,7 @@
         "total": 15000
       },
       {
-        "id": "tmu2bdakhgapi3md",
+        "id": "tmu2bwtgf9mrfjd4",
         "type": "sale_correction",
         "number": "КР-000001",
         "date": "2026-09-01",
@@ -2136,7 +2064,7 @@
         "contractor": "c3",
         "contract": "d3",
         "warehouse": "w1",
-        "basis": "tmu2bdakgu1rm1x9",
+        "basis": "tmu2bwtgfq1il68r",
         "payTerm": "",
         "settle": {
           "acc": "62.01",
@@ -2228,7 +2156,7 @@
         "total": 22800
       },
       {
-        "id": "tmu2bdakh4j2yifu",
+        "id": "tmu2bwtgf6h8yrso",
         "type": "retail_report",
         "number": "РП-000001",
         "date": "2026-08-28",
@@ -2334,7 +2262,7 @@
         "total": 42700
       },
       {
-        "id": "tmu2bdakh74nici8",
+        "id": "tmu2bwtgf1reh6af",
         "type": "sale",
         "number": "РТ-000004",
         "date": "2026-09-02",
@@ -2343,7 +2271,7 @@
         "contractor": "c2",
         "contract": "d6",
         "warehouse": "w1",
-        "basis": "tmu2bdakg4laikvd",
+        "basis": "tmu2bwtgfk9d8or2",
         "payTerm": "",
         "settle": {
           "acc": "62.01",
@@ -2414,7 +2342,7 @@
         "total": 75000
       },
       {
-        "id": "tmu2bdakhe2gyaow",
+        "id": "tmu2bwtgfg3740op",
         "type": "reconciliation",
         "number": "АС-000001",
         "date": "2026-09-01",
@@ -2511,7 +2439,7 @@
         "total": 0
       },
       {
-        "id": "tmu2bdakhry94r5j",
+        "id": "tmu2bwtgfb0ecwem",
         "type": "stock_opening",
         "number": "ВНО-000001",
         "date": "2026-08-01",
@@ -2747,7 +2675,7 @@
         "total": 1568800
       },
       {
-        "id": "tmu2bdakhgyrqzps",
+        "id": "tmu2bwtgf7hya19b",
         "type": "stock_opening",
         "number": "ВНО-000002",
         "date": "2026-08-01",
@@ -2840,7 +2768,7 @@
         "total": 13000
       },
       {
-        "id": "tmu2bdakhvxiven1",
+        "id": "tmu2bwtgfunkgllo",
         "type": "spec",
         "number": "СПЦ-000001",
         "date": "2026-08-02",
@@ -2995,7 +2923,7 @@
         "total": 34950
       },
       {
-        "id": "tmu2bdakhyspsku8",
+        "id": "tmu2bwtgfz9x2yil",
         "type": "spec",
         "number": "СПЦ-000002",
         "date": "2026-08-02",
@@ -3150,7 +3078,7 @@
         "total": 43050
       },
       {
-        "id": "tmu2bdakhw1s2tbs",
+        "id": "tmu2bwtgflct122l",
         "type": "plan_prices",
         "number": "ПЦ-000001",
         "date": "2026-08-02",
@@ -3228,7 +3156,7 @@
         "total": 0
       },
       {
-        "id": "tmu2bdakhvo7yg79",
+        "id": "tmu2bwtgfpcb8chh",
         "type": "requisition",
         "number": "ТН-000001",
         "date": "2026-08-05",
@@ -3312,7 +3240,7 @@
         "total": 750
       },
       {
-        "id": "tmu2bdakhq9zte9l",
+        "id": "tmu2bwtgfy14ef94",
         "type": "shift_report",
         "number": "ОПС-000001",
         "date": "2026-08-06",
@@ -3464,7 +3392,7 @@
             "nom": "p1",
             "qty": 5,
             "price": 35000,
-            "spec": "tmu2bdakhvxiven1",
+            "spec": "tmu2bwtgfunkgllo",
             "account": "43",
             "nomGroup": "ng1",
             "vat": -1,
@@ -3493,7 +3421,7 @@
         "total": 175000
       },
       {
-        "id": "tmu2bdakh72syokp",
+        "id": "tmu2bwtgfk55rr6m",
         "type": "shift_report",
         "number": "ОПС-000002",
         "date": "2026-08-13",
@@ -3645,7 +3573,7 @@
             "nom": "p2",
             "qty": 3,
             "price": 55000,
-            "spec": "tmu2bdakhyspsku8",
+            "spec": "tmu2bwtgfz9x2yil",
             "account": "43",
             "nomGroup": "ng1",
             "vat": -1,
@@ -3674,7 +3602,7 @@
         "total": 165000
       },
       {
-        "id": "tmu2bdakhwjbn5it",
+        "id": "tmu2bwtgfcbmz2r0",
         "type": "to_processing",
         "number": "ПСП-000001",
         "date": "2026-08-15",
@@ -3826,7 +3754,7 @@
         "total": 69900
       },
       {
-        "id": "tmu2bdakhhvr16tl",
+        "id": "tmu2bwtggbdv3mxx",
         "type": "from_processing",
         "number": "ППП-000001",
         "date": "2026-08-20",
@@ -3835,7 +3763,7 @@
         "contractor": "c4",
         "contract": "d4",
         "warehouse": "w1",
-        "basis": "tmu2bdakhwjbn5it",
+        "basis": "tmu2bwtgfcbmz2r0",
         "payTerm": "",
         "settle": {
           "acc": "62.01",
@@ -4012,7 +3940,7 @@
         "total": 70000
       },
       {
-        "id": "tmu2bdakhtmmsprt",
+        "id": "tmu2bwtggyj0i2qo",
         "type": "sale",
         "number": "РТ-000005",
         "date": "2026-08-23",
@@ -4109,7 +4037,7 @@
         "total": 286000
       },
       {
-        "id": "tmu2bdakhvsyw3ah",
+        "id": "tmu2bwtggxly4wjp",
         "type": "transfer",
         "number": "ПМ-000001",
         "date": "2026-08-26",
@@ -4216,7 +4144,7 @@
         "total": 33500
       },
       {
-        "id": "tmu2bdakhz7ub4v3",
+        "id": "tmu2bwtgg8pftcyj",
         "type": "assembly",
         "number": "КМ-000001",
         "date": "2026-08-17",
@@ -4324,7 +4252,7 @@
         "total": 95200
       },
       {
-        "id": "tmu2bdakh72x2m9t",
+        "id": "tmu2bwtggk2q3ddu",
         "type": "inventory",
         "number": "ИНВ-000001",
         "date": "2026-08-29",
@@ -4427,7 +4355,7 @@
         "total": 0
       },
       {
-        "id": "tmu2bdakhlnlbnv3",
+        "id": "tmu2bwtggf1gntnm",
         "type": "stock_out",
         "number": "СП-000001",
         "date": "2026-08-29",
@@ -4436,7 +4364,7 @@
         "contractor": "",
         "contract": "",
         "warehouse": "w2",
-        "basis": "tmu2bdakh72x2m9t",
+        "basis": "tmu2bwtggk2q3ddu",
         "payTerm": "",
         "settle": {
           "acc": "62.01",
@@ -4507,7 +4435,7 @@
         "total": 600
       },
       {
-        "id": "tmu2bdakhrx81eng",
+        "id": "tmu2bwtggxqdvt8j",
         "type": "stock_in",
         "number": "ОП-000001",
         "date": "2026-08-29",
@@ -4516,7 +4444,7 @@
         "contractor": "",
         "contract": "",
         "warehouse": "w2",
-        "basis": "tmu2bdakh72x2m9t",
+        "basis": "tmu2bwtggk2q3ddu",
         "payTerm": "",
         "settle": {
           "acc": "62.01",
@@ -4587,7 +4515,7 @@
         "total": 700
       },
       {
-        "id": "tmu2bdakhveh0kop",
+        "id": "tmu2bwtggl00aqk6",
         "type": "stock_out",
         "number": "СП-000002",
         "date": "2026-09-01",
@@ -4667,7 +4595,7 @@
         "total": 1750
       },
       {
-        "id": "tmu2bdakho5u5wqe",
+        "id": "tmu2bwtggciknuw0",
         "type": "price_setting",
         "number": "УЦ-000001",
         "date": "2026-09-01",
@@ -4750,7 +4678,7 @@
         "total": 0
       },
       {
-        "id": "tmu2bdakhccxplv6",
+        "id": "tmu2bwtgg0df1krg",
         "type": "wip_inventory",
         "number": "ИНЗП-000001",
         "date": "2026-08-31",
@@ -4824,7 +4752,7 @@
         "total": 12000
       },
       {
-        "id": "tmu2bdakh5k1e616",
+        "id": "tmu2bwtgg4y96elq",
         "type": "month_close",
         "number": "ЗМ-000001",
         "date": "2026-08-31",
@@ -4940,7 +4868,7 @@
         ]
       },
       {
-        "id": "tmu2bdakhjp88fxw",
+        "id": "tmu2bwtggg2jui5i",
         "type": "hire",
         "number": "ПР-000001",
         "date": "2024-01-10",
@@ -5017,7 +4945,7 @@
         "vatTotal": 0
       },
       {
-        "id": "tmu2bdakhyd2byir",
+        "id": "tmu2bwtgg6ze6j53",
         "type": "hire",
         "number": "ПР-000002",
         "date": "2024-01-10",
@@ -5094,7 +5022,7 @@
         "vatTotal": 0
       },
       {
-        "id": "tmu2bdakhzxqvqxe",
+        "id": "tmu2bwtggsu5lsu4",
         "type": "hire",
         "number": "ПР-000003",
         "date": "2024-03-01",
@@ -5171,7 +5099,7 @@
         "vatTotal": 0
       },
       {
-        "id": "tmu2bdakhfvidfkv",
+        "id": "tmu2bwtgg6ckpqw3",
         "type": "hire",
         "number": "ПР-000004",
         "date": "2025-02-17",
@@ -5248,7 +5176,7 @@
         "vatTotal": 0
       },
       {
-        "id": "tmu2bdakhvanshwc",
+        "id": "tmu2bwtgguqkm492",
         "type": "hire",
         "number": "ПР-000005",
         "date": "2025-06-02",
@@ -5325,7 +5253,7 @@
         "vatTotal": 0
       },
       {
-        "id": "tmu2bdakhk33o8ws",
+        "id": "tmu2bwtggmb9vcxu",
         "type": "hire",
         "number": "ПР-000006",
         "date": "2025-09-01",
@@ -5402,7 +5330,7 @@
         "vatTotal": 0
       },
       {
-        "id": "tmu2bdakiidnel59",
+        "id": "tmu2bwtggyc9uwmz",
         "type": "hr_transfer",
         "number": "КП-000001",
         "date": "2026-08-01",
@@ -5480,7 +5408,7 @@
         "vatTotal": 0
       },
       {
-        "id": "tmu2bdakieige1wi",
+        "id": "tmu2bwtggh7z4p3a",
         "type": "vacation",
         "number": "ОТ-000001",
         "date": "2026-08-05",
@@ -5554,7 +5482,7 @@
         "vatTotal": 0
       },
       {
-        "id": "tmu2bdakihwh7pz6",
+        "id": "tmu2bwtggpyxnjjp",
         "type": "sick_leave",
         "number": "БЛ-000001",
         "date": "2026-08-08",
@@ -5628,7 +5556,7 @@
         "vatTotal": 0
       },
       {
-        "id": "tmu2bdakiq2cfey1",
+        "id": "tmu2bwtgg20f2lcs",
         "type": "timesheet",
         "number": "ТБ-000001",
         "date": "2026-08-28",
@@ -5752,7 +5680,7 @@
         ]
       },
       {
-        "id": "tmu2bdakidic4r3b",
+        "id": "tmu2bwtggx0sthuh",
         "type": "payroll",
         "number": "НЗ-000001",
         "date": "2026-08-28",
@@ -5976,7 +5904,7 @@
         ]
       },
       {
-        "id": "tmu2bdakiup1bndp",
+        "id": "tmu2bwtghro4jfro",
         "type": "payout_bank",
         "number": "ВБ-000001",
         "date": "2026-09-05",
@@ -5985,7 +5913,7 @@
         "contractor": "",
         "contract": "",
         "warehouse": "w1",
-        "basis": "tmu2bdakidic4r3b",
+        "basis": "tmu2bwtggx0sthuh",
         "payTerm": "",
         "settle": {
           "acc": "62.01",
@@ -6071,7 +5999,7 @@
         ]
       },
       {
-        "id": "tmu2bdakj8lfsc8w",
+        "id": "tmu2bwtgilutww55",
         "type": "payout_cash",
         "number": "ВК-000001",
         "date": "2026-09-05",
@@ -6080,7 +6008,7 @@
         "contractor": "",
         "contract": "",
         "warehouse": "w1",
-        "basis": "tmu2bdakidic4r3b",
+        "basis": "tmu2bwtggx0sthuh",
         "payTerm": "",
         "settle": {
           "acc": "62.01",
@@ -6146,7 +6074,7 @@
         ]
       },
       {
-        "id": "tmu2bdakkpq3p2o6",
+        "id": "tmu2bwtgjqgr6rlh",
         "type": "gph",
         "number": "ГПХ-000001",
         "date": "2026-08-12",
@@ -6223,7 +6151,7 @@
         "vatTotal": 0
       },
       {
-        "id": "tmu2bdakkt4bdc1a",
+        "id": "tmu2bwtgjm9zz939",
         "type": "dismissal",
         "number": "УВ-000001",
         "date": "2026-09-02",
@@ -6295,7 +6223,7 @@
         "vatTotal": 0
       },
       {
-        "id": "tmu2bdakkvha64fh",
+        "id": "tmu2bwtgjkegam7q",
         "type": "vacation",
         "number": "ОТ-000002",
         "date": "2026-09-01",
@@ -6367,7 +6295,7 @@
         "vatTotal": 0
       },
       {
-        "id": "tmu2bdakkdx8teel",
+        "id": "tmu2bwtgjrtgi7qn",
         "type": "payroll",
         "number": "НЗ-000002",
         "date": "2026-09-02",
@@ -7004,7 +6932,8 @@
         "price": 22000,
         "cost": 17500,
         "account": "41.01",
-        "country": "Китай"
+        "country": "Китай",
+        "nomGroup": "ng2"
       },
       {
         "id": "n10",
@@ -7016,7 +6945,8 @@
         "price": 5000,
         "cost": 0,
         "account": "44.01",
-        "country": ""
+        "country": "",
+        "nomGroup": "ng3"
       },
       {
         "id": "n11",
@@ -7028,7 +6958,8 @@
         "price": 4500,
         "cost": 0,
         "account": "20.01",
-        "country": ""
+        "country": "",
+        "nomGroup": "ng3"
       }
     ],
     "warehouses": [
@@ -7479,5 +7410,31 @@
     "stockSeeded": true,
     "hrSeeded": true,
     "demoSeeded": true
-  }
+  },
+  "_activityLog": [
+    {
+      "date": "2026-09-15T07:07:18.069Z",
+      "user": "Администратор",
+      "action": "Удаление документа",
+      "details": "payment_out ПП-0001"
+    },
+    {
+      "date": "2026-09-15T07:07:16.758Z",
+      "user": "Администратор",
+      "action": "Удаление документа",
+      "details": "payment_in ПП-0004"
+    },
+    {
+      "date": "2026-09-15T07:07:15.437Z",
+      "user": "Администратор",
+      "action": "Удаление документа",
+      "details": "payment_out ПП-0003"
+    },
+    {
+      "date": "2026-09-15T07:07:13.965Z",
+      "user": "Администратор",
+      "action": "Удаление документа",
+      "details": "payment_out ПП-0006"
+    }
+  ]
 }
