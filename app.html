@@ -4745,10 +4745,10 @@
 
         // ==================== STARTUP ====================
         // One-time cache reset
-        if (localStorage.getItem('cache_version') !== 'v4') {
+        if (localStorage.getItem('cache_version') !== 'v5') {
             localStorage.removeItem('db_cache');
             localStorage.removeItem('db_cache_sha');
-            localStorage.setItem('cache_version', 'v4');
+            localStorage.setItem('cache_version', 'v5');
             location.reload();
         }
         window.addEventListener('DOMContentLoaded', init);
