@@ -94,6 +94,21 @@ const DbSync = (function() {
     async function loadData() {
         if (!_token) return null;
 
+        // Offline — immediately return cached data, no waiting for timeout
+        if (!navigator.onLine) {
+            try {
+                const cached = localStorage.getItem('db_cache');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    _lastHash = hashData(parsed);
+                    _dataLoaded = true;
+                    showSyncStatus('offline');
+                    return parsed;
+                }
+            } catch(e) {}
+            return null;
+        }
+
         try {
             // Step 1: Get file metadata (sha, size)
             const metaUrl = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;

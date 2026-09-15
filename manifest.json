@@ -1,0 +1,9 @@
+{
+    "name": "1s - (TECT)",
+    "short_name": "1s (TECT)",
+    "start_url": "/index.html",
+    "display": "standalone",
+    "background_color": "#1a1a2e",
+    "theme_color": "#00b4d8",
+    "icons": []
+}

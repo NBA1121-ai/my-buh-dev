@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; img-src 'self' data:;">
     <title>1s Бухгалтерия (ТЕСТ) - Вход</title>
+    <link rel="manifest" href="manifest.json">
     <style>
         :root {
             --primary: #2a6fb8;
@@ -312,6 +313,11 @@
         document.getElementById('loginInput').addEventListener('keydown', e => {
             if (e.key === 'Enter') document.getElementById('passwordInput').focus();
         });
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
     </script>
 </body>
 </html>
