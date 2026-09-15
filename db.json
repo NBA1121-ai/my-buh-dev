@@ -79,6 +79,22 @@
       "purpose": "",
       "note": "",
       "created": "2026-09-15T09:44:04.460Z"
+    },
+    {
+      "id": "_1789465529339_8vh9hw",
+      "type": "payment_out",
+      "number": "ПП-0007",
+      "date": "2026-09-15",
+      "status": "draft",
+      "account": "_2",
+      "contractor": "",
+      "article": "",
+      "currency": "",
+      "sum": 1000000,
+      "rate": 1,
+      "purpose": "",
+      "note": "",
+      "created": "2026-09-15T09:45:29.339Z"
     }
   ],
   "cashDocuments": [],
@@ -1004,6 +1020,12 @@
     ]
   },
   "_activityLog": [
+    {
+      "date": "2026-09-15T09:44:04.462Z",
+      "user": "Администратор",
+      "action": "Создание документа",
+      "details": "payment_in ПП-0006 на 1000000"
+    },
     {
       "date": "2026-09-15T09:41:18.774Z",
       "user": "Администратор",
