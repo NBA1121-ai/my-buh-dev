@@ -4744,6 +4744,12 @@
         });
 
         // ==================== STARTUP ====================
+        // One-time cache reset
+        if (localStorage.getItem('cache_version') !== 'v2') {
+            localStorage.removeItem('db_cache');
+            localStorage.removeItem('db_cache_sha');
+            localStorage.setItem('cache_version', 'v2');
+        }
         window.addEventListener('DOMContentLoaded', init);
     </script>
     <script>
