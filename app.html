@@ -631,8 +631,8 @@
             if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '') + ' ' + (d.note || '') + ' ' + d.sum).toLowerCase().includes(q)); }
             docs.sort(docCmp);
 
-            const totalIn = docs.filter(d => ['payment_in'].includes(d.type)).reduce((s, d) => s + Number(d.sum || 0), 0);
-            const totalOut = docs.filter(d => ['payment_out', 'payment_order', 'conversion', 'statement', 'directbank'].includes(d.type) && d.type !== 'payment_in').reduce((s, d) => s + Number(d.sum || 0), 0);
+            const totalIn = docs.filter(d => ['payment_in'].includes(d.type)).reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
+            const totalOut = docs.filter(d => ['payment_out', 'payment_order', 'conversion', 'statement', 'directbank'].includes(d.type) && d.type !== 'payment_in').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
             const pg = paginate(docs, 'bank');
 
             return `
@@ -695,8 +695,8 @@
             if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '') + ' ' + (d.note || '') + ' ' + d.sum).toLowerCase().includes(q)); }
             docs.sort(docCmp);
 
-            const totalIn = docs.filter(d => d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0), 0);
-            const totalOut = docs.filter(d => d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0), 0);
+            const totalIn = docs.filter(d => d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
+            const totalOut = docs.filter(d => d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
             const pgCash = paginate(docs, 'cash');
 
             return `
@@ -752,8 +752,8 @@
 
         function renderReports() {
             const allDocs = [...db.bankDocuments, ...db.cashDocuments];
-            const totalIn = allDocs.filter(d => d.type === 'payment_in' || d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0), 0);
-            const totalOut = allDocs.filter(d => d.type === 'payment_out' || d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0), 0);
+            const totalIn = allDocs.filter(d => d.type === 'payment_in' || d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
+            const totalOut = allDocs.filter(d => d.type === 'payment_out' || d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
             const postedDocs = allDocs.filter(d => d.status === 'posted').length;
 
             return `
@@ -819,8 +819,8 @@
                 ${days.map(date => {
                     const docs = byDay[date]; pageNo++;
                     const opening = balance;
-                    const inSum = docs.filter(d => d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0), 0);
-                    const outSum = docs.filter(d => d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0), 0);
+                    const inSum = docs.filter(d => d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
+                    const outSum = docs.filter(d => d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
                     balance = opening + inSum - outSum;
                     return `
                     <div class="table-container" style="margin-bottom:15px">
@@ -840,8 +840,8 @@
                     </table></div>`;
                 }).join('')}
                 </div>
-                <div class="stats"><div class="stat-card"><div class="stat-label">ВСЕГО ПРИХОД</div><div class="stat-value">${formatAmount(cashDocs.filter(d => d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0), 0))}</div></div>
-                <div class="stat-card"><div class="stat-label">ВСЕГО РАСХОД</div><div class="stat-value out">${formatAmount(cashDocs.filter(d => d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0), 0))}</div></div>
+                <div class="stats"><div class="stat-card"><div class="stat-label">ВСЕГО ПРИХОД</div><div class="stat-value">${formatAmount(cashDocs.filter(d => d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0))}</div></div>
+                <div class="stat-card"><div class="stat-label">ВСЕГО РАСХОД</div><div class="stat-value out">${formatAmount(cashDocs.filter(d => d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0))}</div></div>
                 <div class="stat-card"><div class="stat-label">ОСТАТОК В КАССЕ</div><div class="stat-value">${formatAmount(balance)}</div></div></div>`;
         }
         function printCashbook() {
@@ -1376,8 +1376,8 @@
             // Recent operations (last 10)
             let recentRows = '';
             const allDocs = [];
-            (db.bankDocuments || []).forEach(d => allDocs.push({ date: d.date, type: getDocTypeLabel(d.type), desc: esc(d.contractor || d.purpose || ''), sum: d.sum, isIn: d.type === 'payment_in' }));
-            (db.cashDocuments || []).forEach(d => allDocs.push({ date: d.date, type: getDocTypeLabel(d.type), desc: esc(d.contractor || d.purpose || ''), sum: d.sum, isIn: d.type === 'pko' }));
+            (db.bankDocuments || []).forEach(d => allDocs.push({ date: d.date, type: getDocTypeLabel(d.type), desc: esc(d.contractor || d.purpose || ''), sum: (d.sum || 0) * (Number(d.rate) || 1), isIn: d.type === 'payment_in' }));
+            (db.cashDocuments || []).forEach(d => allDocs.push({ date: d.date, type: getDocTypeLabel(d.type), desc: esc(d.contractor || d.purpose || ''), sum: (d.sum || 0) * (Number(d.rate) || 1), isIn: d.type === 'pko' }));
             if (db.trade && db.trade.docs) db.trade.docs.forEach(d => { const tt = TT[d.type]; allDocs.push({ date: d.date, type: tt ? tt.short || tt.label : d.type, desc: esc(d.contractor ? (tContractor(d.contractor)||{}).name||d.contractor : (d.number||'')), sum: d.total || d.sum || 0, isIn: tt && tt.group === 'sale' }); });
             allDocs.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
             const recent = allDocs.slice(0, 10);
@@ -1461,7 +1461,7 @@
             const byArticle = {};
             allFin.filter(d => d.type === 'payment_out' || d.type === 'rko').forEach(d => {
                 const art = d.article ? ((db.articles || []).find(a => a.id === d.article) || {}).name || 'Прочее' : 'Без статьи';
-                byArticle[art] = (byArticle[art] || 0) + (d.sum || 0);
+                byArticle[art] = (byArticle[art] || 0) + (d.sum || 0) * (Number(d.rate) || 1);
             });
             const pieLabels = Object.keys(byArticle).slice(0, 8);
             const pieData = pieLabels.map(k => byArticle[k]);
