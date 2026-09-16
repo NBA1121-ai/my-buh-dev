@@ -238,6 +238,137 @@ function initKeyboardShortcuts() {
     });
 }
 
+// --- Пагинация ---
+const _pages = {};
+function pageOf(key) { return _pages[key] || 1; }
+function setPage(key, p) { _pages[key] = p; renderPage(); }
+function paginate(arr, key, perPage) {
+    perPage = perPage || 50;
+    const total = arr.length;
+    const pages = Math.ceil(total / perPage) || 1;
+    let p = Math.min(pageOf(key), pages);
+    _pages[key] = p;
+    const start = (p - 1) * perPage;
+    return { items: arr.slice(start, start + perPage), page: p, pages, total };
+}
+function paginationHtml(key, pg) {
+    if (pg.pages <= 1) return '';
+    let h = '<div style="display:flex;align-items:center;gap:6px;margin-top:10px;justify-content:center;flex-wrap:wrap">';
+    h += '<span style="font-size:13px;color:var(--text-secondary)">Всего: ' + pg.total + '</span>';
+    if (pg.page > 1) h += '<button class="btn" style="padding:4px 10px" onclick="setPage(\'' + key + '\',' + (pg.page - 1) + ')">◀</button>';
+    const start = Math.max(1, pg.page - 3), end = Math.min(pg.pages, pg.page + 3);
+    for (let i = start; i <= end; i++) {
+        h += '<button class="btn' + (i === pg.page ? ' primary' : '') + '" style="padding:4px 10px" onclick="setPage(\'' + key + '\',' + i + ')">' + i + '</button>';
+    }
+    if (pg.page < pg.pages) h += '<button class="btn" style="padding:4px 10px" onclick="setPage(\'' + key + '\',' + (pg.page + 1) + ')">▶</button>';
+    h += '</div>';
+    return h;
+}
+
+// --- Шаблоны документов ---
+function saveAsTemplate(docId) {
+    const doc = (db.bankDocuments || []).find(d => d.id === docId) || (db.cashDocuments || []).find(d => d.id === docId);
+    if (!doc) return;
+    const name = prompt('Название шаблона:', doc.contractor || doc.purpose || 'Шаблон');
+    if (!name) return;
+    if (!db.templates) db.templates = [];
+    const tmpl = { ...doc, id: uid(), templateName: name, isTemplate: true };
+    delete tmpl.number; delete tmpl.date; delete tmpl.status; delete tmpl.created;
+    db.templates.push(tmpl);
+    saveData();
+    showToast('Шаблон "' + name + '" сохранён');
+}
+function createFromTemplate(tmplId) {
+    const tmpl = (db.templates || []).find(t => t.id === tmplId);
+    if (!tmpl) return;
+    const doc = { ...tmpl, id: uid(), date: new Date().toISOString().split('T')[0], status: 'draft', created: new Date().toISOString() };
+    delete doc.templateName; delete doc.isTemplate;
+    const isCash = ['pko', 'rko', 'advance'].includes(doc.type);
+    if (isCash) {
+        doc.number = 'К-' + String((db.cashDocuments || []).length + 1).padStart(4, '0');
+        db.cashDocuments.push(doc);
+    } else {
+        doc.number = 'ПП-' + String((db.bankDocuments || []).length + 1).padStart(4, '0');
+        db.bankDocuments.push(doc);
+    }
+    saveData(); renderPage();
+    showToast('Документ создан из шаблона');
+}
+function deleteTemplate(id) {
+    if (!confirm('Удалить шаблон?')) return;
+    db.templates = (db.templates || []).filter(t => t.id !== id);
+    saveData(); renderPage();
+}
+function renderTemplatesPanel() {
+    const templates = db.templates || [];
+    if (!templates.length) return '';
+    return '<div style="margin-bottom:12px;padding:10px;background:var(--bg-card);border-radius:var(--radius-lg);border:1px dashed var(--border-input)"><b>Шаблоны:</b> ' +
+        templates.map(t => '<button class="btn" style="padding:3px 10px;margin:2px" onclick="createFromTemplate(\'' + t.id + '\')" title="Создать из шаблона">' + esc(t.templateName) + '</button><button class="btn" style="padding:3px 6px;margin:2px;color:var(--danger);font-size:10px" onclick="deleteTemplate(\'' + t.id + '\')" title="Удалить шаблон">✕</button>').join(' ') + '</div>';
+}
+
+// --- Массовые операции ---
+let _selected = new Set();
+function toggleSelect(id, el) {
+    if (el.checked) _selected.add(id); else _selected.delete(id);
+    document.querySelectorAll('.bulk-bar').forEach(b => b.style.display = _selected.size ? 'flex' : 'none');
+    const cnt = document.getElementById('bulkCount');
+    if (cnt) cnt.textContent = _selected.size;
+}
+function toggleSelectAll(el, ids) {
+    ids.forEach(id => { if (el.checked) _selected.add(id); else _selected.delete(id); });
+    document.querySelectorAll('.bulk-chk').forEach(c => c.checked = el.checked);
+    document.querySelectorAll('.bulk-bar').forEach(b => b.style.display = _selected.size ? 'flex' : 'none');
+    const cnt = document.getElementById('bulkCount');
+    if (cnt) cnt.textContent = _selected.size;
+}
+function bulkAction(action) {
+    if (!_selected.size) return;
+    const ids = [..._selected];
+    if (action === 'post') {
+        ids.forEach(id => {
+            const d = db.bankDocuments.find(x => x.id === id) || db.cashDocuments.find(x => x.id === id);
+            if (d) d.status = 'posted';
+        });
+        showToast('Проведено: ' + ids.length);
+    } else if (action === 'unpost') {
+        ids.forEach(id => {
+            const d = db.bankDocuments.find(x => x.id === id) || db.cashDocuments.find(x => x.id === id);
+            if (d) d.status = 'draft';
+        });
+        showToast('Отменено проведение: ' + ids.length);
+    } else if (action === 'delete') {
+        if (!confirm('Удалить ' + ids.length + ' документов?')) return;
+        ids.forEach(id => {
+            db.bankDocuments = db.bankDocuments.filter(x => x.id !== id);
+            db.cashDocuments = db.cashDocuments.filter(x => x.id !== id);
+        });
+        showToast('Удалено: ' + ids.length);
+    }
+    _selected.clear();
+    saveData(); renderPage();
+}
+function bulkBarHtml() {
+    return '<div class="bulk-bar" style="display:none;gap:8px;align-items:center;margin-bottom:8px;padding:8px 12px;background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--primary)"><span>Выбрано: <b id="bulkCount">0</b></span><button class="btn primary" style="padding:4px 12px" onclick="bulkAction(\'post\')">✔ Провести</button><button class="btn" style="padding:4px 12px" onclick="bulkAction(\'unpost\')">↩ Отменить</button><button class="btn" style="padding:4px 12px;color:var(--danger)" onclick="bulkAction(\'delete\')">🗑 Удалить</button></div>';
+}
+
+// --- Поиск в меню ---
+function filterMenu(q) {
+    q = q.toLowerCase().trim();
+    const sidebar = document.getElementById('sidebar');
+    const items = sidebar.querySelectorAll('.nav-item');
+    const sections = sidebar.querySelectorAll('.section-title');
+    if (!q) {
+        items.forEach(el => el.style.display = '');
+        sections.forEach(el => { el.style.display = ''; if (el.nextElementSibling) el.nextElementSibling.style.maxHeight = ''; });
+        return;
+    }
+    sections.forEach(el => el.style.display = 'none');
+    items.forEach(el => {
+        const text = el.textContent.toLowerCase();
+        el.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+
 // --- Генерация обобщённых CRUD справочников ---
 function renderGenericCRUD(config) {
     const { title, items, formId, columns, formFields, onSave, onDelete, addLabel } = config;

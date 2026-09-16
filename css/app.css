@@ -1099,7 +1099,8 @@ body.dark .badge { opacity: 0.9; }
     .table-container, table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     table { font-size: 12px; min-width: 600px; }
     th, td { padding: 6px 8px; }
-    .action-buttons { flex-direction: column; gap: 3px; }
+    .action-buttons { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+    .action-btn { min-height: 40px; min-width: 40px; font-size: 16px; padding: 8px 12px; }
     .user-email { display: none; }
     .ttotals { flex-direction: column; gap: 5px; font-size: 13px; }
     #tFoot { flex-direction: column; gap: 8px; padding: 8px 12px; }
