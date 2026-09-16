@@ -3149,7 +3149,7 @@
         }
         function tReconRows(d) {
             const r = d.recon; const cname = tContractorName(d.contractor); const rows = [];
-            db.trade.docs.filter(x => x.contractor === d.contractor && x.status === 'posted' && x.date >= r.from && x.date <= r.to && !TT[x.type].noSum && !TT[x.type].payStatus).forEach(x => {
+            db.trade.docs.filter(x => x.contractor === d.contractor && x.status === 'posted' && x.date >= r.from && x.date <= r.to && !TT[x.type].noSum && (!TT[x.type].payStatus || x.type === 'customer_invoice')).forEach(x => {
                 const g = TT[x.type].group; const isDebit = (g === 'sale' && !['sale_return'].includes(x.type)) || x.type === 'purchase_return';
                 rows.push({ date: x.date, doc: tDocTitle(x), dt: isDebit ? x.total : 0, kt: isDebit ? 0 : x.total });
             });
@@ -3303,7 +3303,7 @@
 
         function renderDebtReport(group) {
             const isSale = group === 'sale';
-            const chargeTypes = isSale ? ['sale', 'production_services', 'commission_report', 'sale_correction'] : ['purchase', 'add_expenses', 'purchase_correction'];
+            const chargeTypes = isSale ? ['sale', 'production_services', 'commission_report', 'sale_correction', 'customer_invoice'] : ['purchase', 'add_expenses', 'purchase_correction'];
             const returnTypes = isSale ? ['sale_return'] : ['purchase_return'];
             const payTypes = isSale ? ['payment_in', 'pko'] : ['payment_out', 'rko'];
             const today = new Date().toISOString().slice(0, 10);
