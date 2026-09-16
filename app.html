@@ -518,6 +518,12 @@
                 ];
             }
 
+            // Миграция: добавить валютный счёт МБанк (USD)
+            if (!db.accounts.find(a => a.id === '_4_usd')) {
+                changed = true;
+                db.accounts.push({ id: '_4_usd', name: 'Валютный счет МБанк (USD)', number: '1033220001116529', bank: 'ОАО «Mbank», SWIFT: KYRSKG22, BIC: 103032', type: 'bank', currency: 'USD', beneficiary: 'OSOO "GLOBAL KARGO"', inn: '00108202210232' });
+            }
+
             populateSelects();
             if (changed) saveData();
         }
