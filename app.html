@@ -242,11 +242,15 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Сумма *</label>
-                            <input type="number" id="docSum" step="0.01" min="0.01" placeholder="0.00" required>
+                            <input type="number" id="docSum" step="0.01" min="0.01" placeholder="0.00" required oninput="calcSumKGS()">
                         </div>
                         <div class="form-group">
                             <label>Курс</label>
-                            <input type="number" id="docRate" step="0.01" min="0.01" value="1" placeholder="1.00">
+                            <input type="number" id="docRate" step="0.01" min="0.01" value="1" placeholder="1.00" oninput="calcSumKGS()">
+                        </div>
+                        <div class="form-group">
+                            <label>Эквивалент в сомах</label>
+                            <input type="text" id="docSumKGS" readonly style="background:#f5f5f5;color:#666">
                         </div>
                     </div>
 
@@ -652,7 +656,7 @@
                                 <td>${getDocTypeLabel(d.type)}</td>
                                 <td>${getAccountName(d.account)}</td>
                                 <td>${esc(d.contractor || '-')}</td>
-                                <td class="num amount">${formatAmount(d.sum)}</td>
+                                <td class="num amount">${formatAmountCur(d.sum, d.currency, d.rate)}</td>
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
                                 <td>
                                     <div class="action-buttons">
@@ -710,7 +714,7 @@
                                 <td>${getDocTypeLabel(d.type)}</td>
                                 <td>${getAccountName(d.account)}</td>
                                 <td>${esc(d.contractor || '-')}</td>
-                                <td class="num amount">${formatAmount(d.sum)}</td>
+                                <td class="num amount">${formatAmountCur(d.sum, d.currency, d.rate)}</td>
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
                                 <td>
                                     <div class="action-buttons">
@@ -771,8 +775,8 @@
                                     <td>${esc(d.number)}</td>
                                     <td>${formatDate(d.date)}</td>
                                     <td>${esc(d.contractor || '-')}</td>
-                                    <td class="num">${isIn ? formatAmount(d.sum) : '-'}</td>
-                                    <td class="num">${!isIn && d.type !== 'payment_in' && d.type !== 'pko' ? formatAmount(d.sum) : '-'}</td>
+                                    <td class="num">${isIn ? formatAmountCur(d.sum, d.currency, d.rate) : '-'}</td>
+                                    <td class="num">${!isIn && d.type !== 'payment_in' && d.type !== 'pko' ? formatAmountCur(d.sum, d.currency, d.rate) : '-'}</td>
                                 </tr>
                             `;
                         }).join('')}
@@ -1862,6 +1866,7 @@
             document.getElementById('docCurrency').value = doc.currency || '';
             document.getElementById('docSum').value = doc.sum;
             document.getElementById('docRate').value = doc.rate || 1;
+            calcSumKGS();
             document.getElementById('docPurpose').value = doc.purpose || '';
             document.getElementById('docNote').value = doc.note || '';
             document.getElementById('documentModal').classList.add('active');

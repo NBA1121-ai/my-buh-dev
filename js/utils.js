@@ -46,6 +46,26 @@ function formatAmount(num) {
         maximumFractionDigits: 2
     });
 }
+function getCurrencyCode(id) {
+    const c = (db.currencies || []).find(x => x.id === id);
+    return c ? c.code : '';
+}
+function formatAmountCur(num, currencyId, rate) {
+    const amt = formatAmount(num);
+    const code = getCurrencyCode(currencyId);
+    if (code && code !== 'KGS') {
+        const r = Number(rate) || 1;
+        const kgs = formatAmount(Number(num || 0) * r);
+        return amt + ' ' + code + '<br><span style="font-size:11px;color:#888">' + kgs + ' сом</span>';
+    }
+    return amt;
+}
+function calcSumKGS() {
+    const sum = parseFloat(document.getElementById('docSum').value) || 0;
+    const rate = parseFloat(document.getElementById('docRate').value) || 1;
+    const el = document.getElementById('docSumKGS');
+    if (el) el.value = rate !== 1 ? formatAmount(sum * rate) + ' сом' : '';
+}
 
 // --- Компактный формат чисел (для дашборда) ---
 function fmt(n) {
