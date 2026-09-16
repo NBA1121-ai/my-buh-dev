@@ -146,6 +146,16 @@
             <p>Проверка авторизации...</p>
         </div>
 
+        <div class="login-body" id="tokenSetup" style="display:none">
+            <div class="error-msg" id="tokenError"></div>
+            <p style="font-size:13px;color:#555;margin-bottom:15px">Для работы приложения нужен GitHub Personal Access Token с доступом к репозиторию данных.</p>
+            <div class="form-group">
+                <label for="tokenInput">GitHub Token</label>
+                <input type="password" id="tokenInput" placeholder="ghp_... или github_pat_...">
+            </div>
+            <button class="btn-login" id="tokenBtn" onclick="handleTokenSetup()">Подключить</button>
+        </div>
+
         <div class="login-body" id="authForm" style="display:none">
             <div class="error-msg" id="errorMsg"></div>
 
@@ -206,9 +216,6 @@
         }
 
         DbSync.init();
-        // GitHub API access key (split to pass push protection)
-        const _k = ['g','i','t','h','u','b','_','p','a','t','_','1','1','C','I','R','R','Y','G','I','0','j','L','5','W','S','D','p','A','P','B','J','g','_','r','E','X','u','g','j','L','n','U','O','L','r','q','p','A','L','E','H','4','9','o','I','5','i','D','g','j','U','m','z','M','S','6','C','O','3','d','2','M','V','x','N','N','7','R','F','N','2','J','D','Q','s','R','i','p','X','C','e','N'];
-        DbSync.setToken(_k.join(''));
 
         // Check if already logged in, then load users from GitHub
         (async function() {
@@ -221,6 +228,13 @@
                         return;
                     }
                 } catch(e) {}
+            }
+
+            // If no token in localStorage, show token setup form
+            if (!DbSync.getToken()) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('tokenSetup').style.display = 'block';
+                return;
             }
 
             // Load users from GitHub
@@ -237,12 +251,43 @@
 
             document.getElementById('loading').style.display = 'none';
             document.getElementById('authForm').style.display = 'block';
-            // Auto-focus login input
             document.getElementById('loginInput').focus();
         })();
 
-        let _failCount = parseInt(sessionStorage.getItem('_failCount')) || 0;
-        let _lockUntil = parseInt(sessionStorage.getItem('_lockUntil')) || 0;
+        async function handleTokenSetup() {
+            const token = document.getElementById('tokenInput').value.trim();
+            const errEl = document.getElementById('tokenError');
+            const btn = document.getElementById('tokenBtn');
+            errEl.style.display = 'none';
+            if (!token) { errEl.textContent = 'Введите токен'; errEl.style.display = 'block'; return; }
+            btn.disabled = true; btn.textContent = 'Проверка...';
+            const user = await DbSync.validateToken(token);
+            if (!user) {
+                errEl.textContent = 'Токен недействителен или не имеет доступа';
+                errEl.style.display = 'block';
+                btn.disabled = false; btn.textContent = 'Подключить';
+                return;
+            }
+            DbSync.setToken(token);
+            // Now load users and show login form
+            try {
+                const ghUsers = await DbSync.loadUsers();
+                if (ghUsers && ghUsers.length) _allUsers = ghUsers;
+                else _allUsers = FALLBACK_USERS;
+            } catch(e) { _allUsers = FALLBACK_USERS; }
+            document.getElementById('tokenSetup').style.display = 'none';
+            document.getElementById('authForm').style.display = 'block';
+            document.getElementById('loginInput').focus();
+        }
+
+        let _failCount = parseInt(localStorage.getItem('_loginFailCount')) || 0;
+        let _lockUntil = parseInt(localStorage.getItem('_loginLockUntil')) || 0;
+        // Clear expired lock
+        if (_lockUntil && Date.now() >= _lockUntil) {
+            _failCount = 0; _lockUntil = 0;
+            localStorage.removeItem('_loginFailCount');
+            localStorage.removeItem('_loginLockUntil');
+        }
 
         async function handleLogin() {
             const login = document.getElementById('loginInput').value.trim().toLowerCase();
@@ -275,18 +320,23 @@
             btn.textContent = 'Проверка...';
 
             const loginH = await sha256(login);
-            const passH = await sha256(password);
 
-            const user = _allUsers.find(u => u.login === loginH && u.pass === passH);
+            // Support both salted and unsalted password formats
+            let user = null;
+            for (const u of _allUsers) {
+                if (u.login !== loginH) continue;
+                const passH = u.salt ? await sha256(u.salt + password) : await sha256(password);
+                if (u.pass === passH) { user = u; break; }
+            }
 
             if (!user) {
                 _failCount++;
-                sessionStorage.setItem('_failCount', _failCount);
+                localStorage.setItem('_loginFailCount', _failCount);
                 if (_failCount >= 5) {
                     _lockUntil = Date.now() + 30000;
                     _failCount = 0;
-                    sessionStorage.setItem('_lockUntil', _lockUntil);
-                    sessionStorage.setItem('_failCount', 0);
+                    localStorage.setItem('_loginLockUntil', _lockUntil);
+                    localStorage.setItem('_loginFailCount', 0);
                 }
                 errEl.textContent = 'Неверный логин или пароль';
                 errEl.style.display = 'block';

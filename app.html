@@ -348,12 +348,15 @@
 
         let currentPage = 'dashboard';
         let editingId = null;
+        let _hasUnsavedEdits = false;
 
         // ==================== INITIALIZATION ====================
         DbSync.init();
-        // GitHub API access key (split to pass push protection)
-        const _k = ['g','i','t','h','u','b','_','p','a','t','_','1','1','C','I','R','R','Y','G','I','0','j','L','5','W','S','D','p','A','P','B','J','g','_','r','E','X','u','g','j','L','n','U','O','L','r','q','p','A','L','E','H','4','9','o','I','5','i','D','g','j','U','m','z','M','S','6','C','O','3','d','2','M','V','x','N','N','7','R','F','N','2','J','D','Q','s','R','i','p','X','C','e','N'];
-        DbSync.setToken(_k.join(''));
+        // Token is loaded from localStorage (set during login on index.html)
+        if (!DbSync.getToken()) {
+            window.location.href = 'index.html';
+        }
+        DbSync.onSave((success) => { if (success) _hasUnsavedEdits = false; });
 
         async function init() {
             // Check login session
@@ -368,7 +371,18 @@
                 }
                 const emailEl = document.getElementById('userEmail');
                 if (emailEl) emailEl.textContent = s.name || 'Пользователь';
-                // Show admin-only elements
+                // Verify role from server (users.json), not just localStorage
+                try {
+                    const ghUsers = await DbSync.loadUsers();
+                    if (ghUsers && ghUsers.length) {
+                        const serverUser = ghUsers.find(u => u.name === s.name);
+                        if (serverUser) {
+                            s.role = serverUser.role || 'user';
+                            localStorage.setItem('auth_session', JSON.stringify(s));
+                        }
+                    }
+                } catch(e) {}
+                // Show admin-only elements only after server verification
                 if (s.role === 'admin') {
                     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
                 }
@@ -405,10 +419,21 @@
 
             // Poll for changes from other devices (every 30 sec)
             DbSync.startPolling((newData) => {
+                if (_hasUnsavedEdits) {
+                    if (!confirm('Другое устройство обновило данные. Загрузить новую версию?\n\nОК — загрузить (ваши несохранённые изменения будут потеряны)\nОтмена — оставить текущую версию')) {
+                        return;
+                    }
+                }
                 Object.keys(db).forEach(k => delete db[k]);
                 Object.assign(db, DB_DEFAULTS, newData);
+                _hasUnsavedEdits = false;
                 renderPage();
                 showToast('Данные синхронизированы');
+            });
+
+            // Warn before closing tab with unsaved data
+            window.addEventListener('beforeunload', (e) => {
+                if (_hasUnsavedEdits) { e.preventDefault(); }
             });
 
             // Periodic session check (every 5 min)
@@ -433,6 +458,7 @@
         }
 
         function saveData() {
+            _hasUnsavedEdits = true;
             // Schedule GitHub save (debounced)
             DbSync.scheduleSave(JSON.parse(JSON.stringify(db)));
         }
@@ -1650,7 +1676,7 @@
             let s = {};
             try { s = JSON.parse(localStorage.getItem('auth_session') || '{}'); } catch(e) {}
             return '<div style="padding:20px;max-width:500px">' +
-                '<div class="dash-card" style="margin-bottom:20px"><h3>Профиль</h3><div style="margin-top:10px"><strong>Имя:</strong> ' + (s.name || 'Пользователь') + '</div><div><strong>Роль:</strong> ' + (s.role === 'admin' ? 'Администратор' : 'Пользователь') + '</div></div>' +
+                '<div class="dash-card" style="margin-bottom:20px"><h3>Профиль</h3><div style="margin-top:10px"><strong>Имя:</strong> ' + esc(s.name || 'Пользователь') + '</div><div><strong>Роль:</strong> ' + (s.role === 'admin' ? 'Администратор' : 'Пользователь') + '</div></div>' +
                 '<div class="dash-card"><h3>Смена пароля</h3>' +
                 '<div style="margin-top:12px"><label style="font-size:12px;color:var(--text-secondary)">Текущий пароль</label><br><input type="password" id="oldPass" style="padding:8px;border:1px solid var(--border-input);border-radius:4px;width:100%;margin-bottom:10px"></div>' +
                 '<div><label style="font-size:12px;color:var(--text-secondary)">Новый пароль</label><br><input type="password" id="newPass1" style="padding:8px;border:1px solid var(--border-input);border-radius:4px;width:100%;margin-bottom:10px"></div>' +
@@ -1668,15 +1694,21 @@
             if (newP1 !== newP2) { msg.innerHTML = '<span style="color:var(--danger)">Пароли не совпадают</span>'; return; }
             if (newP1.length < 6) { msg.innerHTML = '<span style="color:var(--danger)">Минимум 6 символов</span>'; return; }
             msg.innerHTML = '<span style="color:var(--text-muted)">Сохранение...</span>';
-            const oldHash = await _sha256(oldP);
-            const newHash = await _sha256(newP1);
             const users = await DbSync.loadUsers();
             if (!users || !users.length) { msg.innerHTML = '<span style="color:var(--danger)">Ошибка загрузки пользователей</span>'; return; }
             let s = {};
             try { s = JSON.parse(localStorage.getItem('auth_session') || '{}'); } catch(e) {}
-            const user = users.find(u => u.name === s.name && u.pass === oldHash);
+            // Support both salted and unsalted password formats
+            let user = null;
+            for (const u of users) {
+                if (u.name !== s.name) continue;
+                const oldHash = u.salt ? await _hashWithSalt(oldP, u.salt) : await _sha256(oldP);
+                if (u.pass === oldHash) { user = u; break; }
+            }
             if (!user) { msg.innerHTML = '<span style="color:var(--danger)">Неверный текущий пароль</span>'; return; }
-            user.pass = newHash;
+            const newSalt = _genSalt();
+            user.salt = newSalt;
+            user.pass = await _hashWithSalt(newP1, newSalt);
             const ok = await DbSync.saveUsers(users);
             if (ok) {
                 msg.innerHTML = '<span style="color:var(--success)">Пароль успешно изменён</span>';
@@ -1692,6 +1724,14 @@
             const enc = new TextEncoder();
             const buf = await crypto.subtle.digest('SHA-256', enc.encode(text));
             return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        function _genSalt() {
+            const arr = new Uint8Array(16);
+            crypto.getRandomValues(arr);
+            return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        async function _hashWithSalt(text, salt) {
+            return await _sha256(salt + text);
         }
 
         let _usersCache = [];
@@ -1852,6 +1892,8 @@
         }
 
         async function restoreFromCommit(sha) {
+            const _sess = JSON.parse(localStorage.getItem('auth_session') || '{}');
+            if (_sess.role !== 'admin') { showToast('Только администратор может восстанавливать данные', 'error'); return; }
             if (!confirm('Восстановить данные из этой точки? Текущие данные будут заменены.')) return;
             const data = await DbSync.restoreFromCommit(sha);
             if (data) {

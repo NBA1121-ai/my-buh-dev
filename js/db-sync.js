@@ -22,6 +22,7 @@ const DbSync = (function() {
     let _pendingSave = null; // queued save while _saving is true
     let _offlinePending = null; // data queued while offline
     let _inited = false;
+    let _onSaveCallback = null;
 
     function _loadOfflinePending() {
         try {
@@ -304,9 +305,12 @@ const DbSync = (function() {
             // Update cache SHA so next load won't re-download
             try { localStorage.setItem('db_cache_sha', _fileSha); } catch(e) {}
             showSyncStatus('saved');
+            if (_onSaveCallback) _onSaveCallback(true);
         } catch(err) {
             console.error('Save error');
+            _lastFailedData = dbObject;
             showSyncStatus('error');
+            if (_onSaveCallback) _onSaveCallback(false);
         } finally {
             _saving = false;
             // Process queued save if any
@@ -505,6 +509,8 @@ const DbSync = (function() {
         return h1.toString(36) + '-' + h2.toString(36);
     }
 
+    let _lastFailedData = null;
+
     function showSyncStatus(status) {
         const el = document.getElementById('syncStatus');
         if (!el) return;
@@ -512,12 +518,27 @@ const DbSync = (function() {
             saving: { text: 'Сохранение...', color: '#ff9800' },
             saved: { text: 'Сохранено в GitHub', color: '#4caf50' },
             synced: { text: 'Синхронизировано', color: '#2196f3' },
-            error: { text: 'Ошибка сохранения!', color: '#f44336' },
+            error: { text: 'Ошибка сохранения! [повторить]', color: '#f44336' },
             offline: { text: 'Нет сети', color: '#999' }
         };
         const s = states[status] || states.saved;
         el.textContent = s.text;
         el.style.color = s.color;
+        if (status === 'error') {
+            el.style.cursor = 'pointer';
+            el.onclick = function() {
+                if (_lastFailedData) {
+                    el.onclick = null;
+                    el.style.cursor = '';
+                    saveData(_lastFailedData);
+                    _lastFailedData = null;
+                }
+            };
+        } else {
+            el.style.cursor = '';
+            el.onclick = null;
+            _lastFailedData = null;
+        }
         if (status === 'saved' || status === 'synced') {
             setTimeout(() => {
                 if (el.textContent === s.text) {
@@ -529,6 +550,7 @@ const DbSync = (function() {
     }
 
     return {
+        onSave: function(cb) { _onSaveCallback = cb; },
         init, getToken, setToken, clearToken, validateToken,
         loadData, scheduleSave, forceSave, isDataLoaded,
         startPolling, stopPolling,

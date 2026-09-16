@@ -129,6 +129,14 @@ async function sha256(text) {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
+function genSalt() {
+    const arr = new Uint8Array(16);
+    crypto.getRandomValues(arr);
+    return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+async function hashWithSalt(text, salt) {
+    return await sha256(salt + text);
+}
 
 // --- Сумма прописью (русский) ---
 function amountInWords(n) {
