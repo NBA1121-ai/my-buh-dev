@@ -815,7 +815,7 @@ async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   const children = [
     new Paragraph({ children: [new TextRun({ text: 'ОТЧЁТ О ТЕСТИРОВАНИИ', bold: true, size: 36 })], heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
-    new Paragraph({ children: [new TextRun({ text: 'Все разделы приложения 1s Бухгалтерия', bold: true, size: 28 })], heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
+    new Paragraph({ children: [new TextRun({ text: 'Все разделы приложения EsepOnline', bold: true, size: 28 })], heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
     new Paragraph({ children: [new TextRun({ text: `URL: ${URL}`, size: 22 })], alignment: AlignmentType.CENTER }),
     new Paragraph({ children: [new TextRun({ text: `Дата: ${dateStr}  Время: ${timeStr}`, size: 22 })], alignment: AlignmentType.CENTER }),
     new Paragraph({ children: [new TextRun({ text: 'Среда: Playwright + Chromium Headless', size: 22 })], alignment: AlignmentType.CENTER }),
@@ -880,7 +880,7 @@ async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
   children.push(
     new Paragraph({ children: [new TextRun({ text: 'ЗАКЛЮЧЕНИЕ', bold: true, size: 28 })], heading: HeadingLevel.HEADING_2 }),
     new Paragraph({ children: [new TextRun({
-      text: `Комплексное тестирование всех разделов приложения 1s Бухгалтерия выполнено ${dateStr}. `
+      text: `Комплексное тестирование всех разделов приложения EsepOnline выполнено ${dateStr}. `
         + `Проверено ${results.length} сценариев по ${sections.length} разделам: ${sections.join(', ')}. `
         + `${passCount} тестов (${Math.round(passCount / results.length * 100)}%) пройдены успешно. `
         + (failCount > 0 ? `Выявлено ${failCount} проблем, требующих внимания.` : 'Все тесты пройдены. Приложение работает корректно.'),

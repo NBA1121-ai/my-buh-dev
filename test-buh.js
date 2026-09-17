@@ -755,7 +755,7 @@ async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
   const children = [
     new Paragraph({ children: [new TextRun({ text: 'ОТЧЁТ О ТЕСТИРОВАНИИ', bold: true, size: 36 })], heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
     new Paragraph({ children: [new TextRun({ text: 'Раздел «Покупки и Продажи»', bold: true, size: 30 })], heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
-    new Paragraph({ children: [new TextRun({ text: `Приложение: 1s Бухгалтерия (${URL})`, size: 22 })], alignment: AlignmentType.CENTER }),
+    new Paragraph({ children: [new TextRun({ text: `Приложение: EsepOnline (${URL})`, size: 22 })], alignment: AlignmentType.CENTER }),
     new Paragraph({ children: [new TextRun({ text: `Дата: ${dateStr}  Время: ${timeStr}`, size: 22 })], alignment: AlignmentType.CENTER }),
     new Paragraph({ children: [new TextRun({ text: 'Среда: Playwright + Chromium Headless', size: 22 })], alignment: AlignmentType.CENTER }),
     new Paragraph({ text: '' }),
@@ -821,7 +821,7 @@ async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
     // Conclusion
     new Paragraph({ children: [new TextRun({ text: '7. ЗАКЛЮЧЕНИЕ', bold: true, size: 28 })], heading: HeadingLevel.HEADING_2 }),
     new Paragraph({ children: [new TextRun({
-      text: `Автоматизированное тестирование раздела «Покупки и Продажи» приложения 1s Бухгалтерия выполнено ${dateStr}. `
+      text: `Автоматизированное тестирование раздела «Покупки и Продажи» приложения EsepOnline выполнено ${dateStr}. `
         + `Проверено ${results.length} тестовых сценариев, из которых ${passCount} (${Math.round(passCount / results.length * 100)}%) пройдены успешно. `
         + (failCount > 0
           ? `Выявлено ${failCount} проблем. Основные функции создания документов, расчёта НДС, формирования проводок и фильтрации работают корректно. Рекомендуется устранить выявленные проблемы и провести повторное тестирование.`

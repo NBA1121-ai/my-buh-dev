@@ -1,6 +1,6 @@
 {
-    "name": "1s - (TECT)",
-    "short_name": "1s (TECT)",
+    "name": "EsepOnline (TECT)",
+    "short_name": "EsepOnline",
     "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#1a1a2e",
