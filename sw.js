@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buh-offline-v6';
+const CACHE_NAME = 'esep-offline-v7';
 const BASE = '/my-buh-dev/';
 const ASSETS = [
     BASE,
@@ -7,7 +7,9 @@ const ASSETS = [
     BASE + 'css/app.css',
     BASE + 'js/db-sync.js',
     BASE + 'js/utils.js',
-    BASE + 'manifest.json'
+    BASE + 'manifest.json',
+    BASE + 'logo_EsepOnline.svg',
+    BASE + 'icon_EsepOnline.svg'
 ];
 const CDN_ASSETS = [
     'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
