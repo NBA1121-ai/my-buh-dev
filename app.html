@@ -27,6 +27,8 @@
             <div class="logo"><img src="logo_EsepOnline.svg" alt="EsepOnline" style="width:100%;max-width:220px;height:auto"></div>
             <input type="text" id="menuSearch" placeholder="🔍 Поиск в меню..." oninput="filterMenu(this.value)" style="width:100%;padding:8px 12px;margin-bottom:10px;border-radius:6px;border:1px solid #444;background:#2a2a2a;color:#fff;font-size:13px;outline:none">
 
+            <div id="favoritesContainer" style="display:none;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #333"></div>
+
             <div class="nav-item active" onclick="selectPage('dashboard')">📋 Главная (Дашборд)</div>
 
             <div class="section-title" onclick="tToggleGroup(this)">Банк и касса</div>
@@ -331,6 +333,13 @@
 
     <div class="toast" id="toast"></div>
 
+    <!-- Обучающий тур -->
+    <div class="modal" id="tourModal" onclick="if(event.target===this)closeTour()" style="z-index:2000">
+        <div class="modal-content" style="max-width:520px;border-radius:12px;overflow:hidden">
+            <div id="tourBody" style="padding:0"></div>
+        </div>
+    </div>
+
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="js/db-sync.js"></script>
@@ -414,6 +423,9 @@
             renderPage();
             updateNotifBadge();
             initKeyboardShortcuts();
+            renderFavorites();
+            initFavoriteContextMenu();
+            checkFirstVisit();
 
             // Apply saved theme
             if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
@@ -589,6 +601,7 @@
             });
             closeSidebar();
             renderPage();
+            renderFavorites();
         }
 
         function renderPage() {
@@ -1435,7 +1448,60 @@
                 '<div class="dash-card"><h3>Сотрудники</h3><div class="dash-value">' + empCount + '</div></div>' +
                 '</div></div>' +
                 (totalDocs > 0 ? '<div class="dash-section" style="margin-top:16px"><h3 style="margin-bottom:12px">Динамика за 6 месяцев</h3><div style="display:grid;grid-template-columns:2fr 1fr;gap:16px"><div style="background:var(--bg-card);border-radius:8px;padding:16px;border:1px solid var(--border)"><canvas id="dashChart" height="200"></canvas></div><div style="background:var(--bg-card);border-radius:8px;padding:16px;border:1px solid var(--border)"><canvas id="dashPie" height="200"></canvas></div></div></div>' : '') +
+                buildTopContractors() +
                 '<div class="dash-recent"><h3>Последние операции</h3><table><thead><tr><th>Дата</th><th>Тип</th><th>Описание</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' + recentRows + '</tbody></table></div></div>';
+        }
+
+        function buildTopContractors() {
+            if (!db.trade || !db.trade.docs || !db.trade.contractors) return '';
+            const now = new Date(), curMonth = now.toISOString().slice(0, 7);
+            const from = curMonth + '-01', lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            const to = curMonth + '-' + String(lastDay).padStart(2, '0');
+            const posted = db.trade.docs.filter(d => d.status === 'posted' && d.date >= from && d.date <= to);
+
+            // Текущий месяц итоги
+            const monthSales = posted.filter(d => ['sale','production_services','retail_report'].includes(d.type)).reduce((s,d) => s + (Number(d.total)||Number(d.sum)||0), 0);
+            const monthPurch = posted.filter(d => d.type === 'purchase').reduce((s,d) => s + (Number(d.total)||Number(d.sum)||0), 0);
+            const monthProfit = monthSales - monthPurch;
+            const monthName = now.toLocaleString('ru-RU', { month: 'long' });
+
+            // Топ-5 покупателей
+            const buyers = {};
+            db.trade.docs.filter(d => d.status === 'posted' && ['sale','production_services','retail_report'].includes(d.type)).forEach(d => {
+                const c = (db.trade.contractors.find(x => x.id === d.contractor) || {}).name || 'Прочие';
+                buyers[c] = (buyers[c] || 0) + (Number(d.total) || Number(d.sum) || 0);
+            });
+            const topBuyers = Object.entries(buyers).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+            // Топ-5 поставщиков
+            const sellers = {};
+            db.trade.docs.filter(d => d.status === 'posted' && d.type === 'purchase').forEach(d => {
+                const c = (db.trade.contractors.find(x => x.id === d.contractor) || {}).name || 'Прочие';
+                sellers[c] = (sellers[c] || 0) + (Number(d.total) || Number(d.sum) || 0);
+            });
+            const topSellers = Object.entries(sellers).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+            const bar = (name, val, max, color) => '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:120px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(name) + '">' + esc(name) + '</div><div style="flex:1;background:var(--border);border-radius:3px;height:18px;overflow:hidden"><div style="height:100%;background:' + color + ';border-radius:3px;width:' + (max > 0 ? Math.round(val/max*100) : 0) + '%"></div></div><div style="font-size:12px;font-weight:600;min-width:80px;text-align:right">' + fmt(val) + '</div></div>';
+
+            let html = '<div class="dash-section" style="margin-top:16px"><h3 style="margin-bottom:12px">Текущий месяц (' + monthName + ')</h3><div class="dash-cards">' +
+                '<div class="dash-card"><h3>Продажи за месяц</h3><div class="dash-value" style="color:var(--success)">' + fmt(monthSales) + '</div></div>' +
+                '<div class="dash-card"><h3>Покупки за месяц</h3><div class="dash-value" style="color:var(--danger)">' + fmt(monthPurch) + '</div></div>' +
+                '<div class="dash-card"><h3>Прибыль за месяц</h3><div class="dash-value" style="color:' + (monthProfit >= 0 ? 'var(--success)' : 'var(--danger)') + '">' + fmt(monthProfit) + '</div></div>' +
+                '</div></div>';
+
+            if (topBuyers.length || topSellers.length) {
+                html += '<div class="dash-section" style="margin-top:16px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">';
+                if (topBuyers.length) {
+                    const maxB = topBuyers[0][1];
+                    html += '<div style="background:var(--bg-card);border-radius:8px;padding:16px;border:1px solid var(--border)"><h4 style="margin-bottom:10px;font-size:13px;color:var(--text-secondary)">Топ-5 покупателей (все время)</h4>' + topBuyers.map(([n,v]) => bar(n, v, maxB, 'var(--success)')).join('') + '</div>';
+                }
+                if (topSellers.length) {
+                    const maxS = topSellers[0][1];
+                    html += '<div style="background:var(--bg-card);border-radius:8px;padding:16px;border:1px solid var(--border)"><h4 style="margin-bottom:10px;font-size:13px;color:var(--text-secondary)">Топ-5 поставщиков (все время)</h4>' + topSellers.map(([n,v]) => bar(n, v, maxS, 'var(--primary)')).join('') + '</div>';
+                }
+                html += '</div></div>';
+            }
+            return html;
         }
 
         let _dashBarChart = null, _dashPieChart = null;
@@ -2443,6 +2509,7 @@
         let tTab = 'goods';       // активная вкладка формы
         let tFilters = { from: '', to: '', contractor: '', search: '', status: '' };
         let tSelected = null;     // выделенная строка журнала
+        let tMassSelected = new Set(); // массовый выбор документов
         let tPickTarget = null;   // вкладка, в которую идет подбор
 
         // ---------- Инициализация данных ----------
@@ -2670,6 +2737,7 @@
                 { label: 'Копировать (F9)', action: `tCopy('${sel ? sel.id : ''}')`, disabled: !has },
                 { label: 'Изменить (F2)', action: `tOpen('${sel ? sel.id : ''}')`, disabled: !has },
                 { label: 'Движения документа (Дт/Кт)', action: `tShowPostings('${sel ? sel.id : ''}')`, disabled: !has },
+                { label: 'История изменений', action: `tShowHistory('${sel ? sel.id : ''}')`, disabled: !has },
                 { sep: true },
                 { label: 'Установить период…', action: `tFocusFilter('tfFrom')` },
                 { label: 'Найти…', action: `tFocusFilter('tfSearch')` },
@@ -2691,6 +2759,12 @@
                 ${cfg.sf ? `<button class="btn" onclick="tIssueSF('${sel ? sel.id : ''}')" ${has ? '' : 'disabled'}>Счет-фактура</button>` : ''}
                 <button class="btn" onclick="tShowPostings('${sel ? sel.id : ''}')" ${has ? '' : 'disabled'}>Дт/Кт</button>
                 <span style="flex:1"></span>
+                ${tMassSelected.size > 0 ? `<span class="mass-info" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--primary);color:#fff;border-radius:6px;font-size:13px;">
+                    Выбрано: ${tMassSelected.size}
+                    <button class="btn" style="background:#fff;color:var(--primary);padding:2px 8px;font-size:12px" onclick="tMassPost()">Провести</button>
+                    <button class="btn" style="background:#fff;color:var(--primary);padding:2px 8px;font-size:12px" onclick="tMassUnpost()">Отменить проведение</button>
+                    <button class="btn" style="background:#fff;color:#e74c3c;padding:2px 8px;font-size:12px" onclick="tMassClearSelection()">✕ Сбросить</button>
+                </span>` : ''}
                 ${tMenu('Ещё', moreItems)}
             </div>
             <div class="filters">
@@ -2708,7 +2782,7 @@
             <div class="table-container">
             <table>
                 <thead><tr>
-                    <th style="width:30px"></th><th>Дата</th><th>Номер</th>
+                    <th style="width:30px"><input type="checkbox" onchange="tMassSelectAll(this.checked)" ${tMassSelected.size > 0 && tMassSelected.size === docs.length ? 'checked' : ''}></th><th style="width:30px"></th><th>Дата</th><th>Номер</th>
                     ${cfg.ops ? '<th>Вид операции</th>' : ''}
                     ${cfg.noContractor ? '' : '<th>Контрагент</th>'}
                     ${cfg.warehouse ? '<th>Склад</th>' : ''}
@@ -2723,6 +2797,7 @@
                 ${window._tradePg.items.map(d => {
                     const ps = cfg.payStatus ? tPayStatus(d) : null;
                     return `<tr class="trow ${tSelected === d.id ? 'sel' : ''} ${d.status === 'deleted' ? 'del' : ''}" onclick="tSelect('${d.id}')" ondblclick="tOpen('${d.id}')">
+                        <td onclick="event.stopPropagation()"><input type="checkbox" ${tMassSelected.has(d.id) ? 'checked' : ''} onchange="tMassToggle('${d.id}')"></td>
                         <td>${tStatusIcon(d)}</td>
                         <td>${formatDate(d.date)}</td>
                         <td><strong>${esc(d.number)}</strong></td>
@@ -2744,7 +2819,7 @@
                     </tr>`;
                 }).join('')}
                 </tbody>
-                ${cfg.noSum ? '' : `<tfoot><tr><td colspan="${2 + (cfg.noContractor ? 0 : 1) + (cfg.warehouse ? 1 : 0) + (cfg.specDoc ? 1 : 0) + (cfg.assembly ? 1 : 0) + (cfg.closeDoc || cfg.wip || cfg.monthDoc ? 1 : 0) + (cfg.empDoc ? 1 : 0) + (cfg.gphDoc ? 1 : 0) + (['vacation', 'sick_leave'].includes(type) ? 2 : 0) + (cfg.payrollDoc ? 1 : 0) + (cfg.ops ? 1 : 0) + (cfg.hasBasis ? 1 : 0)}" style="text-align:right;font-weight:600">Итого (без помеченных):</td><td class="num amount">${formatAmount(total)}</td><td colspan="10"></td></tr></tfoot>`}
+                ${cfg.noSum ? '' : `<tfoot><tr><td colspan="${3 + (cfg.noContractor ? 0 : 1) + (cfg.warehouse ? 1 : 0) + (cfg.specDoc ? 1 : 0) + (cfg.assembly ? 1 : 0) + (cfg.closeDoc || cfg.wip || cfg.monthDoc ? 1 : 0) + (cfg.empDoc ? 1 : 0) + (cfg.gphDoc ? 1 : 0) + (['vacation', 'sick_leave'].includes(type) ? 2 : 0) + (cfg.payrollDoc ? 1 : 0) + (cfg.ops ? 1 : 0) + (cfg.hasBasis ? 1 : 0)}" style="text-align:right;font-weight:600">Итого (без помеченных):</td><td class="num amount">${formatAmount(total)}</td><td colspan="10"></td></tr></tfoot>`}
             </table></div>${paginationHtml('trade_' + page, window._tradePg)}`}`;
         }
 
@@ -2764,6 +2839,9 @@
                 tApplyPrices(d); tApplyMonthClose(d); tApplyHR(d);
                 if (d.type === 'inventory') showToast('Инвентаризация проведена. Для оформления отклонений создайте документы «Оприходование» или «Списание» на основании.');
             } else if (d.type === 'dismissal') { const e = tEmp(d.employee); if (e) { e.status = 'Работает'; e.fireDate = ''; } }
+            if (!d.history) d.history = [];
+            const user = (db.users && db.users.find(u => u.login === currentUser)) || {};
+            d.history.push({ ts: new Date().toISOString(), user: user.name || currentUser || 'система', action: status === 'posted' ? 'Проведение' : 'Отмена проведения' });
             d.status = status; saveData(); renderPage();
             showToast(status === 'posted' ? 'Документ проведен' : 'Проведение отменено');
         }
@@ -2785,6 +2863,47 @@
             const copy = JSON.parse(JSON.stringify(src));
             copy.id = tUid(); copy.number = tNextNumber(src.type); copy.date = tToday(); copy.status = 'draft'; copy.sf = null;
             db.trade.docs.push(copy); saveData(); tSelected = copy.id; renderPage(); showToast('Документ скопирован'); tOpen(copy.id);
+        }
+        // ---------- Массовое проведение ----------
+        function tMassToggle(id) {
+            if (tMassSelected.has(id)) tMassSelected.delete(id); else tMassSelected.add(id);
+            renderPage();
+        }
+        function tMassSelectAll(checked) {
+            const page = currentPage;
+            const j = TRADE_JOURNALS[page]; if (!j) return;
+            const docs = tFilteredDocs(j.types);
+            tMassSelected.clear();
+            if (checked) docs.forEach(d => tMassSelected.add(d.id));
+            renderPage();
+        }
+        function tMassClearSelection() { tMassSelected.clear(); renderPage(); }
+        function tMassPost() {
+            if (!tMassSelected.size) return;
+            let count = 0, errors = [];
+            tMassSelected.forEach(id => {
+                const d = tDocById(id);
+                if (d && d.status !== 'posted' && d.status !== 'deleted') {
+                    const err = tValidate(d);
+                    if (err) { errors.push('№' + (d.number || '—') + ': ' + err); }
+                    else { tApplyPrices(d); tApplyMonthClose(d); tApplyHR(d); d.status = 'posted'; count++; }
+                }
+            });
+            tMassSelected.clear(); saveData(); renderPage();
+            showToast(`Проведено: ${count}` + (errors.length ? `. Ошибки (${errors.length}): ` + errors.slice(0, 3).join('; ') : ''));
+        }
+        function tMassUnpost() {
+            if (!tMassSelected.size) return;
+            let count = 0;
+            tMassSelected.forEach(id => {
+                const d = tDocById(id);
+                if (d && d.status === 'posted') {
+                    if (d.type === 'dismissal') { const e = tEmp(d.employee); if (e) { e.status = 'Работает'; e.fireDate = ''; } }
+                    d.status = 'draft'; count++;
+                }
+            });
+            tMassSelected.clear(); saveData(); renderPage();
+            showToast(`Отменено проведение: ${count}`);
         }
         function tValidate(d) {
             const cfg = TT[d.type];
@@ -2952,6 +3071,7 @@
                 <button class="btn" onclick="tFormSave(false)">Записать</button>
                 <button class="btn" onclick="tFormPost(false)">Провести</button>
                 <button class="btn" onclick="tFormSave(false);tShowPostings(tDoc.id)" title="Движения документа">Дт/Кт</button>
+                <button class="btn" onclick="tShowHistory()" title="История изменений">📋 История</button>
                 ${tMenu('🖨 Печать', printItems)}
                 ${tMenu('Создать на основании', basisItems.length ? basisItems : [{ label: 'Нет вариантов', disabled: true }])}
                 ${cfg.sf ? `<button class="btn" onclick="tFormSave(false);tIssueSF(tDoc.id)">${cfg.sf === 'in' ? 'Зарегистрировать СФ' : 'Выписать счет-фактуру'}</button>` : ''}
@@ -3208,6 +3328,31 @@
         }
         function tClosePick() { document.getElementById('tPickModal').classList.remove('active'); }
 
+        // ---------- История изменений ----------
+        function tDetectChanges(old, cur) {
+            const ch = [];
+            const labels = { date: 'Дата', number: 'Номер', contractor: 'Контрагент', warehouse: 'Склад', total: 'Сумма', opKind: 'Вид операции', status: 'Статус' };
+            for (const k of Object.keys(labels)) {
+                if (String(old[k] || '') !== String(cur[k] || '')) ch.push(labels[k] + ': ' + (old[k] || '—') + ' → ' + (cur[k] || '—'));
+            }
+            const oldRows = (old.goods || []).length + (old.services || []).length;
+            const curRows = (cur.goods || []).length + (cur.services || []).length;
+            if (oldRows !== curRows) ch.push('Строки табл. части: ' + oldRows + ' → ' + curRows);
+            if (!ch.length) ch.push('Мелкие изменения');
+            return ch;
+        }
+        function tShowHistory(id) {
+            const d = id ? tDocById(id) : tDoc;
+            if (!d) return;
+            const hist = d.history || [];
+            const body = hist.length ? `<table><thead><tr><th>Дата/время</th><th>Пользователь</th><th>Действие</th><th>Детали</th></tr></thead><tbody>
+                ${hist.slice().reverse().map(h => `<tr><td style="white-space:nowrap">${new Date(h.ts).toLocaleString('ru')}</td><td>${esc(h.user)}</td><td>${esc(h.action)}</td><td>${esc(h.details || '')}</td></tr>`).join('')}</tbody></table>`
+                : '<div class="empty-state">История пуста — документ ещё не редактировался.</div>';
+            document.getElementById('tPostTitle').textContent = 'История изменений: ' + tDocTitle(d);
+            document.getElementById('tPostBody').innerHTML = body;
+            document.getElementById('tPostModal').classList.add('active');
+        }
+
         // ---------- Запись / проведение ----------
         let _tSaving = false;
         function tFormSave(close) {
@@ -3218,6 +3363,17 @@
                 const idx = db.trade.docs.findIndex(x => x.id === d.id);
                 const copy = JSON.parse(JSON.stringify(d));
                 const isNew = idx < 0;
+                // История изменений
+                if (!copy.history) copy.history = [];
+                const user = (db.users && db.users.find(u => u.login === currentUser)) || {};
+                const userName = user.name || currentUser || 'система';
+                if (isNew) {
+                    copy.history.push({ ts: new Date().toISOString(), user: userName, action: 'Создание' });
+                } else {
+                    const old = db.trade.docs[idx];
+                    const changes = tDetectChanges(old, copy);
+                    if (changes.length) copy.history.push({ ts: new Date().toISOString(), user: userName, action: 'Изменение', details: changes.join('; ') });
+                }
                 if (idx >= 0) db.trade.docs[idx] = copy; else db.trade.docs.push(copy);
                 logActivity(isNew ? 'Создание документа' : 'Изменение документа', (d.type||'') + ' ' + (d.number||''));
                 saveData(); tSelected = d.id; _tDocSnapshot = JSON.stringify(d); renderPage(); showToast('Документ записан');
@@ -5060,6 +5216,85 @@
             const fileName = 'Отчёт_' + orgName.replace(/[^a-zA-Zа-яА-ЯёЁ0-9]/g, '_') + '_' + month + '.xlsx';
             XLSX.writeFile(wb, fileName);
             showToast('Отчёт за ' + monthName + ' сформирован!');
+        }
+
+        // ==================== ОБУЧАЮЩИЙ ТУР ====================
+        const TOUR_STEPS = [
+            { icon: '👋', title: 'Добро пожаловать в EsepOnline!', text: 'Это облачная система бухгалтерского учёта. Давайте познакомимся с основными возможностями за 1 минуту.', color: '#2a6fb8' },
+            { icon: '📋', title: 'Дашборд', text: 'На главной странице — остатки по счетам, графики доходов и расходов, топ покупателей и поставщиков, последние операции.', color: '#4caf50' },
+            { icon: '🏦', title: 'Банк и касса', text: 'Платёжные поручения, кассовые ордера, выписки, конвертации. Мультивалютный учёт с автоматическим пересчётом.', color: '#2196f3' },
+            { icon: '🧾', title: 'Покупки и продажи', text: 'Полный документооборот: счета, накладные, акты, возвраты, корректировки. Анализ задолженностей и прибыли.', color: '#ff9800' },
+            { icon: '📦', title: 'Склад и производство', text: 'Остатки, перемещения, инвентаризация, спецификации, выпуск продукции, расчёт себестоимости.', color: '#9c27b0' },
+            { icon: '👥', title: 'Зарплата и кадры', text: 'Приём, увольнение, отпуска, больничные, табель, начисление зарплаты, расчётные листки, налоги и взносы.', color: '#e91e63' },
+            { icon: '📊', title: 'Единый отчёт', text: 'Формируйте полный отчёт за любой месяц в Excel — продажи, покупки, зарплата, задолженности на 8 листах.', color: '#009688' },
+            { icon: '⭐', title: 'Полезные советы', text: '<b>Правая кнопка мыши</b> на пункте меню → добавить в избранное.<br><b>Ctrl+N</b> — новый документ, <b>Ctrl+S</b> — сохранить.<br>Тёмная тема — кнопка 🌓 в шапке.', color: '#795548' }
+        ];
+        let _tourStep = 0;
+        function showTour() {
+            _tourStep = 0;
+            document.getElementById('tourModal').classList.add('active');
+            renderTourStep();
+        }
+        function closeTour() {
+            document.getElementById('tourModal').classList.remove('active');
+            localStorage.setItem('esep_tour_done', '1');
+        }
+        function renderTourStep() {
+            const s = TOUR_STEPS[_tourStep];
+            const total = TOUR_STEPS.length;
+            const dots = TOUR_STEPS.map((_, i) => '<span style="width:8px;height:8px;border-radius:50%;background:' + (i === _tourStep ? s.color : '#ddd') + ';display:inline-block"></span>').join('');
+            document.getElementById('tourBody').innerHTML =
+                '<div style="background:' + s.color + ';padding:30px;text-align:center;color:#fff">' +
+                '<div style="font-size:48px;margin-bottom:10px">' + s.icon + '</div>' +
+                '<h2 style="font-size:20px;margin:0">' + s.title + '</h2></div>' +
+                '<div style="padding:25px;text-align:center">' +
+                '<p style="font-size:14px;line-height:1.7;color:#555;margin-bottom:20px">' + s.text + '</p>' +
+                '<div style="display:flex;gap:6px;justify-content:center;margin-bottom:20px">' + dots + '</div>' +
+                '<div style="display:flex;gap:10px;justify-content:center">' +
+                (_tourStep > 0 ? '<button class="btn" onclick="_tourStep--;renderTourStep()">← Назад</button>' : '') +
+                (_tourStep < total - 1 ? '<button class="btn primary" onclick="_tourStep++;renderTourStep()">Далее →</button>' : '<button class="btn primary" onclick="closeTour()">Начать работу!</button>') +
+                '</div>' +
+                '<div style="margin-top:12px"><a href="#" onclick="closeTour();return false" style="font-size:12px;color:#999">Пропустить</a></div>' +
+                '</div>';
+        }
+        function checkFirstVisit() {
+            if (!localStorage.getItem('esep_tour_done')) showTour();
+        }
+
+        // ==================== ИЗБРАННЫЕ РАЗДЕЛЫ ====================
+        function getFavorites() { try { return JSON.parse(localStorage.getItem('esep_favorites') || '[]'); } catch(e) { return []; } }
+        function saveFavorites(favs) { localStorage.setItem('esep_favorites', JSON.stringify(favs)); renderFavorites(); }
+        function toggleFavorite(page) {
+            let favs = getFavorites();
+            if (favs.includes(page)) favs = favs.filter(f => f !== page);
+            else favs.push(page);
+            saveFavorites(favs);
+        }
+        function renderFavorites() {
+            const c = document.getElementById('favoritesContainer');
+            if (!c) return;
+            const favs = getFavorites();
+            if (!favs.length) { c.style.display = 'none'; return; }
+            c.style.display = 'block';
+            c.innerHTML = '<div style="font-size:10px;text-transform:uppercase;color:#888;margin-bottom:6px;font-weight:bold">⭐ Избранное</div>' +
+                favs.map(page => {
+                    const navItem = document.querySelector('.nav-item[data-page="' + page + '"]');
+                    const label = navItem ? navItem.textContent.trim() : page;
+                    return '<div class="nav-item' + (currentPage === page ? ' active' : '') + '" onclick="selectPage(\'' + page + '\')" style="font-size:13px;padding:7px 10px">' + esc(label) + '</div>';
+                }).join('');
+        }
+        // Добавить ★ к каждому пункту меню через контекст-меню (правая кнопка)
+        function initFavoriteContextMenu() {
+            document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+                el.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                    const page = this.dataset.page;
+                    if (!page || page === 'dashboard') return;
+                    toggleFavorite(page);
+                    const favs = getFavorites();
+                    showToast(favs.includes(page) ? '⭐ Добавлено в избранное' : 'Удалено из избранного');
+                });
+            });
         }
 
         // ==================== STARTUP ====================
