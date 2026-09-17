@@ -24,7 +24,7 @@
         <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar" role="navigation" aria-label="Главное меню">
-            <div class="logo">📊 EsepOnline (ТЕСТ)</div>
+            <div class="logo"><img src="logo_EsepOnline.svg" alt="EsepOnline" style="width:100%;max-width:220px;height:auto"></div>
             <input type="text" id="menuSearch" placeholder="🔍 Поиск в меню..." oninput="filterMenu(this.value)" style="width:100%;padding:8px 12px;margin-bottom:10px;border-radius:6px;border:1px solid #444;background:#2a2a2a;color:#fff;font-size:13px;outline:none">
 
             <div class="nav-item active" onclick="selectPage('dashboard')">📋 Главная (Дашборд)</div>
@@ -1321,7 +1321,7 @@
             const totalDocs = bankCount + cashCount + tradeCount;
             if (totalDocs === 0 && contractorCount === 0) {
                 return '<div style="padding:40px;text-align:center;max-width:600px;margin:0 auto">' +
-                    '<div style="font-size:64px;margin-bottom:20px">📊</div>' +
+                    '<div style="margin-bottom:20px"><img src="icon_EsepOnline.svg" alt="EsepOnline" style="width:80px;height:80px"></div>' +
                     '<h2 style="margin-bottom:12px;color:var(--text)">Добро пожаловать в EsepOnline!</h2>' +
                     '<p style="color:var(--text-secondary);margin-bottom:30px;line-height:1.6">База данных пуста. Вы можете начать работу с нуля или загрузить тестовые данные для ознакомления с системой.</p>' +
                     '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
