@@ -28,7 +28,7 @@
       "currency": "",
       "sum": 8000,
       "rate": 1,
-      "purpose": "Оплата поставщику Бета Снаб за мониторы",
+      "purpose": "Оплата поставщику Бета Снаб",
       "note": "Тест 2 — расход с банка",
       "created": "2026-09-17T08:10:00.000Z"
     },
@@ -44,7 +44,7 @@
       "currency": "",
       "sum": 20000,
       "rate": 1,
-      "purpose": "Оплата от ИП Асанов за системный блок",
+      "purpose": "Оплата от ИП Асанов",
       "note": "Тест 7 — приход на банк",
       "created": "2026-09-17T09:00:00.000Z"
     },
@@ -60,7 +60,7 @@
       "currency": "",
       "sum": 7000,
       "rate": 1,
-      "purpose": "Оплата аренды офиса за сентябрь",
+      "purpose": "Аренда офиса за сентябрь",
       "note": "Тест 8 — расход с банка",
       "created": "2026-09-17T09:10:00.000Z"
     }
@@ -99,11 +99,117 @@
       "created": "2026-09-17T08:30:00.000Z"
     }
   ],
-  "accounts": [],
-  "banks": [],
-  "cashs": [],
-  "currencies": [],
-  "articles": [],
+  "accounts": [
+    {
+      "id": "_1",
+      "name": "Сомовый счёт",
+      "number": "1280010000000100",
+      "bank": "АБ Кыргызстан",
+      "type": "bank"
+    },
+    {
+      "id": "_2",
+      "name": "Долларовый счёт",
+      "number": "1280020000000200",
+      "bank": "НИСПА",
+      "type": "bank"
+    },
+    {
+      "id": "_3",
+      "name": "Касса офиса",
+      "number": "",
+      "bank": "",
+      "type": "cash"
+    }
+  ],
+  "banks": [
+    {
+      "id": "_1",
+      "name": "АБ Кыргызстан",
+      "bik": "170201001",
+      "corrAccount": "1234567890"
+    },
+    {
+      "id": "_2",
+      "name": "НИСПА",
+      "bik": "170202001",
+      "corrAccount": "0987654321"
+    }
+  ],
+  "cashs": [
+    {
+      "id": "_1",
+      "name": "Касса магазина",
+      "responsible": "Иванов И.И."
+    },
+    {
+      "id": "_2",
+      "name": "Касса офиса",
+      "responsible": "Петрова М.М."
+    }
+  ],
+  "currencies": [
+    {
+      "id": "_1",
+      "code": "KGS",
+      "name": "Кыргызский сом",
+      "rate": 1
+    },
+    {
+      "id": "_2",
+      "code": "USD",
+      "name": "Доллар США",
+      "rate": 89
+    },
+    {
+      "id": "_3",
+      "code": "RUB",
+      "name": "Российский рубль",
+      "rate": 0.95
+    }
+  ],
+  "articles": [
+    {
+      "id": "_1",
+      "name": "Оплата от покупателя",
+      "type": "in"
+    },
+    {
+      "id": "_2",
+      "name": "Возврат подотчета",
+      "type": "in"
+    },
+    {
+      "id": "_3",
+      "name": "Взнос учредителя",
+      "type": "in"
+    },
+    {
+      "id": "_5",
+      "name": "Оплата поставщику",
+      "type": "out"
+    },
+    {
+      "id": "_6",
+      "name": "Выдача под отчет",
+      "type": "out"
+    },
+    {
+      "id": "_7",
+      "name": "Зарплата",
+      "type": "out"
+    },
+    {
+      "id": "_8",
+      "name": "Налоги",
+      "type": "out"
+    },
+    {
+      "id": "_9",
+      "name": "Аренда",
+      "type": "out"
+    }
+  ],
   "trade": {
     "docs": [
       {
@@ -115,19 +221,19 @@
         "contractor": "c2",
         "contract": "d2",
         "warehouse": "w1",
-        "note": "Тест 5 — поступление товара от Бета Снаб",
+        "note": "Поступление товара от Бета Снаб",
         "rows": [
           {
             "nomenclature": "n1",
-            "qty": 1,
-            "price": 12000,
-            "total": 12000
+            "qty": 2,
+            "price": 40000,
+            "total": 80000
           },
           {
             "nomenclature": "n3",
-            "qty": 10,
+            "qty": 20,
             "price": 600,
-            "total": 6000
+            "total": 12000
           }
         ],
         "total": 18000,
@@ -142,7 +248,7 @@
         "contractor": "c1",
         "contract": "d1",
         "warehouse": "w1",
-        "note": "Тест 6 — реализация товара Альфа Трейд",
+        "note": "Реализация товара Альфа Трейд",
         "rows": [
           {
             "nomenclature": "n3",
@@ -169,19 +275,19 @@
         "contractor": "c2",
         "contract": "d2",
         "warehouse": "w1",
-        "note": "Тест 9 — поступление мониторов от Бета Снаб",
+        "note": "Поступление мониторов от Бета Снаб",
         "rows": [
           {
             "nomenclature": "n2",
-            "qty": 1,
+            "qty": 3,
             "price": 12000,
-            "total": 12000
+            "total": 36000
           },
           {
             "nomenclature": "n4",
-            "qty": 8,
+            "qty": 20,
             "price": 350,
-            "total": 2800
+            "total": 7000
           }
         ],
         "total": 14800,
@@ -196,7 +302,7 @@
         "contractor": "c3",
         "contract": "d3",
         "warehouse": "w1",
-        "note": "Тест 10 — реализация монитора ИП Асанов",
+        "note": "Реализация монитора ИП Асанов",
         "rows": [
           {
             "nomenclature": "n2",
@@ -205,31 +311,279 @@
             "total": 15000
           }
         ],
-        "total": 15000,
+        "total": 10000,
         "created": "2026-09-17T09:30:00.000Z"
       }
     ],
-    "noDemo": false,
-    "demoSeeded": false,
-    "stockSeeded": false,
-    "hrSeeded": false,
-    "org": {},
-    "contractors": [],
-    "contracts": [],
-    "nomenclature": [],
-    "warehouses": [],
-    "priceTypes": [],
-    "sfCounter": {},
-    "departments": [],
-    "nomGroups": [],
+    "noDemo": true,
+    "demoSeeded": true,
+    "stockSeeded": true,
+    "hrSeeded": true,
+    "org": {
+      "name": "ОсОО «Эльмырза»",
+      "inn": "01234567890123",
+      "address": "г. Бишкек, ул. Киевская, 1",
+      "phone": "+996 312 000000",
+      "director": "Директор",
+      "accountant": "Главный бухгалтер"
+    },
+    "contractors": [
+      {
+        "id": "c1",
+        "name": "ОсОО «Альфа Трейд»",
+        "full": "ОсОО «Альфа Трейд»",
+        "inn": "02001201010101",
+        "kind": "Юридическое лицо",
+        "address": "г. Бишкек, пр. Чуй, 100",
+        "phone": "+996 555 111111"
+      },
+      {
+        "id": "c2",
+        "name": "ОсОО «Бета Снаб»",
+        "full": "ОсОО «Бета Снаб»",
+        "inn": "02002202020202",
+        "kind": "Юридическое лицо",
+        "address": "г. Ош, ул. Ленина, 5",
+        "phone": "+996 555 222222"
+      },
+      {
+        "id": "c3",
+        "name": "ИП Асанов А.А.",
+        "full": "ИП Асанов Асан Асанович",
+        "inn": "20101199000001",
+        "kind": "ИП",
+        "address": "г. Бишкек, ул. Ахунбаева, 45",
+        "phone": "+996 700 333333"
+      }
+    ],
+    "contracts": [
+      {
+        "id": "d1",
+        "contractor": "c1",
+        "kind": "С покупателем",
+        "number": "1",
+        "date": "2026-01-10",
+        "name": "Договор с покупателем",
+        "currency": "KGS",
+        "priceType": "pt1"
+      },
+      {
+        "id": "d2",
+        "contractor": "c2",
+        "kind": "С поставщиком",
+        "number": "7",
+        "date": "2026-01-15",
+        "name": "Договор поставки №7",
+        "currency": "KGS",
+        "priceType": "pt2"
+      },
+      {
+        "id": "d3",
+        "contractor": "c3",
+        "kind": "С покупателем",
+        "number": "3",
+        "date": "2026-02-01",
+        "name": "Договор №3",
+        "currency": "KGS",
+        "priceType": "pt1"
+      }
+    ],
+    "nomenclature": [
+      {
+        "id": "n1",
+        "name": "Ноутбук Lenovo IdeaPad 3",
+        "article": "NB-001",
+        "kind": "Товар",
+        "unit": "шт",
+        "vat": 12,
+        "price": 48000,
+        "cost": 40000
+      },
+      {
+        "id": "n2",
+        "name": "Монитор Samsung 24",
+        "article": "MN-024",
+        "kind": "Товар",
+        "unit": "шт",
+        "vat": 12,
+        "price": 15000,
+        "cost": 12000
+      },
+      {
+        "id": "n3",
+        "name": "Мышь беспроводная",
+        "article": "MS-010",
+        "kind": "Товар",
+        "unit": "шт",
+        "vat": 12,
+        "price": 900,
+        "cost": 600
+      },
+      {
+        "id": "n4",
+        "name": "Бумага А4, 500 л.",
+        "article": "PP-A4",
+        "kind": "Материал",
+        "unit": "пач",
+        "vat": 12,
+        "price": 450,
+        "cost": 350
+      },
+      {
+        "id": "n5",
+        "name": "Клавиатура USB",
+        "article": "KB-005",
+        "kind": "Товар",
+        "unit": "шт",
+        "vat": 12,
+        "price": 1200,
+        "cost": 800
+      }
+    ],
+    "warehouses": [
+      {
+        "id": "w1",
+        "name": "Основной склад",
+        "kind": "Оптовый склад",
+        "responsible": "Иванов И.И."
+      },
+      {
+        "id": "w2",
+        "name": "Розничный магазин",
+        "kind": "Розничный магазин",
+        "responsible": "Петрова М.М."
+      }
+    ],
+    "priceTypes": [
+      {
+        "id": "pt1",
+        "name": "Оптовая",
+        "vatIncluded": true,
+        "markup": 20
+      },
+      {
+        "id": "pt2",
+        "name": "Закупочная",
+        "vatIncluded": true,
+        "markup": 0
+      }
+    ],
+    "sfCounter": {
+      "in": 0,
+      "out": 0
+    },
+    "departments": [
+      {
+        "id": "dep1",
+        "name": "Склад",
+        "head": "Иванов И.И."
+      },
+      {
+        "id": "dep2",
+        "name": "Администрация",
+        "head": "Директор"
+      }
+    ],
+    "nomGroups": [
+      {
+        "id": "ng1",
+        "name": "Оргтехника"
+      },
+      {
+        "id": "ng2",
+        "name": "Канцтовары"
+      }
+    ],
     "costItems": [],
-    "units": [],
-    "payroll": {},
-    "positions": [],
-    "schedules": [],
+    "units": [
+      {
+        "id": "u1",
+        "code": "796",
+        "name": "шт",
+        "full": "Штука"
+      },
+      {
+        "id": "u2",
+        "code": "778",
+        "name": "пач",
+        "full": "Пачка"
+      }
+    ],
+    "payroll": {
+      "incomeTax": 10,
+      "sfEmployee": 10,
+      "sfEmployeePF": 8,
+      "sfEmployeeGNPF": 2,
+      "sfEmployer": 17.25,
+      "sfEmployerPF": 15,
+      "sfEmployerFOMS": 2,
+      "sfEmployerFOT": 0.25,
+      "stdDeduction": 650,
+      "dependentDeduction": 100,
+      "minSalary": 2460
+    },
+    "positions": [
+      {
+        "id": "pos1",
+        "name": "Директор",
+        "baseSalary": 90000
+      },
+      {
+        "id": "pos2",
+        "name": "Бухгалтер",
+        "baseSalary": 60000
+      },
+      {
+        "id": "pos3",
+        "name": "Менеджер",
+        "baseSalary": 40000
+      }
+    ],
+    "schedules": [
+      {
+        "id": "sch1",
+        "name": "Пятидневка",
+        "hoursPerDay": 8,
+        "daysPerWeek": 5
+      }
+    ],
     "accruals": [],
     "deductions": [],
-    "employees": []
+    "employees": [
+      {
+        "id": "e1",
+        "tabNo": "001",
+        "name": "Абдылдаев Бакыт Т.",
+        "inn": "21504198500123",
+        "position": "pos1",
+        "salary": 90000,
+        "phone": "+996 555 100001",
+        "status": "Работает",
+        "hireDate": "2024-01-10"
+      },
+      {
+        "id": "e2",
+        "tabNo": "002",
+        "name": "Петрова Марина М.",
+        "inn": "11209197800456",
+        "position": "pos2",
+        "salary": 60000,
+        "phone": "+996 555 100002",
+        "status": "Работает",
+        "hireDate": "2024-01-10"
+      },
+      {
+        "id": "e3",
+        "tabNo": "003",
+        "name": "Асанова Айгуль А.",
+        "inn": "12207199500654",
+        "position": "pos3",
+        "salary": 40000,
+        "phone": "+996 555 100005",
+        "status": "Работает",
+        "hireDate": "2025-06-02"
+      }
+    ]
   },
   "_activityLog": []
 }
