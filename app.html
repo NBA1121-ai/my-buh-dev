@@ -135,6 +135,9 @@
 
             <div class="section-title" onclick="tToggleGroup(this)">Сервис</div>
             <div class="nav-item" onclick="selectPage('monthly_report')">📊 Единый отчёт за месяц</div>
+            <div class="nav-item" onclick="selectPage('r_abc')">📊 ABC-анализ</div>
+            <div class="nav-item" onclick="selectPage('r_pnl')">📊 Прибыли и убытки</div>
+            <div class="nav-item" onclick="selectPage('r_settlements')">📊 Взаиморасчёты</div>
             <div class="nav-item" onclick="selectPage('import_data')">📥 Импорт и резервные копии</div>
             <div class="nav-item" onclick="selectPage('export_data')">📤 Экспорт данных</div>
 
@@ -631,7 +634,10 @@
                 search_results: renderSearchResults,
                 import_data: renderImport,
                 export_data: renderExport,
-                monthly_report: renderMonthlyReport
+                monthly_report: renderMonthlyReport,
+                r_abc: renderABC,
+                r_pnl: renderPnL,
+                r_settlements: renderSettlements
             };
 
             const titles = {
@@ -651,6 +657,9 @@
                 import_data: 'Импорт и резервные копии',
                 export_data: 'Экспорт данных',
                 monthly_report: 'Единый отчёт за месяц',
+                r_abc: 'ABC-анализ',
+                r_pnl: 'Прибыли и убытки',
+                r_settlements: 'Взаиморасчёты с контрагентами',
                 dashboard: 'Главная'
             };
 
@@ -1447,7 +1456,7 @@
                 '<div class="dash-card"><h3>Номенклатура</h3><div class="dash-value">' + nomCount + '</div></div>' +
                 '<div class="dash-card"><h3>Сотрудники</h3><div class="dash-value">' + empCount + '</div></div>' +
                 '</div></div>' +
-                (totalDocs > 0 ? '<div class="dash-section" style="margin-top:16px"><h3 style="margin-bottom:12px">Динамика за 6 месяцев</h3><div style="display:grid;grid-template-columns:2fr 1fr;gap:16px"><div style="background:var(--bg-card);border-radius:8px;padding:16px;border:1px solid var(--border)"><canvas id="dashChart" height="200"></canvas></div><div style="background:var(--bg-card);border-radius:8px;padding:16px;border:1px solid var(--border)"><canvas id="dashPie" height="200"></canvas></div></div></div>' : '') +
+                (totalDocs > 0 ? '<div class="dash-section" style="margin-top:16px"><h3 style="margin-bottom:12px">Динамика за 6 месяцев</h3><div style="display:grid;grid-template-columns:2fr 1fr;gap:16px"><div style="background:var(--bg-card);border-radius:8px;padding:16px;border:1px solid var(--border)"><canvas id="dashChart" height="200"></canvas></div><div style="background:var(--bg-card);border-radius:8px;padding:16px;border:1px solid var(--border)"><canvas id="dashPie" height="200"></canvas></div></div></div><div class="dash-section" style="margin-top:16px"><h3 style="margin-bottom:12px">Продажи, покупки и прибыль</h3><div style="background:var(--bg-card);border-radius:8px;padding:16px;border:1px solid var(--border)"><canvas id="dashLineChart" height="180"></canvas></div></div>' : '') +
                 buildTopContractors() +
                 '<div class="dash-recent"><h3>Последние операции</h3><table><thead><tr><th>Дата</th><th>Тип</th><th>Описание</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' + recentRows + '</tbody></table></div></div>';
         }
@@ -1504,7 +1513,7 @@
             return html;
         }
 
-        let _dashBarChart = null, _dashPieChart = null;
+        let _dashBarChart = null, _dashPieChart = null, _dashLineChart = null;
         function initDashCharts() {
             if (typeof Chart === 'undefined') return;
             const el = document.getElementById('dashChart');
@@ -1512,6 +1521,7 @@
             if (!el || !pie) return;
             if (_dashBarChart) { _dashBarChart.destroy(); _dashBarChart = null; }
             if (_dashPieChart) { _dashPieChart.destroy(); _dashPieChart = null; }
+            if (_dashLineChart) { _dashLineChart.destroy(); _dashLineChart = null; }
 
             // Collect 6 months of income/expense data
             const months = [];
@@ -1567,6 +1577,34 @@
                 data: { labels: pieLabels, datasets: [{ data: pieData, backgroundColor: pieColors.slice(0, pieLabels.length) }] },
                 options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } }, title: { display: true, text: 'Расходы по статьям' } } }
             });
+
+            // Line chart — sales vs purchases vs profit
+            const lineEl = document.getElementById('dashLineChart');
+            if (lineEl && db.trade && db.trade.docs) {
+                const sales = months.map(() => 0), purchases = months.map(() => 0);
+                db.trade.docs.filter(d => d.status === 'posted').forEach(doc => {
+                    if (!doc.date) return;
+                    const dd = new Date(doc.date);
+                    const idx = months.findIndex(m => m.y === dd.getFullYear() && m.m === dd.getMonth() + 1);
+                    if (idx < 0) return;
+                    const tt = TT[doc.type];
+                    if (tt && tt.group === 'sale') sales[idx] += doc.total || 0;
+                    else if (tt && tt.group === 'purchase') purchases[idx] += doc.total || 0;
+                });
+                const profit = months.map((_, i) => sales[i] - purchases[i]);
+                _dashLineChart = new Chart(lineEl, {
+                    type: 'line',
+                    data: {
+                        labels: months.map(m => m.label),
+                        datasets: [
+                            { label: 'Продажи', data: sales, borderColor: '#4caf50', backgroundColor: 'rgba(76,175,80,0.1)', fill: true, tension: 0.3 },
+                            { label: 'Покупки', data: purchases, borderColor: '#f44336', backgroundColor: 'rgba(244,67,54,0.1)', fill: true, tension: 0.3 },
+                            { label: 'Прибыль', data: profit, borderColor: '#2196f3', backgroundColor: 'rgba(33,150,243,0.1)', fill: false, tension: 0.3, borderDash: [5, 5] }
+                        ]
+                    },
+                    options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { ticks: { callback: v => v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v } } } }
+                });
+            }
         }
 
         // fmt -> js/utils.js
@@ -1592,15 +1630,19 @@
             // Search trade docs
             if (db.trade && db.trade.docs) db.trade.docs.forEach(d => {
                 const cn = d.contractor ? ((tContractor(d.contractor)||{}).name||'') : '';
-                if ((JSON.stringify(d) + cn).toLowerCase().includes(q)) _searchResults.push({ section: d.type || 'Документ', number: d.number, date: d.date, desc: cn || d.number, sum: d.total || 0 });
+                if ((JSON.stringify(d) + cn).toLowerCase().includes(q)) _searchResults.push({ section: TT[d.type] ? TT[d.type].label : d.type, number: d.number, date: d.date, desc: cn || d.number, sum: d.total || 0, action: `tOpen('${d.id}')` });
             });
             // Search contractors
             if (db.trade && db.trade.contractors) db.trade.contractors.forEach(c => {
-                if (JSON.stringify(c).toLowerCase().includes(q)) _searchResults.push({ section: 'Контрагент', number: '', date: '', desc: c.name, sum: '' });
+                if (JSON.stringify(c).toLowerCase().includes(q)) _searchResults.push({ section: 'Контрагент', number: '', date: '', desc: c.name, sum: '', action: `selectPage('contractors');setTimeout(()=>{const el=document.querySelector('[data-id="${c.id}"]');if(el)el.click()},100)` });
             });
             // Search nomenclature
             if (db.trade && db.trade.nomenclature) db.trade.nomenclature.forEach(n => {
-                if (JSON.stringify(n).toLowerCase().includes(q)) _searchResults.push({ section: 'Номенклатура', number: n.article || '', date: '', desc: n.name, sum: n.price || '' });
+                if (JSON.stringify(n).toLowerCase().includes(q)) _searchResults.push({ section: 'Номенклатура', number: n.article || '', date: '', desc: n.name, sum: n.price || '', action: `selectPage('nomenclature');setTimeout(()=>{const el=document.querySelector('[data-id="${n.id}"]');if(el)el.click()},100)` });
+            });
+            // Search employees
+            if (db.trade && db.trade.employees) db.trade.employees.forEach(e => {
+                if (JSON.stringify(e).toLowerCase().includes(q)) _searchResults.push({ section: 'Сотрудник', number: e.tabNumber || '', date: '', desc: e.name, sum: '', action: `selectPage('employees')` });
             });
             selectPage('search_results');
         }
@@ -1610,7 +1652,7 @@
             if (!_searchResults.length) return '<div class="empty-state">По запросу «' + esc(q) + '» ничего не найдено</div>';
             return '<div style="padding:20px"><p style="margin-bottom:15px;color:var(--text-secondary)">Найдено: ' + _searchResults.length + ' результатов по запросу «' + esc(q) + '»</p>' +
                 '<table class="table-container" style="width:100%"><thead><tr><th>Раздел</th><th>Номер</th><th>Дата</th><th>Описание</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' +
-                _searchResults.map(r => '<tr><td>' + esc(r.section) + '</td><td>' + esc(r.number||'') + '</td><td>' + esc(r.date||'') + '</td><td>' + esc(r.desc||'') + '</td><td style="text-align:right">' + (r.sum ? fmt(r.sum) : '') + '</td></tr>').join('') +
+                _searchResults.map(r => '<tr style="cursor:pointer" onclick="' + (r.action ? esc(r.action) : '') + '"><td>' + esc(r.section) + '</td><td>' + esc(r.number||'') + '</td><td>' + (r.date ? formatDate(r.date) : '') + '</td><td>' + esc(r.desc||'') + '</td><td style="text-align:right">' + (r.sum ? fmt(r.sum) : '') + '</td></tr>').join('') +
                 '</tbody></table></div>';
         }
 
@@ -2739,6 +2781,8 @@
                 { label: 'Движения документа (Дт/Кт)', action: `tShowPostings('${sel ? sel.id : ''}')`, disabled: !has },
                 { label: 'История изменений', action: `tShowHistory('${sel ? sel.id : ''}')`, disabled: !has },
                 { sep: true },
+                { label: 'Создать из шаблона…', action: `tShowTemplates('${type}')` },
+                { sep: true },
                 { label: 'Установить период…', action: `tFocusFilter('tfFrom')` },
                 { label: 'Найти…', action: `tFocusFilter('tfSearch')` },
                 { label: 'Отменить поиск', action: `tResetFilters()` },
@@ -3072,6 +3116,7 @@
                 <button class="btn" onclick="tFormPost(false)">Провести</button>
                 <button class="btn" onclick="tFormSave(false);tShowPostings(tDoc.id)" title="Движения документа">Дт/Кт</button>
                 <button class="btn" onclick="tShowHistory()" title="История изменений">📋 История</button>
+                <button class="btn" onclick="tSaveAsTemplate()" title="Сохранить как шаблон">💾 Шаблон</button>
                 ${tMenu('🖨 Печать', printItems)}
                 ${tMenu('Создать на основании', basisItems.length ? basisItems : [{ label: 'Нет вариантов', disabled: true }])}
                 ${cfg.sf ? `<button class="btn" onclick="tFormSave(false);tIssueSF(tDoc.id)">${cfg.sf === 'in' ? 'Зарегистрировать СФ' : 'Выписать счет-фактуру'}</button>` : ''}
@@ -3351,6 +3396,67 @@
             document.getElementById('tPostTitle').textContent = 'История изменений: ' + tDocTitle(d);
             document.getElementById('tPostBody').innerHTML = body;
             document.getElementById('tPostModal').classList.add('active');
+        }
+
+        // ---------- Шаблоны документов ----------
+        function tSaveAsTemplate() {
+            const d = tDoc; if (!d) return;
+            const name = prompt('Название шаблона:', (TT[d.type] ? TT[d.type].label : d.type) + ' — ' + (tContractorName(d.contractor) || 'без контрагента'));
+            if (!name) return;
+            if (!db.trade.templates) db.trade.templates = [];
+            const tmpl = JSON.parse(JSON.stringify(d));
+            delete tmpl.id; delete tmpl.number; delete tmpl.sf; delete tmpl.history;
+            tmpl.status = 'draft';
+            tmpl._templateName = name;
+            tmpl._templateId = tUid();
+            db.trade.templates.push(tmpl);
+            saveData(); showToast('Шаблон «' + name + '» сохранён');
+        }
+        function tShowTemplates(type) {
+            const templates = (db.trade.templates || []).filter(t => t.type === type);
+            if (!templates.length) { showToast('Нет шаблонов для данного типа документа'); return; }
+            const body = `<div style="display:flex;flex-direction:column;gap:8px">${templates.map(t =>
+                `<div style="display:flex;align-items:center;gap:10px;background:var(--bg-card,#f8f8f8);padding:12px;border-radius:8px;border:1px solid var(--border,#eee);cursor:pointer" onclick="tCreateFromTemplate('${t._templateId}')">
+                    <div style="flex:1"><strong>${esc(t._templateName)}</strong><br><span style="font-size:12px;color:var(--text-muted)">${esc(tContractorName(t.contractor) || '—')} | ${esc(t.opKind || '')} | Сумма: ${formatAmount(t.total || 0)}</span></div>
+                    <button class="btn" style="padding:4px 8px;font-size:11px" onclick="event.stopPropagation();tDeleteTemplate('${t._templateId}')">🗑️</button>
+                </div>`
+            ).join('')}</div>`;
+            document.getElementById('tPostTitle').textContent = 'Создать из шаблона';
+            document.getElementById('tPostBody').innerHTML = body;
+            document.getElementById('tPostModal').classList.add('active');
+        }
+        function tCreateFromTemplate(tmplId) {
+            const tmpl = (db.trade.templates || []).find(t => t._templateId === tmplId);
+            if (!tmpl) return;
+            document.getElementById('tPostModal').classList.remove('active');
+            const doc = JSON.parse(JSON.stringify(tmpl));
+            doc.id = tUid();
+            doc.number = tNextNumber(doc.type);
+            doc.date = tToday();
+            doc.status = 'draft';
+            doc.sf = null;
+            delete doc._templateName; delete doc._templateId;
+            db.trade.docs.push(doc); saveData(); tSelected = doc.id; renderPage(); tOpen(doc.id);
+            showToast('Документ создан из шаблона');
+        }
+        function tDeleteTemplate(tmplId) {
+            if (!confirm('Удалить шаблон?')) return;
+            db.trade.templates = (db.trade.templates || []).filter(t => t._templateId !== tmplId);
+            saveData(); document.getElementById('tPostModal').classList.remove('active');
+            showToast('Шаблон удалён');
+        }
+        // Функция для банковских документов
+        function saveAsTemplate(id) {
+            const doc = [...(db.bankDocuments || []), ...(db.cashDocuments || [])].find(d => d.id === id);
+            if (!doc) return;
+            const name = prompt('Название шаблона:', doc.type + ' — ' + (doc.contractor || ''));
+            if (!name) return;
+            if (!db.trade.templates) db.trade.templates = [];
+            const tmpl = JSON.parse(JSON.stringify(doc));
+            tmpl._templateName = name; tmpl._templateId = uid(); tmpl._bank = true;
+            delete tmpl.id; delete tmpl.number;
+            db.trade.templates.push(tmpl);
+            saveData(); showToast('Шаблон «' + name + '» сохранён');
         }
 
         // ---------- Запись / проведение ----------
@@ -5216,6 +5322,189 @@
             const fileName = 'Отчёт_' + orgName.replace(/[^a-zA-Zа-яА-ЯёЁ0-9]/g, '_') + '_' + month + '.xlsx';
             XLSX.writeFile(wb, fileName);
             showToast('Отчёт за ' + monthName + ' сформирован!');
+        }
+
+        // ==================== ABC-АНАЛИЗ ====================
+        function renderABC() {
+            const now = new Date();
+            const defFrom = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().slice(0, 10);
+            const defTo = now.toISOString().slice(0, 10);
+            return `<div style="background:var(--bg-card,#fff);padding:20px;border-radius:8px;border:1px solid var(--border,#eee)">
+                <h2 style="margin-bottom:10px">ABC-анализ</h2>
+                <p style="color:var(--text-muted);margin-bottom:15px">Классификация товаров и контрагентов по доле в выручке: A (80%), B (15%), C (5%)</p>
+                <div style="display:flex;gap:10px;align-items:end;margin-bottom:15px;flex-wrap:wrap">
+                    <div><label style="font-size:12px;display:block;margin-bottom:4px">Период с</label><input type="date" id="abcFrom" value="${defFrom}"></div>
+                    <div><label style="font-size:12px;display:block;margin-bottom:4px">по</label><input type="date" id="abcTo" value="${defTo}"></div>
+                    <div><label style="font-size:12px;display:block;margin-bottom:4px">Объект</label><select id="abcType"><option value="nom">Товары/услуги</option><option value="contr">Контрагенты</option></select></div>
+                    <button class="btn primary" onclick="buildABC()">Сформировать</button>
+                </div>
+                <div id="abcResult"></div>
+            </div>`;
+        }
+        function buildABC() {
+            const from = document.getElementById('abcFrom').value;
+            const to = document.getElementById('abcTo').value;
+            const type = document.getElementById('abcType').value;
+            if (!db.trade || !db.trade.docs) { document.getElementById('abcResult').innerHTML = '<div class="empty-state">Нет данных</div>'; return; }
+            const sales = db.trade.docs.filter(d => d.status === 'posted' && TT[d.type] && TT[d.type].group === 'sale' && (!from || d.date >= from) && (!to || d.date <= to));
+            const map = {};
+            if (type === 'nom') {
+                sales.forEach(d => { (d.goods || []).concat(d.services || []).forEach(r => { const name = tNomName(r.nom) || 'Без названия'; map[name] = (map[name] || 0) + (Number(r.sum) || 0); }); });
+            } else {
+                sales.forEach(d => { const name = tContractorName(d.contractor) || 'Без контрагента'; map[name] = (map[name] || 0) + (d.total || 0); });
+            }
+            const items = Object.entries(map).sort((a, b) => b[1] - a[1]);
+            const total = items.reduce((s, i) => s + i[1], 0);
+            if (!total) { document.getElementById('abcResult').innerHTML = '<div class="empty-state">Нет продаж за период</div>'; return; }
+            let cumul = 0;
+            const rows = items.map((item, idx) => {
+                cumul += item[1];
+                const pct = (item[1] / total * 100);
+                const cumulPct = (cumul / total * 100);
+                const cat = cumulPct <= 80 ? 'A' : cumulPct <= 95 ? 'B' : 'C';
+                const color = cat === 'A' ? '#4caf50' : cat === 'B' ? '#ff9800' : '#f44336';
+                return `<tr><td>${idx + 1}</td><td>${esc(item[0])}</td><td class="num">${formatAmount(item[1])}</td><td class="num">${pct.toFixed(1)}%</td><td class="num">${cumulPct.toFixed(1)}%</td><td><span style="background:${color};color:#fff;padding:2px 8px;border-radius:4px;font-weight:700">${cat}</span></td></tr>`;
+            });
+            const countA = items.filter((_, i) => { let c = 0; for (let j = 0; j <= i; j++) c += items[j][1]; return c / total <= 0.8; }).length + (items.length ? 1 : 0);
+            const countB = items.filter((_, i) => { let c = 0; for (let j = 0; j <= i; j++) c += items[j][1]; const p = c / total; return p > 0.8 && p <= 0.95; }).length;
+            const countC = items.length - countA - countB;
+            document.getElementById('abcResult').innerHTML = `
+                <div style="display:flex;gap:12px;margin-bottom:15px">
+                    <div style="flex:1;background:#e8f5e9;border-radius:8px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#4caf50">A</div><div style="font-size:13px">${Math.max(0, countA)} позиций — 80% выручки</div></div>
+                    <div style="flex:1;background:#fff3e0;border-radius:8px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#ff9800">B</div><div style="font-size:13px">${Math.max(0, countB)} позиций — 15% выручки</div></div>
+                    <div style="flex:1;background:#fce4ec;border-radius:8px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#f44336">C</div><div style="font-size:13px">${Math.max(0, countC)} позиций — 5% выручки</div></div>
+                </div>
+                <div class="table-container"><table><thead><tr><th>№</th><th>${type === 'nom' ? 'Товар/услуга' : 'Контрагент'}</th><th style="text-align:right">Сумма</th><th style="text-align:right">Доля</th><th style="text-align:right">Нараст.</th><th>Группа</th></tr></thead><tbody>${rows.join('')}</tbody>
+                <tfoot><tr><td colspan="2" style="font-weight:600;text-align:right">Итого:</td><td class="num" style="font-weight:700">${formatAmount(total)}</td><td colspan="3"></td></tr></tfoot></table></div>`;
+        }
+
+        // ==================== ПРИБЫЛИ И УБЫТКИ ====================
+        function renderPnL() {
+            const now = new Date();
+            const defFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+            const defTo = now.toISOString().slice(0, 10);
+            return `<div style="background:var(--bg-card,#fff);padding:20px;border-radius:8px;border:1px solid var(--border,#eee)">
+                <h2 style="margin-bottom:10px">Отчёт о прибылях и убытках</h2>
+                <p style="color:var(--text-muted);margin-bottom:15px">Доходы минус расходы по статьям за выбранный период</p>
+                <div style="display:flex;gap:10px;align-items:end;margin-bottom:15px">
+                    <div><label style="font-size:12px;display:block;margin-bottom:4px">Период с</label><input type="date" id="pnlFrom" value="${defFrom}"></div>
+                    <div><label style="font-size:12px;display:block;margin-bottom:4px">по</label><input type="date" id="pnlTo" value="${defTo}"></div>
+                    <button class="btn primary" onclick="buildPnL()">Сформировать</button>
+                </div>
+                <div id="pnlResult"></div>
+            </div>`;
+        }
+        function buildPnL() {
+            const from = document.getElementById('pnlFrom').value;
+            const to = document.getElementById('pnlTo').value;
+            // Доходы: продажи (торговые) + поступления (банк/касса)
+            const tradeDocs = (db.trade && db.trade.docs || []).filter(d => d.status === 'posted' && d.date >= from && d.date <= to);
+            const finDocs = [...(db.bankDocuments || []), ...(db.cashDocuments || [])].filter(d => d.date >= from && d.date <= to);
+
+            const incomeByArticle = {};
+            const expenseByArticle = {};
+            const artName = id => ((db.articles || []).find(a => a.id === id) || {}).name || 'Без статьи';
+
+            // Trade docs
+            tradeDocs.forEach(d => {
+                const tt = TT[d.type];
+                if (!tt) return;
+                if (tt.group === 'sale') { const a = 'Продажи: ' + (tt.label || d.type); incomeByArticle[a] = (incomeByArticle[a] || 0) + (d.total || 0); }
+                else if (tt.group === 'purchase') { const a = 'Закупки: ' + (tt.label || d.type); expenseByArticle[a] = (expenseByArticle[a] || 0) + (d.total || 0); }
+            });
+            // Financial docs
+            finDocs.forEach(d => {
+                const sum = (d.sum || 0) * (Number(d.rate) || 1);
+                if (d.type === 'payment_in' || d.type === 'pko') { incomeByArticle[artName(d.article)] = (incomeByArticle[artName(d.article)] || 0) + sum; }
+                else if (d.type === 'payment_out' || d.type === 'rko') { expenseByArticle[artName(d.article)] = (expenseByArticle[artName(d.article)] || 0) + sum; }
+            });
+            // Payroll
+            const payrollDocs = tradeDocs.filter(d => d.type === 'payroll');
+            if (payrollDocs.length) {
+                const payrollTotal = payrollDocs.reduce((s, d) => s + (d.total || d.netTotal || 0), 0);
+                expenseByArticle['Зарплата и начисления'] = (expenseByArticle['Зарплата и начисления'] || 0) + payrollTotal;
+            }
+
+            const totalIncome = Object.values(incomeByArticle).reduce((s, v) => s + v, 0);
+            const totalExpense = Object.values(expenseByArticle).reduce((s, v) => s + v, 0);
+            const profit = totalIncome - totalExpense;
+
+            const incRows = Object.entries(incomeByArticle).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<tr><td style="padding-left:20px">${esc(k)}</td><td class="num">${formatAmount(v)}</td></tr>`).join('');
+            const expRows = Object.entries(expenseByArticle).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<tr><td style="padding-left:20px">${esc(k)}</td><td class="num">${formatAmount(v)}</td></tr>`).join('');
+
+            document.getElementById('pnlResult').innerHTML = `
+                <div style="display:flex;gap:12px;margin-bottom:15px">
+                    <div style="flex:1;background:#e8f5e9;border-radius:8px;padding:15px;text-align:center"><div style="font-size:12px;color:#666">Доходы</div><div style="font-size:22px;font-weight:700;color:#4caf50">${formatAmount(totalIncome)}</div></div>
+                    <div style="flex:1;background:#fce4ec;border-radius:8px;padding:15px;text-align:center"><div style="font-size:12px;color:#666">Расходы</div><div style="font-size:22px;font-weight:700;color:#f44336">${formatAmount(totalExpense)}</div></div>
+                    <div style="flex:1;background:${profit >= 0 ? '#e8f5e9' : '#fce4ec'};border-radius:8px;padding:15px;text-align:center"><div style="font-size:12px;color:#666">${profit >= 0 ? 'Прибыль' : 'Убыток'}</div><div style="font-size:22px;font-weight:700;color:${profit >= 0 ? '#4caf50' : '#f44336'}">${formatAmount(Math.abs(profit))}</div></div>
+                </div>
+                <div class="table-container"><table>
+                    <thead><tr><th>Статья</th><th style="text-align:right">Сумма</th></tr></thead>
+                    <tbody>
+                        <tr style="background:#e8f5e9"><td style="font-weight:700">ДОХОДЫ</td><td class="num" style="font-weight:700">${formatAmount(totalIncome)}</td></tr>
+                        ${incRows || '<tr><td colspan="2" style="color:var(--text-muted);padding-left:20px">Нет доходов за период</td></tr>'}
+                        <tr style="background:#fce4ec"><td style="font-weight:700">РАСХОДЫ</td><td class="num" style="font-weight:700">${formatAmount(totalExpense)}</td></tr>
+                        ${expRows || '<tr><td colspan="2" style="color:var(--text-muted);padding-left:20px">Нет расходов за период</td></tr>'}
+                    </tbody>
+                    <tfoot><tr style="font-size:16px"><td style="font-weight:700">${profit >= 0 ? 'ЧИСТАЯ ПРИБЫЛЬ' : 'УБЫТОК'}</td><td class="num" style="font-weight:700;color:${profit >= 0 ? '#4caf50' : '#f44336'}">${formatAmount(Math.abs(profit))}</td></tr></tfoot>
+                </table></div>`;
+        }
+
+        // ==================== ВЗАИМОРАСЧЁТЫ ====================
+        function renderSettlements() {
+            return `<div style="background:var(--bg-card,#fff);padding:20px;border-radius:8px;border:1px solid var(--border,#eee)">
+                <h2 style="margin-bottom:10px">Взаиморасчёты с контрагентами</h2>
+                <p style="color:var(--text-muted);margin-bottom:15px">Сводная таблица дебиторской и кредиторской задолженности</p>
+                <div style="display:flex;gap:10px;align-items:end;margin-bottom:15px">
+                    <div><label style="font-size:12px;display:block;margin-bottom:4px">На дату</label><input type="date" id="settDate" value="${new Date().toISOString().slice(0, 10)}"></div>
+                    <button class="btn primary" onclick="buildSettlements()">Сформировать</button>
+                </div>
+                <div id="settResult"></div>
+            </div>`;
+        }
+        function buildSettlements() {
+            const asOf = document.getElementById('settDate').value;
+            if (!db.trade || !db.trade.contractors) { document.getElementById('settResult').innerHTML = '<div class="empty-state">Нет контрагентов</div>'; return; }
+            const result = {};
+            db.trade.contractors.forEach(c => { result[c.id] = { name: c.name, sales: 0, purchases: 0, paymentsIn: 0, paymentsOut: 0 }; });
+            // Trade docs
+            (db.trade.docs || []).filter(d => d.status === 'posted' && d.date <= asOf && d.contractor).forEach(d => {
+                const r = result[d.contractor]; if (!r) return;
+                const tt = TT[d.type];
+                if (!tt) return;
+                if (tt.group === 'sale') r.sales += d.total || 0;
+                else if (tt.group === 'purchase') r.purchases += d.total || 0;
+                if (d.type === 'sale_return') r.sales -= (d.total || 0) * 2; // reverse: was added as sale, now subtract double
+                if (d.type === 'purchase_return') r.purchases -= (d.total || 0) * 2;
+            });
+            // Financial docs linked to contractors
+            [...(db.bankDocuments || []), ...(db.cashDocuments || [])].filter(d => d.date <= asOf && d.contractor).forEach(d => {
+                const cId = db.trade.contractors.find(c => c.name === d.contractor || c.id === d.contractor);
+                if (!cId) return;
+                const r = result[cId.id]; if (!r) return;
+                const sum = (d.sum || 0) * (Number(d.rate) || 1);
+                if (d.type === 'payment_in' || d.type === 'pko') r.paymentsIn += sum;
+                else if (d.type === 'payment_out' || d.type === 'rko') r.paymentsOut += sum;
+            });
+            const rows = Object.values(result).filter(r => r.sales || r.purchases || r.paymentsIn || r.paymentsOut).map(r => {
+                const debit = r.sales - r.paymentsIn; // they owe us
+                const credit = r.purchases - r.paymentsOut; // we owe them
+                return { ...r, debit: Math.max(0, debit), credit: Math.max(0, credit) };
+            }).sort((a, b) => (b.debit + b.credit) - (a.debit + a.credit));
+
+            const totalDebit = rows.reduce((s, r) => s + r.debit, 0);
+            const totalCredit = rows.reduce((s, r) => s + r.credit, 0);
+
+            document.getElementById('settResult').innerHTML = rows.length ? `
+                <div style="display:flex;gap:12px;margin-bottom:15px">
+                    <div style="flex:1;background:#fff3e0;border-radius:8px;padding:15px;text-align:center"><div style="font-size:12px;color:#666">Дебиторская задолженность (нам должны)</div><div style="font-size:22px;font-weight:700;color:#ff9800">${formatAmount(totalDebit)}</div></div>
+                    <div style="flex:1;background:#fce4ec;border-radius:8px;padding:15px;text-align:center"><div style="font-size:12px;color:#666">Кредиторская задолженность (мы должны)</div><div style="font-size:22px;font-weight:700;color:#f44336">${formatAmount(totalCredit)}</div></div>
+                </div>
+                <div class="table-container"><table>
+                    <thead><tr><th>Контрагент</th><th style="text-align:right">Продажи</th><th style="text-align:right">Оплаты от них</th><th style="text-align:right">Закупки</th><th style="text-align:right">Оплаты им</th><th style="text-align:right">Дебиторка</th><th style="text-align:right">Кредиторка</th></tr></thead>
+                    <tbody>${rows.map(r => `<tr><td>${esc(r.name)}</td><td class="num">${formatAmount(r.sales)}</td><td class="num">${formatAmount(r.paymentsIn)}</td><td class="num">${formatAmount(r.purchases)}</td><td class="num">${formatAmount(r.paymentsOut)}</td><td class="num" style="color:#ff9800;font-weight:${r.debit ? '700' : '400'}">${r.debit ? formatAmount(r.debit) : '—'}</td><td class="num" style="color:#f44336;font-weight:${r.credit ? '700' : '400'}">${r.credit ? formatAmount(r.credit) : '—'}</td></tr>`).join('')}</tbody>
+                    <tfoot><tr><td style="font-weight:700">Итого:</td><td colspan="4"></td><td class="num" style="font-weight:700;color:#ff9800">${formatAmount(totalDebit)}</td><td class="num" style="font-weight:700;color:#f44336">${formatAmount(totalCredit)}</td></tr></tfoot>
+                </table></div>` : '<div class="empty-state">Нет данных по взаиморасчётам за период</div>';
         }
 
         // ==================== ОБУЧАЮЩИЙ ТУР ====================
