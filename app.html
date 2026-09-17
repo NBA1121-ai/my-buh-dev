@@ -132,6 +132,7 @@
             <div class="nav-item" onclick="selectPage('currencies')">💱 Валюты</div>
 
             <div class="section-title" onclick="tToggleGroup(this)">Сервис</div>
+            <div class="nav-item" onclick="selectPage('monthly_report')">📊 Единый отчёт за месяц</div>
             <div class="nav-item" onclick="selectPage('import_data')">📥 Импорт и резервные копии</div>
             <div class="nav-item" onclick="selectPage('export_data')">📤 Экспорт данных</div>
 
@@ -616,7 +617,8 @@
                 profile: renderProfile,
                 search_results: renderSearchResults,
                 import_data: renderImport,
-                export_data: renderExport
+                export_data: renderExport,
+                monthly_report: renderMonthlyReport
             };
 
             const titles = {
@@ -635,13 +637,14 @@
                 search_results: 'Результаты поиска',
                 import_data: 'Импорт и резервные копии',
                 export_data: 'Экспорт данных',
+                monthly_report: 'Единый отчёт за месяц',
                 dashboard: 'Главная'
             };
 
             const title = titles[currentPage] || 'Документы';
             document.getElementById('pageTitle').textContent = title;
             // Breadcrumb
-            const sections = { bank: 'Банк и касса', cash: 'Банк и касса', reports: 'Банк и касса', cashbook: 'Банк и касса', articles: 'Справочники', accounts: 'Справочники', banks: 'Справочники', cashs: 'Справочники', currencies: 'Справочники', users: 'Администрирование', actlog: 'Администрирование' };
+            const sections = { bank: 'Банк и касса', cash: 'Банк и касса', reports: 'Банк и касса', cashbook: 'Банк и касса', articles: 'Справочники', accounts: 'Справочники', banks: 'Справочники', cashs: 'Справочники', currencies: 'Справочники', users: 'Администрирование', actlog: 'Администрирование', monthly_report: 'Сервис' };
             const bc = document.getElementById('breadcrumb');
             if (bc) bc.innerHTML = sections[currentPage] ? '<a href="#" onclick="selectPage(\'dashboard\');return false" style="color:var(--text-muted);text-decoration:none">Главная</a> / ' + sections[currentPage] + ' / ' + esc(title) : '';
             document.getElementById('content').innerHTML = pages[currentPage]();
@@ -4869,6 +4872,195 @@
         window.addEventListener('beforeunload', function(e) {
             if (tDoc && tIsDirty()) { e.preventDefault(); e.returnValue = ''; }
         });
+
+        // ==================== ЕДИНЫЙ ОТЧЁТ ЗА МЕСЯЦ ====================
+        let _reportMonth = new Date().toISOString().slice(0, 7);
+
+        function renderMonthlyReport() {
+            return `
+                <div style="background:var(--card-bg);padding:20px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+                    <h2 style="margin-bottom:15px">Единый отчёт за месяц</h2>
+                    <p style="color:var(--text-muted);margin-bottom:20px">Полный отчёт по всем операциям компании: продажи, покупки, зарплата, движение денежных средств, задолженности — в формате Excel.</p>
+                    <div style="display:flex;gap:15px;align-items:flex-end;margin-bottom:20px">
+                        <div class="form-group">
+                            <label>Месяц отчёта</label>
+                            <input type="month" id="reportMonth" value="${_reportMonth}" onchange="_reportMonth=this.value" style="padding:9px 12px;border:1px solid var(--border);border-radius:4px;font-size:14px;background:var(--input-bg);color:var(--text)">
+                        </div>
+                        <button class="btn primary" onclick="generateMonthlyExcel()" style="height:40px;font-size:15px;padding:8px 30px">📊 Сформировать Excel</button>
+                    </div>
+                    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:18px;margin-top:10px">
+                        <h3 style="font-size:14px;color:var(--primary);margin-bottom:10px">Содержание отчёта:</h3>
+                        <ul style="list-style:none;padding:0;font-size:13px;color:var(--text);display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                            <li>✓ Сводка за месяц (итоги)</li>
+                            <li>✓ Продажи (реализация)</li>
+                            <li>✓ Покупки (поступления)</li>
+                            <li>✓ Банковские операции</li>
+                            <li>✓ Кассовые операции</li>
+                            <li>✓ Зарплата и ФОТ</li>
+                            <li>✓ Задолженность покупателей</li>
+                            <li>✓ Задолженность поставщикам</li>
+                        </ul>
+                    </div>
+                </div>`;
+        }
+
+        function generateMonthlyExcel() {
+            const month = _reportMonth;
+            if (!month) { showToast('Выберите месяц'); return; }
+            const [y, m] = month.split('-').map(Number);
+            const from = month + '-01';
+            const lastDay = new Date(y, m, 0).getDate();
+            const to = month + '-' + String(lastDay).padStart(2, '0');
+            const monthName = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'][m - 1] + ' ' + y;
+            const orgName = db.trade && db.trade.org ? db.trade.org.name : 'Организация';
+
+            const inMonth = d => d.date >= from && d.date <= to && d.status !== 'deleted';
+            const tradeDocs = db.trade && db.trade.docs ? db.trade.docs.filter(d => inMonth(d) && d.status === 'posted') : [];
+            const bankDocs = (db.bankDocuments || []).filter(inMonth);
+            const cashDocs = (db.cashDocuments || []).filter(inMonth);
+
+            const sales = tradeDocs.filter(d => ['sale', 'production_services', 'retail_report'].includes(d.type));
+            const totalSales = sales.reduce((s, d) => s + (Number(d.total) || Number(d.sum) || 0), 0);
+            const totalSalesVat = sales.reduce((s, d) => s + (Number(d.vatTotal) || 0), 0);
+
+            const purchases = tradeDocs.filter(d => ['purchase'].includes(d.type));
+            const totalPurchases = purchases.reduce((s, d) => s + (Number(d.total) || Number(d.sum) || 0), 0);
+            const totalPurchasesVat = purchases.reduce((s, d) => s + (Number(d.vatTotal) || 0), 0);
+
+            const saleReturns = tradeDocs.filter(d => d.type === 'sale_return');
+            const purchaseReturns = tradeDocs.filter(d => d.type === 'purchase_return');
+            const totalSaleReturns = saleReturns.reduce((s, d) => s + (Number(d.total) || Number(d.sum) || 0), 0);
+            const totalPurchaseReturns = purchaseReturns.reduce((s, d) => s + (Number(d.total) || Number(d.sum) || 0), 0);
+
+            const toKGS = d => Number(d.sum || 0) * (Number(d.rate) || 1);
+            const bankIn = bankDocs.filter(d => d.type === 'payment_in').reduce((s, d) => s + toKGS(d), 0);
+            const bankOut = bankDocs.filter(d => d.type !== 'payment_in').reduce((s, d) => s + toKGS(d), 0);
+            const cashIn = cashDocs.filter(d => d.type === 'pko').reduce((s, d) => s + toKGS(d), 0);
+            const cashOut = cashDocs.filter(d => d.type === 'rko').reduce((s, d) => s + toKGS(d), 0);
+
+            const payrolls = tradeDocs.filter(d => d.type === 'payroll' && d.period === month);
+            let totalSalary = 0, totalTax = 0, totalSocial = 0, totalNet = 0;
+            const salaryRows = [];
+            payrolls.forEach(pr => {
+                (pr.rows || []).forEach(r => {
+                    const e = tEmp(r.employee) || {};
+                    totalSalary += Number(r.gross) || 0;
+                    totalTax += Number(r.tax) || 0;
+                    totalSocial += Number(r.social) || 0;
+                    totalNet += Number(r.net) || 0;
+                    salaryRows.push({ name: e.name || '—', position: tPos(e.position), gross: Number(r.gross) || 0, tax: Number(r.tax) || 0, social: Number(r.social) || 0, net: Number(r.net) || 0 });
+                });
+            });
+
+            const receivables = [];
+            if (db.trade && db.trade.contractors) {
+                db.trade.contractors.forEach(c => {
+                    let sold = 0, paid = 0;
+                    (db.trade.docs || []).filter(d => d.contractor === c.id && d.status === 'posted' && d.date <= to).forEach(d => {
+                        const tt = TT[d.type]; if (!tt) return;
+                        const sum = Number(d.total) || Number(d.sum) || 0;
+                        if (tt.group === 'sale' && !['sale_return','sale_correction'].includes(d.type)) sold += sum;
+                        if (d.type === 'sale_return') sold -= sum;
+                    });
+                    (db.bankDocuments || []).filter(d => d.contractor === c.name && d.type === 'payment_in' && d.date <= to).forEach(d => paid += toKGS(d));
+                    (db.cashDocuments || []).filter(d => d.contractor === c.name && d.type === 'pko' && d.date <= to).forEach(d => paid += toKGS(d));
+                    const debt = sold - paid;
+                    if (Math.abs(debt) > 0.01) receivables.push({ name: c.name, sold, paid, debt });
+                });
+            }
+
+            const payables = [];
+            if (db.trade && db.trade.contractors) {
+                db.trade.contractors.forEach(c => {
+                    let bought = 0, paid = 0;
+                    (db.trade.docs || []).filter(d => d.contractor === c.id && d.status === 'posted' && d.date <= to).forEach(d => {
+                        const tt = TT[d.type]; if (!tt) return;
+                        const sum = Number(d.total) || Number(d.sum) || 0;
+                        if (tt.group === 'purchase' && !['purchase_return','purchase_correction','power_of_attorney','gtd'].includes(d.type)) bought += sum;
+                        if (d.type === 'purchase_return') bought -= sum;
+                    });
+                    (db.bankDocuments || []).filter(d => d.contractor === c.name && d.type === 'payment_out' && d.date <= to).forEach(d => paid += toKGS(d));
+                    (db.cashDocuments || []).filter(d => d.contractor === c.name && d.type === 'rko' && d.date <= to).forEach(d => paid += toKGS(d));
+                    const debt = bought - paid;
+                    if (Math.abs(debt) > 0.01) payables.push({ name: c.name, bought, paid, debt });
+                });
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            const summaryData = [['ЕДИНЫЙ ОТЧЁТ ЗА МЕСЯЦ'], [orgName], ['Период: ' + monthName], [],
+                ['ПОКАЗАТЕЛЬ', 'СУММА (KGS)'], [], ['ПРОДАЖИ И ПОКУПКИ'],
+                ['Продажи (реализация)', totalSales], ['НДС с продаж', totalSalesVat], ['Возвраты от покупателей', totalSaleReturns],
+                ['Покупки (поступления)', totalPurchases], ['НДС с покупок', totalPurchasesVat], ['Возвраты поставщикам', totalPurchaseReturns],
+                ['Валовая прибыль (продажи - покупки)', totalSales - totalPurchases], [],
+                ['ДВИЖЕНИЕ ДЕНЕЖНЫХ СРЕДСТВ'], ['Поступления на р/с (банк)', bankIn], ['Списания с р/с (банк)', bankOut],
+                ['Итого банк (приход - расход)', bankIn - bankOut], ['Поступления в кассу', cashIn], ['Выдача из кассы', cashOut],
+                ['Итого касса (приход - расход)', cashIn - cashOut], ['Итого ДДС (банк + касса)', (bankIn + cashIn) - (bankOut + cashOut)], [],
+                ['ЗАРПЛАТА И КАДРЫ'], ['Начислено (ФОТ)', totalSalary], ['Подоходный налог', totalTax],
+                ['Социальные взносы', totalSocial], ['К выплате на руки', totalNet], ['Количество сотрудников в ведомости', salaryRows.length], [],
+                ['ЗАДОЛЖЕННОСТИ'], ['Дебиторская (нам должны)', receivables.reduce((s, r) => s + Math.max(r.debt, 0), 0)],
+                ['Кредиторская (мы должны)', payables.reduce((s, r) => s + Math.max(r.debt, 0), 0)], [],
+                ['Количество документов за месяц'], ['Продажи', sales.length], ['Покупки', purchases.length],
+                ['Банковские операции', bankDocs.length], ['Кассовые операции', cashDocs.length], ['Зарплатные ведомости', payrolls.length]];
+            const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+            wsSummary['!cols'] = [{ wch: 40 }, { wch: 20 }];
+            XLSX.utils.book_append_sheet(wb, wsSummary, 'Сводка');
+
+            const salesData = [['ПРОДАЖИ за ' + monthName], [], ['№', 'Дата', 'Номер', 'Контрагент', 'Сумма', 'НДС', 'Итого']];
+            sales.forEach((d, i) => { const cName = d.contractor && db.trade.contractors ? (db.trade.contractors.find(c => c.id === d.contractor) || {}).name || '' : ''; salesData.push([i + 1, d.date, d.number || '', cName, Number(d.sum) || 0, Number(d.vatTotal) || 0, Number(d.total) || Number(d.sum) || 0]); });
+            salesData.push([], ['', '', '', 'ИТОГО:', totalSales - totalSalesVat, totalSalesVat, totalSales]);
+            const wsSales = XLSX.utils.aoa_to_sheet(salesData);
+            wsSales['!cols'] = [{ wch: 5 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(wb, wsSales, 'Продажи');
+
+            const purchData = [['ПОКУПКИ за ' + monthName], [], ['№', 'Дата', 'Номер', 'Поставщик', 'Сумма', 'НДС', 'Итого']];
+            purchases.forEach((d, i) => { const cName = d.contractor && db.trade.contractors ? (db.trade.contractors.find(c => c.id === d.contractor) || {}).name || '' : ''; purchData.push([i + 1, d.date, d.number || '', cName, Number(d.sum) || 0, Number(d.vatTotal) || 0, Number(d.total) || Number(d.sum) || 0]); });
+            purchData.push([], ['', '', '', 'ИТОГО:', totalPurchases - totalPurchasesVat, totalPurchasesVat, totalPurchases]);
+            const wsPurch = XLSX.utils.aoa_to_sheet(purchData);
+            wsPurch['!cols'] = [{ wch: 5 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(wb, wsPurch, 'Покупки');
+
+            const bankData = [['БАНКОВСКИЕ ОПЕРАЦИИ за ' + monthName], [], ['№', 'Дата', 'Номер', 'Тип', 'Контрагент', 'Приход', 'Расход', 'Назначение']];
+            bankDocs.sort((a, b) => (a.date || '').localeCompare(b.date || '')).forEach((d, i) => { const isIn = d.type === 'payment_in'; const sum = toKGS(d); bankData.push([i + 1, d.date, d.number || '', isIn ? 'Входящее' : 'Исходящее', d.contractor || '', isIn ? sum : '', isIn ? '' : sum, d.purpose || '']); });
+            bankData.push([], ['', '', '', '', 'ИТОГО:', bankIn, bankOut, '']);
+            const wsBank = XLSX.utils.aoa_to_sheet(bankData);
+            wsBank['!cols'] = [{ wch: 5 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 30 }];
+            XLSX.utils.book_append_sheet(wb, wsBank, 'Банк');
+
+            const cashData = [['КАССОВЫЕ ОПЕРАЦИИ за ' + monthName], [], ['№', 'Дата', 'Номер', 'Тип', 'Контрагент', 'Приход', 'Расход', 'Назначение']];
+            cashDocs.sort((a, b) => (a.date || '').localeCompare(b.date || '')).forEach((d, i) => { const isIn = d.type === 'pko'; const sum = toKGS(d); cashData.push([i + 1, d.date, d.number || '', isIn ? 'ПКО' : 'РКО', d.contractor || '', isIn ? sum : '', isIn ? '' : sum, d.purpose || '']); });
+            cashData.push([], ['', '', '', '', 'ИТОГО:', cashIn, cashOut, '']);
+            const wsCash = XLSX.utils.aoa_to_sheet(cashData);
+            wsCash['!cols'] = [{ wch: 5 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 30 }];
+            XLSX.utils.book_append_sheet(wb, wsCash, 'Касса');
+
+            const salData = [['ЗАРПЛАТА за ' + monthName], [], ['№', 'Сотрудник', 'Должность', 'Начислено', 'Налог', 'Соц. взносы', 'К выплате']];
+            salaryRows.forEach((r, i) => { salData.push([i + 1, r.name, r.position, r.gross, r.tax, r.social, r.net]); });
+            salData.push([], ['', 'ИТОГО:', '', totalSalary, totalTax, totalSocial, totalNet]);
+            const wsSal = XLSX.utils.aoa_to_sheet(salData);
+            wsSal['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 20 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
+            XLSX.utils.book_append_sheet(wb, wsSal, 'Зарплата');
+
+            const recvData = [['ЗАДОЛЖЕННОСТЬ ПОКУПАТЕЛЕЙ на ' + to], [], ['№', 'Контрагент', 'Продано', 'Оплачено', 'Долг']];
+            receivables.sort((a, b) => b.debt - a.debt).forEach((r, i) => { recvData.push([i + 1, r.name, r.sold, r.paid, r.debt]); });
+            if (!receivables.length) recvData.push(['', 'Задолженности нет', '', '', '']);
+            else recvData.push([], ['', 'ИТОГО:', receivables.reduce((s, r) => s + r.sold, 0), receivables.reduce((s, r) => s + r.paid, 0), receivables.reduce((s, r) => s + r.debt, 0)]);
+            const wsRecv = XLSX.utils.aoa_to_sheet(recvData);
+            wsRecv['!cols'] = [{ wch: 5 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(wb, wsRecv, 'Долги покупателей');
+
+            const payData = [['ЗАДОЛЖЕННОСТЬ ПОСТАВЩИКАМ на ' + to], [], ['№', 'Контрагент', 'Куплено', 'Оплачено', 'Долг']];
+            payables.sort((a, b) => b.debt - a.debt).forEach((r, i) => { payData.push([i + 1, r.name, r.bought, r.paid, r.debt]); });
+            if (!payables.length) payData.push(['', 'Задолженности нет', '', '', '']);
+            else payData.push([], ['', 'ИТОГО:', payables.reduce((s, r) => s + r.bought, 0), payables.reduce((s, r) => s + r.paid, 0), payables.reduce((s, r) => s + r.debt, 0)]);
+            const wsPay = XLSX.utils.aoa_to_sheet(payData);
+            wsPay['!cols'] = [{ wch: 5 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(wb, wsPay, 'Долги поставщикам');
+
+            const fileName = 'Отчёт_' + orgName.replace(/[^a-zA-Zа-яА-ЯёЁ0-9]/g, '_') + '_' + month + '.xlsx';
+            XLSX.writeFile(wb, fileName);
+            showToast('Отчёт за ' + monthName + ' сформирован!');
+        }
 
         // ==================== STARTUP ====================
         // One-time cache reset
