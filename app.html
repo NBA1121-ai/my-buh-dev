@@ -133,11 +133,16 @@
             <div class="nav-item" onclick="selectPage('cashs')">💵 Кассы</div>
             <div class="nav-item" onclick="selectPage('currencies')">💱 Валюты</div>
 
-            <div class="section-title" onclick="tToggleGroup(this)">Сервис</div>
-            <div class="nav-item" onclick="selectPage('monthly_report')">📊 Единый отчёт за месяц</div>
-            <div class="nav-item" onclick="selectPage('r_abc')">📊 ABC-анализ</div>
+            <div class="section-title" onclick="tToggleGroup(this)">Бухгалтерские отчёты</div>
+            <div class="nav-item" onclick="selectPage('r_osv_full')">📊 ОСВ (все счета)</div>
+            <div class="nav-item" onclick="selectPage('r_dds_articles')">📊 Анализ ДДС по статьям</div>
+            <div class="nav-item" onclick="selectPage('r_balance')">📊 Бухгалтерский баланс</div>
             <div class="nav-item" onclick="selectPage('r_pnl')">📊 Прибыли и убытки</div>
             <div class="nav-item" onclick="selectPage('r_settlements')">📊 Взаиморасчёты</div>
+            <div class="nav-item" onclick="selectPage('r_abc')">📊 ABC-анализ</div>
+
+            <div class="section-title" onclick="tToggleGroup(this)">Сервис</div>
+            <div class="nav-item" onclick="selectPage('monthly_report')">📊 Единый отчёт за месяц</div>
             <div class="nav-item" onclick="selectPage('import_data')">📥 Импорт и резервные копии</div>
             <div class="nav-item" onclick="selectPage('export_data')">📤 Экспорт данных</div>
 
@@ -637,7 +642,10 @@
                 monthly_report: renderMonthlyReport,
                 r_abc: renderABC,
                 r_pnl: renderPnL,
-                r_settlements: renderSettlements
+                r_settlements: renderSettlements,
+                r_osv_full: renderOSVFull,
+                r_dds_articles: renderDDSArticles,
+                r_balance: renderBalance
             };
 
             const titles = {
@@ -660,6 +668,9 @@
                 r_abc: 'ABC-анализ',
                 r_pnl: 'Прибыли и убытки',
                 r_settlements: 'Взаиморасчёты с контрагентами',
+                r_osv_full: 'Оборотно-сальдовая ведомость',
+                r_dds_articles: 'Анализ ДДС по статьям',
+                r_balance: 'Бухгалтерский баланс',
                 dashboard: 'Главная'
             };
 
@@ -5502,6 +5513,312 @@
                     <tbody>${rows.map(r => `<tr><td>${esc(r.name)}</td><td class="num">${formatAmount(r.sales)}</td><td class="num">${formatAmount(r.paymentsIn)}</td><td class="num">${formatAmount(r.purchases)}</td><td class="num">${formatAmount(r.paymentsOut)}</td><td class="num" style="color:#ff9800;font-weight:${r.debit ? '700' : '400'}">${r.debit ? formatAmount(r.debit) : '—'}</td><td class="num" style="color:#f44336;font-weight:${r.credit ? '700' : '400'}">${r.credit ? formatAmount(r.credit) : '—'}</td></tr>`).join('')}</tbody>
                     <tfoot><tr><td style="font-weight:700">Итого:</td><td colspan="4"></td><td class="num" style="font-weight:700;color:#ff9800">${formatAmount(totalDebit)}</td><td class="num" style="font-weight:700;color:#f44336">${formatAmount(totalCredit)}</td></tr></tfoot>
                 </table></div>` : '<div class="empty-state">Нет данных по взаиморасчётам за период</div>';
+        }
+
+        // ==================== ОСВ ПО ВСЕМ СЧЕТАМ ====================
+        function renderOSVFull() {
+            const now = new Date();
+            const defFrom = new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
+            const defTo = now.toISOString().slice(0, 10);
+            return `<div style="background:var(--bg-card,#fff);padding:20px;border-radius:8px;border:1px solid var(--border,#eee)">
+                <h2 style="margin-bottom:10px">Оборотно-сальдовая ведомость</h2>
+                <p style="color:var(--text-muted);margin-bottom:15px">По всем бухгалтерским счетам на основании проводок проведённых документов</p>
+                <div style="display:flex;gap:10px;align-items:end;margin-bottom:15px">
+                    <div><label style="font-size:12px;display:block;margin-bottom:4px">Период с</label><input type="date" id="osvFrom" value="${defFrom}"></div>
+                    <div><label style="font-size:12px;display:block;margin-bottom:4px">по</label><input type="date" id="osvTo" value="${defTo}"></div>
+                    <button class="btn primary" onclick="buildOSVFull()">Сформировать</button>
+                    <button class="btn" onclick="printOSVFull()">🖨 Печать</button>
+                </div>
+                <div id="osvFullResult"></div>
+            </div>`;
+        }
+        function _collectAllPostings(from, to) {
+            const postings = [];
+            // Trade docs
+            if (db.trade && db.trade.docs) {
+                db.trade.docs.filter(d => d.status === 'posted' && d.date <= to).forEach(d => {
+                    const ps = tPostings(d) || [];
+                    ps.forEach(p => postings.push({ dt: p.dt, kt: p.kt, sum: p.sum, date: d.date }));
+                });
+            }
+            // Bank/cash docs -> postings
+            const finDocs = [...(db.bankDocuments || []), ...(db.cashDocuments || [])].filter(d => d.status === 'posted' && d.date <= to);
+            finDocs.forEach(d => {
+                const sum = (d.sum || 0) * (Number(d.rate) || 1);
+                if (d.type === 'payment_out') { postings.push({ dt: '60.02', kt: '51', sum, date: d.date }); }
+                else if (d.type === 'payment_in') { postings.push({ dt: '51', kt: '62.02', sum, date: d.date }); }
+                else if (d.type === 'rko') { postings.push({ dt: '71', kt: '50', sum, date: d.date }); }
+                else if (d.type === 'pko') { postings.push({ dt: '50', kt: '71', sum, date: d.date }); }
+                else if (d.type === 'payment_order') { postings.push({ dt: '60.02', kt: '51', sum, date: d.date }); }
+                else if (d.type === 'conversion') { postings.push({ dt: '51', kt: '52', sum, date: d.date }); }
+            });
+            return postings;
+        }
+        function buildOSVFull() {
+            const from = document.getElementById('osvFrom').value;
+            const to = document.getElementById('osvTo').value;
+            const postings = _collectAllPostings(from, to);
+            // Aggregate by account
+            const accs = {};
+            const acc = (a) => accs[a] = accs[a] || { code: a, openDt: 0, openKt: 0, dt: 0, kt: 0 };
+            postings.forEach(p => {
+                const inPeriod = p.date >= from;
+                if (inPeriod) {
+                    acc(p.dt).dt += p.sum;
+                    acc(p.kt).kt += p.sum;
+                } else {
+                    acc(p.dt).openDt += p.sum;
+                    acc(p.kt).openKt += p.sum;
+                }
+            });
+            const NAMES = {
+                '10': 'Материалы', '10.01': 'Сырье и материалы', '10.06': 'Возвратные отходы', '10.07': 'Материалы у переработчика',
+                '19': 'НДС по приобретённым ценностям', '19.03': 'НДС по товарам', '19.04': 'НДС по услугам', '19.05': 'НДС таможня',
+                '20': 'Основное производство', '20.01': 'Основное производство',
+                '26': 'Общехозяйственные расходы',
+                '41': 'Товары', '41.01': 'Товары на складах', '41.02': 'Товары в рознице',
+                '43': 'Готовая продукция', '44': 'Расходы на продажу', '44.01': 'Коммерческие расходы', '45.01': 'Товары отгруженные',
+                '50': 'Касса', '50.01': 'Касса организации', '51': 'Расчётные счета', '52': 'Валютные счета', '57.03': 'Эквайринг',
+                '60': 'Расчёты с поставщиками', '60.01': 'Расчёты с поставщиками', '60.02': 'Авансы выданные',
+                '62': 'Расчёты с покупателями', '62.01': 'Расчёты с покупателями', '62.02': 'Авансы полученные',
+                '68': 'Расчёты по налогам', '68.02': 'НДС',
+                '70': 'Расчёты с персоналом по оплате труда', '71': 'Расчёты с подотчётными лицами',
+                '76': 'Расчёты с разными дебиторами', '76.05': 'Таможенные расчёты', '76.09': 'Прочие расчёты',
+                '90': 'Продажи', '90.01.1': 'Выручка', '90.02.1': 'Себестоимость продаж', '90.03': 'НДС с продаж',
+                '91': 'Прочие доходы и расходы', '91.01': 'Прочие доходы', '94': 'Недостачи и потери',
+                '000': 'Вспомогательный (начальные остатки)'
+            };
+            const rows = Object.values(accs).sort((a, b) => a.code.localeCompare(b.code));
+            const openBal = r => r.openDt - r.openKt;
+            const closeBal = r => openBal(r) + r.dt - r.kt;
+            const totals = { openDt: 0, openKt: 0, dt: 0, kt: 0, closeDt: 0, closeKt: 0 };
+            rows.forEach(r => {
+                const ob = openBal(r), cb = closeBal(r);
+                totals.openDt += Math.max(0, ob); totals.openKt += Math.max(0, -ob);
+                totals.dt += r.dt; totals.kt += r.kt;
+                totals.closeDt += Math.max(0, cb); totals.closeKt += Math.max(0, -cb);
+            });
+
+            document.getElementById('osvFullResult').innerHTML = rows.length ? `
+                <div class="table-container"><table>
+                    <thead><tr><th rowspan="2">Счёт</th><th rowspan="2">Наименование</th><th colspan="2" style="text-align:center">Сальдо на начало</th><th colspan="2" style="text-align:center">Обороты за период</th><th colspan="2" style="text-align:center">Сальдо на конец</th></tr>
+                    <tr><th style="text-align:right">Дебет</th><th style="text-align:right">Кредит</th><th style="text-align:right">Дебет</th><th style="text-align:right">Кредит</th><th style="text-align:right">Дебет</th><th style="text-align:right">Кредит</th></tr></thead>
+                    <tbody>${rows.map(r => {
+                        const ob = openBal(r), cb = closeBal(r);
+                        return `<tr><td><b>${esc(r.code)}</b></td><td>${esc(NAMES[r.code] || '')}</td>
+                            <td class="num">${ob > 0 ? formatAmount(ob) : ''}</td><td class="num">${ob < 0 ? formatAmount(-ob) : ''}</td>
+                            <td class="num">${r.dt ? formatAmount(r.dt) : ''}</td><td class="num">${r.kt ? formatAmount(r.kt) : ''}</td>
+                            <td class="num">${cb > 0 ? formatAmount(cb) : ''}</td><td class="num">${cb < 0 ? formatAmount(-cb) : ''}</td></tr>`;
+                    }).join('')}</tbody>
+                    <tfoot><tr style="font-weight:700"><td colspan="2">Итого</td>
+                        <td class="num">${formatAmount(totals.openDt)}</td><td class="num">${formatAmount(totals.openKt)}</td>
+                        <td class="num">${formatAmount(totals.dt)}</td><td class="num">${formatAmount(totals.kt)}</td>
+                        <td class="num">${formatAmount(totals.closeDt)}</td><td class="num">${formatAmount(totals.closeKt)}</td>
+                    </tr></tfoot>
+                </table></div>
+                <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">Данные формируются на основании бухгалтерских проводок всех проведённых документов (торговые, складские, банк, касса, производство, зарплата).</p>
+            ` : '<div class="empty-state">Нет проводок за выбранный период</div>';
+        }
+        function printOSVFull() {
+            buildOSVFull();
+            setTimeout(() => {
+                const content = document.getElementById('osvFullResult').innerHTML;
+                const w = window.open('', '_blank');
+                w.document.write('<html><head><title>ОСВ</title><style>body{font-family:Arial,sans-serif;font-size:12px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:4px 8px}th{background:#f0f0f0}.num{text-align:right}h2{text-align:center}</style></head><body><h2>Оборотно-сальдовая ведомость</h2><p>Период: ' + document.getElementById('osvFrom').value + ' — ' + document.getElementById('osvTo').value + '</p>' + content + '</body></html>');
+                w.document.close(); w.print();
+            }, 100);
+        }
+
+        // ==================== АНАЛИЗ ДДС ПО СТАТЬЯМ ====================
+        function renderDDSArticles() {
+            const now = new Date();
+            const defFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+            const defTo = now.toISOString().slice(0, 10);
+            return `<div style="background:var(--bg-card,#fff);padding:20px;border-radius:8px;border:1px solid var(--border,#eee)">
+                <h2 style="margin-bottom:10px">Анализ движения денежных средств по статьям</h2>
+                <p style="color:var(--text-muted);margin-bottom:15px">Приход и расход денежных средств в разрезе статей ДДС</p>
+                <div style="display:flex;gap:10px;align-items:end;margin-bottom:15px">
+                    <div><label style="font-size:12px;display:block;margin-bottom:4px">Период с</label><input type="date" id="ddsFrom" value="${defFrom}"></div>
+                    <div><label style="font-size:12px;display:block;margin-bottom:4px">по</label><input type="date" id="ddsTo" value="${defTo}"></div>
+                    <button class="btn primary" onclick="buildDDSArticles()">Сформировать</button>
+                    <button class="btn" onclick="printDDSArticles()">🖨 Печать</button>
+                </div>
+                <div id="ddsArticlesResult"></div>
+            </div>`;
+        }
+        function buildDDSArticles() {
+            const from = document.getElementById('ddsFrom').value;
+            const to = document.getElementById('ddsTo').value;
+            const allDocs = [...(db.bankDocuments || []), ...(db.cashDocuments || [])].filter(d => d.status === 'posted' && d.date >= from && d.date <= to);
+            const artName = id => ((db.articles || []).find(a => a.id === id) || {}).name || 'Без статьи';
+
+            const articles = {};
+            allDocs.forEach(d => {
+                const sum = (d.sum || 0) * (Number(d.rate) || 1);
+                const art = artName(d.article);
+                if (!articles[art]) articles[art] = { name: art, inSum: 0, outSum: 0, inCount: 0, outCount: 0 };
+                const isIn = d.type === 'payment_in' || d.type === 'pko';
+                if (isIn) { articles[art].inSum += sum; articles[art].inCount++; }
+                else { articles[art].outSum += sum; articles[art].outCount++; }
+            });
+
+            const rows = Object.values(articles).sort((a, b) => (b.inSum + b.outSum) - (a.inSum + a.outSum));
+            const totalIn = rows.reduce((s, r) => s + r.inSum, 0);
+            const totalOut = rows.reduce((s, r) => s + r.outSum, 0);
+
+            // Monthly breakdown
+            const months = {};
+            allDocs.forEach(d => {
+                const m = d.date.slice(0, 7);
+                const sum = (d.sum || 0) * (Number(d.rate) || 1);
+                if (!months[m]) months[m] = { inSum: 0, outSum: 0 };
+                const isIn = d.type === 'payment_in' || d.type === 'pko';
+                if (isIn) months[m].inSum += sum; else months[m].outSum += sum;
+            });
+            const monthKeys = Object.keys(months).sort();
+            const MNAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+
+            document.getElementById('ddsArticlesResult').innerHTML = `
+                <div style="display:flex;gap:12px;margin-bottom:15px;flex-wrap:wrap">
+                    <div style="flex:1;min-width:180px;background:#e8f5e9;border-radius:8px;padding:15px;text-align:center"><div style="font-size:12px;color:#666">Поступления</div><div style="font-size:22px;font-weight:700;color:#4caf50">${formatAmount(totalIn)}</div><div style="font-size:11px;color:#888">${allDocs.filter(d => d.type === 'payment_in' || d.type === 'pko').length} док.</div></div>
+                    <div style="flex:1;min-width:180px;background:#fce4ec;border-radius:8px;padding:15px;text-align:center"><div style="font-size:12px;color:#666">Списания</div><div style="font-size:22px;font-weight:700;color:#f44336">${formatAmount(totalOut)}</div><div style="font-size:11px;color:#888">${allDocs.filter(d => d.type !== 'payment_in' && d.type !== 'pko').length} док.</div></div>
+                    <div style="flex:1;min-width:180px;background:${totalIn - totalOut >= 0 ? '#e8f5e9' : '#fce4ec'};border-radius:8px;padding:15px;text-align:center"><div style="font-size:12px;color:#666">Чистый поток</div><div style="font-size:22px;font-weight:700;color:${totalIn - totalOut >= 0 ? '#4caf50' : '#f44336'}">${formatAmount(totalIn - totalOut)}</div></div>
+                </div>
+                <h3 style="margin:15px 0 8px">По статьям</h3>
+                <div class="table-container"><table>
+                    <thead><tr><th>Статья ДДС</th><th style="text-align:right">Поступления</th><th style="text-align:right">Док.</th><th style="text-align:right">Списания</th><th style="text-align:right">Док.</th><th style="text-align:right">Сальдо</th></tr></thead>
+                    <tbody>${rows.map(r => `<tr><td>${esc(r.name)}</td><td class="num" style="color:#4caf50">${r.inSum ? formatAmount(r.inSum) : '—'}</td><td class="num">${r.inCount || ''}</td><td class="num" style="color:#f44336">${r.outSum ? formatAmount(r.outSum) : '—'}</td><td class="num">${r.outCount || ''}</td><td class="num" style="font-weight:700;color:${r.inSum - r.outSum >= 0 ? '#4caf50' : '#f44336'}">${formatAmount(r.inSum - r.outSum)}</td></tr>`).join('')}
+                    ${rows.length ? '' : '<tr><td colspan="6" class="empty-state">Нет данных за период</td></tr>'}</tbody>
+                    <tfoot><tr style="font-weight:700"><td>Итого</td><td class="num" style="color:#4caf50">${formatAmount(totalIn)}</td><td></td><td class="num" style="color:#f44336">${formatAmount(totalOut)}</td><td></td><td class="num" style="color:${totalIn - totalOut >= 0 ? '#4caf50' : '#f44336'}">${formatAmount(totalIn - totalOut)}</td></tr></tfoot>
+                </table></div>
+                ${monthKeys.length > 1 ? `<h3 style="margin:20px 0 8px">По месяцам</h3>
+                <div class="table-container"><table>
+                    <thead><tr><th>Месяц</th><th style="text-align:right">Поступления</th><th style="text-align:right">Списания</th><th style="text-align:right">Сальдо</th></tr></thead>
+                    <tbody>${monthKeys.map(m => { const r = months[m]; const mn = parseInt(m.slice(5)) - 1; return `<tr><td>${MNAMES[mn]} ${m.slice(0, 4)}</td><td class="num" style="color:#4caf50">${formatAmount(r.inSum)}</td><td class="num" style="color:#f44336">${formatAmount(r.outSum)}</td><td class="num" style="font-weight:700;color:${r.inSum - r.outSum >= 0 ? '#4caf50' : '#f44336'}">${formatAmount(r.inSum - r.outSum)}</td></tr>`; }).join('')}</tbody>
+                    <tfoot><tr style="font-weight:700"><td>Итого</td><td class="num" style="color:#4caf50">${formatAmount(totalIn)}</td><td class="num" style="color:#f44336">${formatAmount(totalOut)}</td><td class="num" style="color:${totalIn - totalOut >= 0 ? '#4caf50' : '#f44336'}">${formatAmount(totalIn - totalOut)}</td></tr></tfoot>
+                </table></div>` : ''}`;
+        }
+        function printDDSArticles() {
+            buildDDSArticles();
+            setTimeout(() => {
+                const content = document.getElementById('ddsArticlesResult').innerHTML;
+                const w = window.open('', '_blank');
+                w.document.write('<html><head><title>ДДС по статьям</title><style>body{font-family:Arial,sans-serif;font-size:12px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:4px 8px}th{background:#f0f0f0}.num{text-align:right}h2,h3{text-align:center}</style></head><body><h2>Анализ ДДС по статьям</h2><p>Период: ' + document.getElementById('ddsFrom').value + ' — ' + document.getElementById('ddsTo').value + '</p>' + content + '</body></html>');
+                w.document.close(); w.print();
+            }, 100);
+        }
+
+        // ==================== БУХГАЛТЕРСКИЙ БАЛАНС ====================
+        function renderBalance() {
+            const defDate = new Date().toISOString().slice(0, 10);
+            return `<div style="background:var(--bg-card,#fff);padding:20px;border-radius:8px;border:1px solid var(--border,#eee)">
+                <h2 style="margin-bottom:10px">Бухгалтерский баланс</h2>
+                <p style="color:var(--text-muted);margin-bottom:15px">Форма 1 — упрощённый баланс на дату. Строится на основании проводок всех проведённых документов.</p>
+                <div style="display:flex;gap:10px;align-items:end;margin-bottom:15px">
+                    <div><label style="font-size:12px;display:block;margin-bottom:4px">На дату</label><input type="date" id="balDate" value="${defDate}"></div>
+                    <button class="btn primary" onclick="buildBalance()">Сформировать</button>
+                    <button class="btn" onclick="printBalance()">🖨 Печать</button>
+                </div>
+                <div id="balanceResult"></div>
+            </div>`;
+        }
+        function buildBalance() {
+            const asOf = document.getElementById('balDate').value;
+            const postings = _collectAllPostings('0000-01-01', asOf);
+            // Calculate balances per account
+            const accs = {};
+            postings.forEach(p => {
+                accs[p.dt] = (accs[p.dt] || 0) + p.sum;
+                accs[p.kt] = (accs[p.kt] || 0) - p.sum;
+            });
+            const bal = (codes) => codes.reduce((s, c) => {
+                let total = 0;
+                Object.keys(accs).forEach(k => { if (k === c || k.startsWith(c + '.')) total += accs[k]; });
+                return s + total;
+            }, 0);
+
+            // АКТИВ
+            const fixedAssets = bal(['01']) - bal(['02']); // ОС - амортизация
+            const intangible = bal(['04']) - bal(['05']); // НМА
+            const nonCurrent = fixedAssets + intangible;
+
+            const inventory = bal(['10', '41', '43', '45', '20', '21', '23', '25', '26', '28', '29', '44', '97']);
+            const vatReceivable = bal(['19']);
+            const receivables = bal(['62']) + bal(['76']); // дебиторка (сальдо Дт)
+            const cash = bal(['50', '51', '52', '55', '57']);
+            const otherCurrent = bal(['71', '73']);
+            const currentAssets = inventory + vatReceivable + Math.max(0, receivables) + cash + otherCurrent;
+            const totalAssets = nonCurrent + currentAssets;
+
+            // ПАССИВ
+            const capital = -bal(['80', '82', '83', '84']); // уставный, резервный, добавочный, нераспределенная прибыль
+            const profitLoss = -bal(['90', '91', '99']); // финрезультат
+            const equity = capital + profitLoss;
+
+            const longTermLiab = -bal(['67']); // долгосрочные кредиты
+            const payables = -bal(['60']); // кредиторка (сальдо Кт)
+            const taxPayable = -bal(['68', '69']);
+            const salaryPayable = -bal(['70']);
+            const shortTermLoans = -bal(['66']);
+            const otherPayables = Math.max(0, -receivables) + -bal(['76.05', '94']);
+            const shortTermLiab = Math.max(0, payables) + taxPayable + salaryPayable + shortTermLoans + otherPayables;
+            const totalLiabilities = equity + longTermLiab + shortTermLiab;
+
+            const orgName = db.trade && db.trade.org ? db.trade.org.name : 'Организация';
+            const row = (name, val, bold, indent) => `<tr${bold ? ' style="font-weight:700;background:var(--bg-table-hover,#f8f8f8)"' : ''}><td style="${indent ? 'padding-left:25px' : ''}">${name}</td><td class="num">${formatAmount(val)}</td></tr>`;
+
+            document.getElementById('balanceResult').innerHTML = `
+                <div style="text-align:center;margin-bottom:15px"><b>${esc(orgName)}</b><br>Бухгалтерский баланс на ${formatDate(asOf)}</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                    <div class="table-container"><table>
+                        <thead><tr><th colspan="2" style="text-align:center;background:#e3f2fd">АКТИВ</th></tr><tr><th>Статья</th><th style="text-align:right">Сумма</th></tr></thead>
+                        <tbody>
+                            ${row('I. ВНЕОБОРОТНЫЕ АКТИВЫ', '', true)}
+                            ${row('Основные средства', fixedAssets, false, true)}
+                            ${row('Нематериальные активы', intangible, false, true)}
+                            ${row('Итого раздел I', nonCurrent, true)}
+                            ${row('II. ОБОРОТНЫЕ АКТИВЫ', '', true)}
+                            ${row('Запасы', inventory, false, true)}
+                            ${row('НДС по приобретённым ценностям', vatReceivable, false, true)}
+                            ${row('Дебиторская задолженность', Math.max(0, receivables), false, true)}
+                            ${row('Денежные средства', cash, false, true)}
+                            ${row('Прочие оборотные активы', otherCurrent, false, true)}
+                            ${row('Итого раздел II', currentAssets, true)}
+                        </tbody>
+                        <tfoot><tr style="font-weight:700;font-size:15px"><td>БАЛАНС (АКТИВ)</td><td class="num">${formatAmount(totalAssets)}</td></tr></tfoot>
+                    </table></div>
+                    <div class="table-container"><table>
+                        <thead><tr><th colspan="2" style="text-align:center;background:#fce4ec">ПАССИВ</th></tr><tr><th>Статья</th><th style="text-align:right">Сумма</th></tr></thead>
+                        <tbody>
+                            ${row('III. КАПИТАЛ И РЕЗЕРВЫ', '', true)}
+                            ${row('Уставный капитал', capital, false, true)}
+                            ${row('Нераспределённая прибыль (убыток)', profitLoss, false, true)}
+                            ${row('Итого раздел III', equity, true)}
+                            ${row('IV. ДОЛГОСРОЧНЫЕ ОБЯЗАТЕЛЬСТВА', '', true)}
+                            ${row('Долгосрочные кредиты и займы', longTermLiab, false, true)}
+                            ${row('Итого раздел IV', longTermLiab, true)}
+                            ${row('V. КРАТКОСРОЧНЫЕ ОБЯЗАТЕЛЬСТВА', '', true)}
+                            ${row('Кредиторская задолженность', Math.max(0, payables), false, true)}
+                            ${row('Задолженность по налогам', taxPayable, false, true)}
+                            ${row('Задолженность по зарплате', salaryPayable, false, true)}
+                            ${row('Краткосрочные кредиты', shortTermLoans, false, true)}
+                            ${row('Прочие обязательства', otherPayables, false, true)}
+                            ${row('Итого раздел V', shortTermLiab, true)}
+                        </tbody>
+                        <tfoot><tr style="font-weight:700;font-size:15px"><td>БАЛАНС (ПАССИВ)</td><td class="num">${formatAmount(totalLiabilities)}</td></tr></tfoot>
+                    </table></div>
+                </div>
+                ${Math.abs(totalAssets - totalLiabilities) > 0.01 ? `<div style="margin-top:12px;padding:10px;background:#fff3e0;border-radius:6px;color:#e65100"><b>⚠ Расхождение:</b> Актив (${formatAmount(totalAssets)}) ≠ Пассив (${formatAmount(totalLiabilities)}). Разница: ${formatAmount(totalAssets - totalLiabilities)}. Возможные причины: не все операции отражены проводками.</div>` : `<div style="margin-top:12px;padding:10px;background:#e8f5e9;border-radius:6px;color:#2e7d32">✓ Баланс сходится: Актив = Пассив = ${formatAmount(totalAssets)}</div>`}
+                <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">Баланс строится по данным бухгалтерских проводок. Для корректности убедитесь, что все документы проведены.</p>`;
+        }
+        function printBalance() {
+            buildBalance();
+            setTimeout(() => {
+                const content = document.getElementById('balanceResult').innerHTML;
+                const w = window.open('', '_blank');
+                w.document.write('<html><head><title>Баланс</title><style>body{font-family:Arial,sans-serif;font-size:12px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:4px 8px}th{background:#f0f0f0}.num{text-align:right}</style></head><body>' + content + '</body></html>');
+                w.document.close(); w.print();
+            }, 100);
         }
 
         // ==================== ОБУЧАЮЩИЙ ТУР ====================
