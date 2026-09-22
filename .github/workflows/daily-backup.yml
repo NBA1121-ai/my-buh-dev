@@ -2,8 +2,8 @@ name: Daily Database Backup
 
 on:
   schedule:
-    # Every day at 00:00 UTC (06:00 Bishkek time)
-    - cron: '0 0 * * *'
+    # Every day at 16:00 UTC (22:00 Bishkek time, UTC+6)
+    - cron: '0 16 * * *'
   workflow_dispatch: # manual trigger
 
 jobs:
