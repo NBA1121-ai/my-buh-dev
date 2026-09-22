@@ -1,0 +1,53 @@
+name: Daily Database Backup
+
+on:
+  schedule:
+    # Every day at 00:00 UTC (06:00 Bishkek time)
+    - cron: '0 0 * * *'
+  workflow_dispatch: # manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout data branch
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create backup
+        run: |
+          if [ ! -f db.json ]; then
+            echo "db.json not found, skipping backup"
+            exit 0
+          fi
+
+          mkdir -p backups
+          DATE=$(date +%Y-%m-%d)
+          BACKUP_FILE="backups/db-${DATE}.json"
+
+          # Skip if today's backup already exists
+          if [ -f "$BACKUP_FILE" ]; then
+            echo "Backup for ${DATE} already exists, skipping"
+            exit 0
+          fi
+
+          cp db.json "$BACKUP_FILE"
+          echo "Created backup: ${BACKUP_FILE}"
+
+          # Delete backups older than 30 days
+          find backups -name "db-*.json" -mtime +30 -delete 2>/dev/null || true
+          echo "Cleaned up old backups (30+ days)"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backups/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Backup db.json $(date +%Y-%m-%d)"
+            git push origin data
+          fi
