@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.sheetjs.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; img-src 'self' data:; font-src 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.sheetjs.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; img-src 'self' data:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
     <title>EsepOnline (ТЕСТ) — Облачная бухгалтерия</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/app.css">
@@ -729,7 +729,7 @@
                     <tbody>
                         ${pg.items.map(d => `
                             <tr>
-                                <td><input type="checkbox" class="bulk-chk" ${_selected.has(d.id)?'checked':''} onchange="toggleSelect('${d.id}',this)"></td>
+                                <td><input type="checkbox" class="bulk-chk" ${_selected.has(d.id)?'checked':''} onchange="toggleSelect('${esc(d.id)}',this)"></td>
                                 <td><strong>${esc(d.number)}</strong></td>
                                 <td>${formatDate(d.date)}</td>
                                 <td>${getDocTypeLabel(d.type)}</td>
@@ -739,10 +739,10 @@
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="action-btn" onclick="editDoc('${d.id}')" title="Редактировать" aria-label="Редактировать">✏️</button>
-                                        <button class="action-btn" onclick="deleteDoc('${d.id}')" title="Удалить" aria-label="Удалить">🗑️</button>
-                                        <button class="action-btn" onclick="printDoc('${d.id}')" title="Печать" aria-label="Печать">🖨️</button>
-                                        <button class="action-btn" onclick="saveAsTemplate('${d.id}')" title="Сохранить как шаблон" aria-label="Шаблон">📋</button>
+                                        <button class="action-btn" onclick="editDoc('${esc(d.id)}')" title="Редактировать" aria-label="Редактировать">✏️</button>
+                                        <button class="action-btn" onclick="deleteDoc('${esc(d.id)}')" title="Удалить" aria-label="Удалить">🗑️</button>
+                                        <button class="action-btn" onclick="printDoc('${esc(d.id)}')" title="Печать" aria-label="Печать">🖨️</button>
+                                        <button class="action-btn" onclick="saveAsTemplate('${esc(d.id)}')" title="Сохранить как шаблон" aria-label="Шаблон">📋</button>
                                     </div>
                                 </td>
                             </tr>
@@ -793,7 +793,7 @@
                     <tbody>
                         ${pgCash.items.map(d => `
                             <tr>
-                                <td><input type="checkbox" class="bulk-chk" ${_selected.has(d.id)?'checked':''} onchange="toggleSelect('${d.id}',this)"></td>
+                                <td><input type="checkbox" class="bulk-chk" ${_selected.has(d.id)?'checked':''} onchange="toggleSelect('${esc(d.id)}',this)"></td>
                                 <td><strong>${esc(d.number)}</strong></td>
                                 <td>${formatDate(d.date)}</td>
                                 <td>${getDocTypeLabel(d.type)}</td>
@@ -803,9 +803,9 @@
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="action-btn" onclick="editDoc('${d.id}')" title="Редактировать" aria-label="Редактировать">✏️</button>
-                                        <button class="action-btn" onclick="deleteDoc('${d.id}')" title="Удалить" aria-label="Удалить">🗑️</button>
-                                        <button class="action-btn" onclick="printDoc('${d.id}')" title="Печать" aria-label="Печать">🖨️</button>
+                                        <button class="action-btn" onclick="editDoc('${esc(d.id)}')" title="Редактировать" aria-label="Редактировать">✏️</button>
+                                        <button class="action-btn" onclick="deleteDoc('${esc(d.id)}')" title="Удалить" aria-label="Удалить">🗑️</button>
+                                        <button class="action-btn" onclick="printDoc('${esc(d.id)}')" title="Печать" aria-label="Печать">🖨️</button>
                                     </div>
                                 </td>
                             </tr>
@@ -894,7 +894,7 @@
                         <thead><tr><th>Номер документа</th><th>От кого получено / кому выдано</th><th>Корр. счет</th><th style="text-align:right">Приход</th><th style="text-align:right">Расход</th></tr></thead>
                         <tbody>
                             <tr><td colspan="3"><i>Остаток на начало дня</i></td><td class="num">${formatAmount(opening)}</td><td></td></tr>
-                            ${docs.map(d => { const art = db.articles.find(a => a.id === d.article); return `<tr ondblclick="editDoc('${d.id}')" style="cursor:pointer">
+                            ${docs.map(d => { const art = db.articles.find(a => a.id === d.article); return `<tr ondblclick="editDoc('${esc(d.id)}')" style="cursor:pointer">
                                 <td><strong>${esc(d.number)}</strong> <span style="color:var(--text-muted)">(${d.type === 'pko' ? 'ПКО' : 'РКО'})</span></td>
                                 <td>${esc(d.contractor || '-')}${d.purpose ? '<br><span style="color:var(--text-muted);font-size:12px">' + esc(d.purpose) + '</span>' : ''}</td>
                                 <td>${art ? (art.type === 'in' ? '62.01' : '60.01') : (d.type === 'pko' ? '62.01' : '71.01')}</td>
@@ -946,8 +946,8 @@
                                 <td>${esc(a.name)}</td>
                                 <td><span class="badge ${a.type === 'in' ? 'incoming' : 'draft'}">${a.type === 'in' ? 'Приход' : 'Расход'}</span></td>
                                 <td>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editArticle('${a.id}')">✏️</button>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteArticle('${a.id}')">🗑</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editArticle('${esc(a.id)}')">✏️</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteArticle('${esc(a.id)}')">🗑</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -1031,8 +1031,8 @@
                                 <td>${esc(a.bank || '-')}</td>
                                 <td><span class="badge ${a.type === 'bank' ? 'posted' : 'draft'}">${a.type === 'bank' ? 'Банк' : 'Касса'}</span></td>
                                 <td>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editAccount('${a.id}')">✏️</button>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteAccount('${a.id}')">🗑</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editAccount('${esc(a.id)}')">✏️</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteAccount('${esc(a.id)}')">🗑</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -1118,8 +1118,8 @@
                                 <td>${esc(b.bik)}</td>
                                 <td>${esc(b.corrAccount)}</td>
                                 <td>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editBankItem('${b.id}')">✏️</button>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteBankItem('${b.id}')">🗑</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editBankItem('${esc(b.id)}')">✏️</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteBankItem('${esc(b.id)}')">🗑</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -1199,8 +1199,8 @@
                                 <td><strong>${esc(c.name)}</strong></td>
                                 <td>${esc(c.responsible || '-')}</td>
                                 <td>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editCashItem('${c.id}')">✏️</button>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteCashItem('${c.id}')">🗑</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editCashItem('${esc(c.id)}')">✏️</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteCashItem('${esc(c.id)}')">🗑</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -1281,8 +1281,8 @@
                                 <td>${esc(c.name)}</td>
                                 <td class="num">${formatAmount(c.rate)}</td>
                                 <td>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editCurrency('${c.id}')">✏️</button>
-                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteCurrency('${c.id}')">🗑</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editCurrency('${esc(c.id)}')">✏️</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteCurrency('${esc(c.id)}')">🗑</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -1639,15 +1639,15 @@
             // Search trade docs
             if (db.trade && db.trade.docs) db.trade.docs.forEach(d => {
                 const cn = d.contractor ? ((tContractor(d.contractor)||{}).name||'') : '';
-                if ((JSON.stringify(d) + cn).toLowerCase().includes(q)) _searchResults.push({ section: TT[d.type] ? TT[d.type].label : d.type, number: d.number, date: d.date, desc: cn || d.number, sum: d.total || 0, action: `tOpen('${d.id}')` });
+                if ((JSON.stringify(d) + cn).toLowerCase().includes(q)) _searchResults.push({ section: TT[d.type] ? TT[d.type].label : d.type, number: d.number, date: d.date, desc: cn || d.number, sum: d.total || 0, action: `tOpen('${esc(d.id)}')` });
             });
             // Search contractors
             if (db.trade && db.trade.contractors) db.trade.contractors.forEach(c => {
-                if (JSON.stringify(c).toLowerCase().includes(q)) _searchResults.push({ section: 'Контрагент', number: '', date: '', desc: c.name, sum: '', action: `selectPage('contractors');setTimeout(()=>{const el=document.querySelector('[data-id="${c.id}"]');if(el)el.click()},100)` });
+                if (JSON.stringify(c).toLowerCase().includes(q)) _searchResults.push({ section: 'Контрагент', number: '', date: '', desc: c.name, sum: '', action: `selectPage('contractors');setTimeout(()=>{const el=document.querySelector('[data-id="${esc(c.id)}"]');if(el)el.click()},100)` });
             });
             // Search nomenclature
             if (db.trade && db.trade.nomenclature) db.trade.nomenclature.forEach(n => {
-                if (JSON.stringify(n).toLowerCase().includes(q)) _searchResults.push({ section: 'Номенклатура', number: n.article || '', date: '', desc: n.name, sum: n.price || '', action: `selectPage('nomenclature');setTimeout(()=>{const el=document.querySelector('[data-id="${n.id}"]');if(el)el.click()},100)` });
+                if (JSON.stringify(n).toLowerCase().includes(q)) _searchResults.push({ section: 'Номенклатура', number: n.article || '', date: '', desc: n.name, sum: n.price || '', action: `selectPage('nomenclature');setTimeout(()=>{const el=document.querySelector('[data-id="${esc(n.id)}"]');if(el)el.click()},100)` });
             });
             // Search employees
             if (db.trade && db.trade.employees) db.trade.employees.forEach(e => {
@@ -1810,10 +1810,11 @@
             const newP1 = document.getElementById('newPass1').value;
             const newP2 = document.getElementById('newPass2').value;
             const msg = document.getElementById('passMsg');
-            if (!oldP || !newP1 || !newP2) { msg.innerHTML = '<span style="color:var(--danger)">Заполните все поля</span>'; return; }
-            if (newP1 !== newP2) { msg.innerHTML = '<span style="color:var(--danger)">Пароли не совпадают</span>'; return; }
-            if (newP1.length < 6) { msg.innerHTML = '<span style="color:var(--danger)">Минимум 6 символов</span>'; return; }
-            msg.innerHTML = '<span style="color:var(--text-muted)">Сохранение...</span>';
+            function _setMsg(el, text, color) { el.textContent = text; el.style.color = color; }
+            if (!oldP || !newP1 || !newP2) { _setMsg(msg, 'Заполните все поля', 'var(--danger)'); return; }
+            if (newP1 !== newP2) { _setMsg(msg, 'Пароли не совпадают', 'var(--danger)'); return; }
+            if (newP1.length < 6) { _setMsg(msg, 'Минимум 6 символов', 'var(--danger)'); return; }
+            _setMsg(msg, 'Сохранение...', 'var(--text-muted)');
             const users = await DbSync.loadUsers();
             if (!users || !users.length) { msg.innerHTML = '<span style="color:var(--danger)">Ошибка загрузки пользователей</span>'; return; }
             let s = {};
@@ -1825,17 +1826,17 @@
                 const oldHash = u.salt ? await _hashWithSalt(oldP, u.salt) : await _sha256(oldP);
                 if (u.pass === oldHash) { user = u; break; }
             }
-            if (!user) { msg.innerHTML = '<span style="color:var(--danger)">Неверный текущий пароль</span>'; return; }
+            if (!user) { _setMsg(msg, 'Неверный текущий пароль', 'var(--danger)'); return; }
             const newSalt = _genSalt();
             user.salt = newSalt;
             user.pass = await _hashWithSalt(newP1, newSalt);
             const ok = await DbSync.saveUsers(users);
             if (ok) {
-                msg.innerHTML = '<span style="color:var(--success)">Пароль успешно изменён</span>';
+                _setMsg(msg, 'Пароль успешно изменён', 'var(--success)');
                 logActivity('Смена пароля', s.name);
                 saveData();
             } else {
-                msg.innerHTML = '<span style="color:var(--danger)">Ошибка сохранения</span>';
+                _setMsg(msg, 'Ошибка сохранения', 'var(--danger)');
             }
         }
 
@@ -1917,33 +1918,34 @@
             const pass = passEl.value || '';
 
             if (!name || !login || !pass) {
-                msgEl.innerHTML = '<span style="color:var(--danger)">Заполните все поля</span>';
+                msgEl.textContent = 'Заполните все поля'; msgEl.style.color = 'var(--danger)';
                 return;
             }
             if (pass.length < 6) {
-                msgEl.innerHTML = '<span style="color:var(--danger)">Пароль минимум 6 символов</span>';
+                msgEl.textContent = 'Пароль минимум 6 символов'; msgEl.style.color = 'var(--danger)';
                 return;
             }
 
-            msgEl.innerHTML = '<span style="color:var(--text-muted)">Сохранение...</span>';
+            msgEl.textContent = 'Сохранение...'; msgEl.style.color = 'var(--text-muted)';
             const loginHash = await _sha256(login);
-            const passHash = await _sha256(pass);
+            const salt = _genSalt();
+            const passHash = await _hashWithSalt(pass, salt);
 
             // Check duplicate login
             if (_usersCache.find(u => u.login === loginHash)) {
-                msgEl.innerHTML = '<span style="color:var(--danger)">Пользователь с таким логином уже существует</span>';
+                msgEl.textContent = 'Пользователь с таким логином уже существует'; msgEl.style.color = 'var(--danger)';
                 return;
             }
 
-            _usersCache.push({ login: loginHash, pass: passHash, name: name, role: roleEl.value });
+            _usersCache.push({ login: loginHash, pass: passHash, salt: salt, name: name, role: roleEl.value });
             const ok = await DbSync.saveUsers(_usersCache);
             if (ok) {
-                msgEl.innerHTML = '<span style="color:var(--success)">Пользователь добавлен</span>';
+                msgEl.textContent = 'Пользователь добавлен'; msgEl.style.color = 'var(--success)';
                 nameEl.value = ''; loginEl.value = ''; passEl.value = '';
                 _loadUsersAndRender();
             } else {
                 _usersCache.pop();
-                msgEl.innerHTML = '<span style="color:var(--danger)">Ошибка сохранения</span>';
+                msgEl.textContent = 'Ошибка сохранения'; msgEl.style.color = 'var(--danger)';
             }
         }
 
@@ -2742,7 +2744,7 @@
             // items: [{label, action(js string), disabled, sep}]
             const id = 'm' + Math.random().toString(36).slice(2, 8);
             return `<div class="tdd" id="${id}">
-                <button class="btn ${cls || ''}" onclick="tToggleMenu('${id}', event)">${btnLabel} ▾</button>
+                <button class="btn ${cls || ''}" onclick="tToggleMenu('${esc(id)}', event)">${btnLabel} ▾</button>
                 <div class="tdd-menu">${items.map(it => it.sep ? '<div class="tdd-sep"></div>' :
                     `<div class="tdd-item ${it.disabled ? 'disabled' : ''}" onclick="${it.disabled ? '' : 'tCloseMenus();' + it.action}">${it.label}</div>`).join('')}</div>
             </div>`;
@@ -2777,18 +2779,18 @@
 
             const createItems = cfg.ops ? cfg.ops.map(o => ({ label: o, action: `tCreate('${type}', '${esc(o)}')` })) : null;
             const createBtn = createItems ? tMenu('+ Создать', createItems, 'primary') : `<button class="btn primary" onclick="tCreate('${type}')">+ Создать</button>`;
-            const basisItems = (cfg.basis || []).map(b => ({ label: tBasisLabel(b), action: `tCreateOnBasis('${sel ? sel.id : ''}', '${b}')`, disabled: !has }));
-            const printItems = cfg.prints.map(p => ({ label: p, action: `tPrint('${sel ? sel.id : ''}', '${esc(p)}')`, disabled: !has }));
+            const basisItems = (cfg.basis || []).map(b => ({ label: tBasisLabel(b), action: `tCreateOnBasis('${sel ? esc(sel.id) : ''}', '${b}')`, disabled: !has }));
+            const printItems = cfg.prints.map(p => ({ label: p, action: `tPrint('${sel ? esc(sel.id) : ''}', '${esc(p)}')`, disabled: !has }));
             printItems.push({ sep: true }, { label: 'Реестр документов', action: `tPrintRegistry('${page}')` });
             const moreItems = [
-                { label: 'Провести', action: `tSetStatus('${sel ? sel.id : ''}', 'posted')`, disabled: !has },
-                { label: 'Отменить проведение', action: `tSetStatus('${sel ? sel.id : ''}', 'draft')`, disabled: !has },
-                { label: sel && sel.status === 'deleted' ? 'Снять пометку удаления' : 'Пометить на удаление', action: `tToggleDelete('${sel ? sel.id : ''}')`, disabled: !has },
+                { label: 'Провести', action: `tSetStatus('${sel ? esc(sel.id) : ''}', 'posted')`, disabled: !has },
+                { label: 'Отменить проведение', action: `tSetStatus('${sel ? esc(sel.id) : ''}', 'draft')`, disabled: !has },
+                { label: sel && sel.status === 'deleted' ? 'Снять пометку удаления' : 'Пометить на удаление', action: `tToggleDelete('${sel ? esc(sel.id) : ''}')`, disabled: !has },
                 { sep: true },
-                { label: 'Копировать (F9)', action: `tCopy('${sel ? sel.id : ''}')`, disabled: !has },
-                { label: 'Изменить (F2)', action: `tOpen('${sel ? sel.id : ''}')`, disabled: !has },
-                { label: 'Движения документа (Дт/Кт)', action: `tShowPostings('${sel ? sel.id : ''}')`, disabled: !has },
-                { label: 'История изменений', action: `tShowHistory('${sel ? sel.id : ''}')`, disabled: !has },
+                { label: 'Копировать (F9)', action: `tCopy('${sel ? esc(sel.id) : ''}')`, disabled: !has },
+                { label: 'Изменить (F2)', action: `tOpen('${sel ? esc(sel.id) : ''}')`, disabled: !has },
+                { label: 'Движения документа (Дт/Кт)', action: `tShowPostings('${sel ? esc(sel.id) : ''}')`, disabled: !has },
+                { label: 'История изменений', action: `tShowHistory('${sel ? esc(sel.id) : ''}')`, disabled: !has },
                 { sep: true },
                 { label: 'Создать из шаблона…', action: `tShowTemplates('${type}')` },
                 { sep: true },
@@ -2800,17 +2802,17 @@
                 { label: 'Удалить помеченные объекты', action: `tPurgeDeleted()` }
             ];
 
-            const contractorOpts = '<option value="">Все контрагенты</option>' + db.trade.contractors.map(c => `<option value="${c.id}" ${tFilters.contractor === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+            const contractorOpts = '<option value="">Все контрагенты</option>' + db.trade.contractors.map(c => `<option value="${esc(c.id)}" ${tFilters.contractor === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
             const total = docs.filter(d => d.status !== 'deleted').reduce((s, d) => s + (d.total || 0), 0);
 
             return `
             <div class="tcmd">
                 ${createBtn}
-                <button class="btn" onclick="tCopy('${sel ? sel.id : ''}')" ${has ? '' : 'disabled'}>Копировать</button>
+                <button class="btn" onclick="tCopy('${sel ? esc(sel.id) : ''}')" ${has ? '' : 'disabled'}>Копировать</button>
                 ${tMenu('Создать на основании', basisItems.length ? basisItems : [{ label: 'Нет вариантов', disabled: true }])}
                 ${tMenu('🖨 Печать', printItems)}
-                ${cfg.sf ? `<button class="btn" onclick="tIssueSF('${sel ? sel.id : ''}')" ${has ? '' : 'disabled'}>Счет-фактура</button>` : ''}
-                <button class="btn" onclick="tShowPostings('${sel ? sel.id : ''}')" ${has ? '' : 'disabled'}>Дт/Кт</button>
+                ${cfg.sf ? `<button class="btn" onclick="tIssueSF('${sel ? esc(sel.id) : ''}')" ${has ? '' : 'disabled'}>Счет-фактура</button>` : ''}
+                <button class="btn" onclick="tShowPostings('${sel ? esc(sel.id) : ''}')" ${has ? '' : 'disabled'}>Дт/Кт</button>
                 <span style="flex:1"></span>
                 ${tMassSelected.size > 0 ? `<span class="mass-info" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--primary);color:#fff;border-radius:6px;font-size:13px;">
                     Выбрано: ${tMassSelected.size}
@@ -2849,8 +2851,8 @@
                 <tbody>
                 ${window._tradePg.items.map(d => {
                     const ps = cfg.payStatus ? tPayStatus(d) : null;
-                    return `<tr class="trow ${tSelected === d.id ? 'sel' : ''} ${d.status === 'deleted' ? 'del' : ''}" onclick="tSelect('${d.id}')" ondblclick="tOpen('${d.id}')">
-                        <td onclick="event.stopPropagation()"><input type="checkbox" ${tMassSelected.has(d.id) ? 'checked' : ''} onchange="tMassToggle('${d.id}')"></td>
+                    return `<tr class="trow ${tSelected === d.id ? 'sel' : ''} ${d.status === 'deleted' ? 'del' : ''}" onclick="tSelect('${esc(d.id)}')" ondblclick="tOpen('${esc(d.id)}')">
+                        <td onclick="event.stopPropagation()"><input type="checkbox" ${tMassSelected.has(d.id) ? 'checked' : ''} onchange="tMassToggle('${esc(d.id)}')"></td>
                         <td>${tStatusIcon(d)}</td>
                         <td>${formatDate(d.date)}</td>
                         <td><strong>${esc(d.number)}</strong></td>
@@ -2864,10 +2866,10 @@
                         ${cfg.sf ? `<td>${d.sf ? '№ ' + esc(d.sf.number) + ' от ' + formatDate(d.sf.date) : '<span style="color:var(--text-muted)">не выписан</span>'}</td>` : ''}
                         <td>${esc((d.extra && d.extra.comment) || '')}</td>
                         <td><div class="action-buttons">
-                            <button class="action-btn" title="Открыть" onclick="event.stopPropagation();tOpen('${d.id}')">✏️</button>
-                            <button class="action-btn" title="${d.status === 'posted' ? 'Отменить проведение' : 'Провести'}" onclick="event.stopPropagation();tSetStatus('${d.id}','${d.status === 'posted' ? 'draft' : 'posted'}')">${d.status === 'posted' ? '↩' : '✔'}</button>
-                            <button class="action-btn" title="Печать" onclick="event.stopPropagation();tPrint('${d.id}','${esc(cfg.prints[0])}')">🖨️</button>
-                            <button class="action-btn" title="Пометить на удаление" onclick="event.stopPropagation();tToggleDelete('${d.id}')">🗑️</button>
+                            <button class="action-btn" title="Открыть" onclick="event.stopPropagation();tOpen('${esc(d.id)}')">✏️</button>
+                            <button class="action-btn" title="${d.status === 'posted' ? 'Отменить проведение' : 'Провести'}" onclick="event.stopPropagation();tSetStatus('${esc(d.id)}','${d.status === 'posted' ? 'draft' : 'posted'}')">${d.status === 'posted' ? '↩' : '✔'}</button>
+                            <button class="action-btn" title="Печать" onclick="event.stopPropagation();tPrint('${esc(d.id)}','${esc(cfg.prints[0])}')">🖨️</button>
+                            <button class="action-btn" title="Пометить на удаление" onclick="event.stopPropagation();tToggleDelete('${esc(d.id)}')">🗑️</button>
                         </div></td>
                     </tr>`;
                 }).join('')}
@@ -3004,19 +3006,19 @@
             <div class="tcmd">
                 <span style="color:var(--text-secondary);font-size:13px">Счета-фактуры ${title} формируются из документов кнопкой «Счет-фактура» (как в 1С). Здесь — журнал зарегистрированных счетов-фактур.</span>
                 <span style="flex:1"></span>
-                <button class="btn" onclick="tPrintSFRegistry('${kind}')">🖨 Журнал учета счетов-фактур</button>
+                <button class="btn" onclick="tPrintSFRegistry('${esc(kind)}')">🖨 Журнал учета счетов-фактур</button>
             </div>
             ${docs.length === 0 ? '<div class="empty-state">Счетов-фактур нет</div>' : `
             <div class="table-container"><table>
                 <thead><tr><th>Дата СФ</th><th>Номер СФ</th><th>Контрагент</th><th>Документ-основание</th><th style="text-align:right">Сумма</th><th style="text-align:right">НДС</th><th>Код вида операции</th><th>Действия</th></tr></thead>
                 <tbody>${docs.map(d => `<tr>
                     <td>${formatDate(d.sf.date)}</td><td><strong>${esc(d.sf.number)}</strong></td><td>${esc(tContractorName(d.contractor))}</td>
-                    <td><a href="#" onclick="event.preventDefault();tOpen('${d.id}')">${esc(tDocTitle(d))}</a></td>
+                    <td><a href="#" onclick="event.preventDefault();tOpen('${esc(d.id)}')">${esc(tDocTitle(d))}</a></td>
                     <td class="num amount">${formatAmount(d.total)}</td><td class="num">${formatAmount(d.vatTotal)}</td><td>${d.sf.code || '01'}</td>
                     <td><div class="action-buttons">
-                        <button class="action-btn" onclick="tPrint('${d.id}','Счет-фактура')">🖨️ Счет-фактура</button>
-                        <button class="action-btn" onclick="tIssueSF('${d.id}')">✏️ Реквизиты</button>
-                        <button class="action-btn" onclick="tRemoveSF('${d.id}')">🗑️ Аннулировать</button>
+                        <button class="action-btn" onclick="tPrint('${esc(d.id)}','Счет-фактура')">🖨️ Счет-фактура</button>
+                        <button class="action-btn" onclick="tIssueSF('${esc(d.id)}')">✏️ Реквизиты</button>
+                        <button class="action-btn" onclick="tRemoveSF('${esc(d.id)}')">🗑️ Аннулировать</button>
                     </div></td></tr>`).join('')}</tbody>
             </table></div>`}`;
         }
@@ -3132,12 +3134,12 @@
                 <span style="flex:1"></span>
                 ${tMenu('Ещё', moreItems)}`;
 
-            const contractorOpts = '<option value="">Выбрать…</option>' + db.trade.contractors.map(c => `<option value="${c.id}" ${d.contractor === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
-            const contractOpts = '<option value="">Выбрать…</option>' + db.trade.contracts.filter(c => !d.contractor || c.contractor === d.contractor).map(c => `<option value="${c.id}" ${d.contract === c.id ? 'selected' : ''}>${esc(c.name)} №${esc(c.number)}</option>`).join('');
-            const whOpts = db.trade.warehouses.map(w => `<option value="${w.id}" ${d.warehouse === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
-            const ptOpts = db.trade.priceTypes.map(p => `<option value="${p.id}" ${d.priceType === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
+            const contractorOpts = '<option value="">Выбрать…</option>' + db.trade.contractors.map(c => `<option value="${esc(c.id)}" ${d.contractor === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+            const contractOpts = '<option value="">Выбрать…</option>' + db.trade.contracts.filter(c => !d.contractor || c.contractor === d.contractor).map(c => `<option value="${esc(c.id)}" ${d.contract === c.id ? 'selected' : ''}>${esc(c.name)} №${esc(c.number)}</option>`).join('');
+            const whOpts = db.trade.warehouses.map(w => `<option value="${esc(w.id)}" ${d.warehouse === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
+            const ptOpts = db.trade.priceTypes.map(p => `<option value="${esc(p.id)}" ${d.priceType === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
             const basisDocs = cfg.hasBasis ? db.trade.docs.filter(x => x.type === cfg.hasBasis && x.status !== 'deleted' && (!d.contractor || x.contractor === d.contractor)) : [];
-            const basisOpts = '<option value="">Не указан</option>' + basisDocs.map(x => `<option value="${x.id}" ${d.basis === x.id ? 'selected' : ''}>${esc(tDocTitle(x))}</option>`).join('');
+            const basisOpts = '<option value="">Не указан</option>' + basisDocs.map(x => `<option value="${esc(x.id)}" ${d.basis === x.id ? 'selected' : ''}>${esc(tDocTitle(x))}</option>`).join('');
             const ps = cfg.payStatus ? tPayStatus(d) : null;
 
             document.getElementById('tHead').innerHTML = `
@@ -3189,7 +3191,7 @@
         function tRenderFooter() {
             const d = tDoc, cfg = TT[d.type];
             if (!d) return;
-            const sfTxt = cfg.sf ? (d.sf ? `Счет-фактура: № ${esc(d.sf.number)} от ${formatDate(d.sf.date)} <a href="#" onclick="event.preventDefault();tPrint('${d.id}','Счет-фактура')">печать</a>` : `<a href="#" onclick="event.preventDefault();tFormSave(false);tIssueSF(tDoc.id)">${cfg.sf === 'in' ? 'Зарегистрировать счет-фактуру' : 'Выписать счет-фактуру'}</a>`) : '';
+            const sfTxt = cfg.sf ? (d.sf ? `Счет-фактура: № ${esc(d.sf.number)} от ${formatDate(d.sf.date)} <a href="#" onclick="event.preventDefault();tPrint('${esc(d.id)}','Счет-фактура')">печать</a>` : `<a href="#" onclick="event.preventDefault();tFormSave(false);tIssueSF(tDoc.id)">${cfg.sf === 'in' ? 'Зарегистрировать счет-фактуру' : 'Выписать счет-фактуру'}</a>`) : '';
             document.getElementById('tFoot').innerHTML = `
                 <div style="flex:1;color:var(--text-secondary);font-size:13px">${sfTxt}</div>
                 ${cfg.noSum ? '' : cfg.payrollDoc ? `<div class="ttotals"><div>Начислено: <b>${formatAmount(d.total)}</b></div><div>Удержано: <b>${formatAmount((d.sfEmpTotal || 0) + (d.taxTotal || 0) + (d.rows || []).reduce((s, r) => s + (r.otherDed || 0) + (r.advance || 0), 0))}</b></div><div>К выплате: <b>${formatAmount(d.netTotal || 0)}</b></div><div>Взносы работодателя: <b>${formatAmount(d.sfEmployerTotal || 0)}</b></div></div>` :
@@ -3248,16 +3250,16 @@
             const d = tDoc, cfg = TT[d.type], rows = d[tab] || (d[tab] = []);
             const isGoods = tab === 'goods' || tab === 'tara', corr = cfg.correction, addExp = cfg.addExp;
             const nomKinds = tab === 'services' || tab === 'agent' ? ['Услуга'] : tab === 'tara' ? ['Тара'] : ['Товар', 'Материал', 'Продукция'];
-            const nomOpts = (sel) => '<option value="">…</option>' + db.trade.nomenclature.filter(n => nomKinds.includes(n.kind)).map(n => `<option value="${n.id}" ${sel === n.id ? 'selected' : ''}>${esc(n.name)}</option>`).join('');
+            const nomOpts = (sel) => '<option value="">…</option>' + db.trade.nomenclature.filter(n => nomKinds.includes(n.kind)).map(n => `<option value="${esc(n.id)}" ${sel === n.id ? 'selected' : ''}>${esc(n.name)}</option>`).join('');
             const vatOpts = (sel) => VAT_RATES.map(v => `<option value="${v.v}" ${Number(sel) === v.v ? 'selected' : ''}>${v.l}</option>`).join('');
             const inp = (i, f, type, extra) => `<input class="tcell" type="${type || 'text'}" ${type === 'number' ? 'step="0.01"' : ''} data-i="${i}" data-f="${f}" data-tab="${tab}" value="${esc(rows[i][f] == null ? '' : rows[i][f])}" ${extra || ''}>`;
             return `
             <div class="tcmd small">
-                <button class="btn" onclick="tAddRow('${tab}')">Добавить</button>
-                <button class="btn" onclick="tOpenPick('${tab}')">Подбор</button>
-                <button class="btn" onclick="tDelRow('${tab}')">Удалить</button>
-                <button class="btn" onclick="tMoveRow('${tab}',-1)">↑</button>
-                <button class="btn" onclick="tMoveRow('${tab}',1)">↓</button>
+                <button class="btn" onclick="tAddRow('${esc(tab)}')">Добавить</button>
+                <button class="btn" onclick="tOpenPick('${esc(tab)}')">Подбор</button>
+                <button class="btn" onclick="tDelRow('${esc(tab)}')">Удалить</button>
+                <button class="btn" onclick="tMoveRow('${esc(tab)}',-1)">↑</button>
+                <button class="btn" onclick="tMoveRow('${esc(tab)}',1)">↓</button>
                 ${d.basis ? `<button class="btn" onclick="tFillFromBasis()">Заполнить по основанию</button>` : ''}
                 ${cfg.sf && tab === 'goods' ? `<button class="btn" onclick="tRefillPrices()">Цены по типу цен</button>` : ''}
                 <span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">Строк: ${rows.length}</span>
@@ -3349,7 +3351,7 @@
             const showBal = isStock || ['sale', 'retail_report', 'commission_report', 'purchase_return'].includes(tDoc.type);
             document.getElementById('tPickBody').innerHTML = list.length ? `<table><thead><tr><th>Артикул</th><th>Наименование</th><th>Вид</th><th>Ед.</th>${showBal ? '<th style="text-align:right">Остаток на складе</th>' : ''}<th style="text-align:right">${isPurch || isStock ? (tPickTarget === 'products' ? 'Плановая цена' : 'Себестоимость') : 'Цена продажи'}</th><th>НДС</th><th>Кол-во</th><th></th></tr></thead><tbody>
                 ${list.map(n => `<tr><td>${esc(n.article)}</td><td>${esc(n.name)}</td><td>${n.kind}</td><td>${n.unit}</td>${showBal ? `<td class="num">${stockQty(n.id, tDoc.warehouse, tDoc.date, tDoc.id)}</td>` : ''}<td class="num">${formatAmount(tPickPrice(n, tPickTarget))}</td><td>${tVatLabel(n.vat)}</td>
-                <td><input type="number" id="pq_${n.id}" value="1" min="0" step="1" style="width:70px;padding:4px"></td><td><button class="btn primary" onclick="tPickAdd('${n.id}')">Добавить</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Ничего не найдено</div>';
+                <td><input type="number" id="pq_${esc(n.id)}" value="1" min="0" step="1" style="width:70px;padding:4px"></td><td><button class="btn primary" onclick="tPickAdd('${esc(n.id)}')">Добавить</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Ничего не найдено</div>';
         }
         function tPickAdd(nid) {
             const n = tNom(nid), qty = Number(document.getElementById('pq_' + nid).value) || 1, tab = tPickTarget;
@@ -3788,10 +3790,10 @@
                 if (['date', 'hireDate', 'fireDate', 'birth'].includes(k)) return item[k] ? formatDate(item[k]) : ''; return item[k] == null ? '' : item[k]; };
             const q = (tFilters.search || '').toLowerCase();
             const rows = list.filter(it => !q || JSON.stringify(it).toLowerCase().includes(q));
-            return `<div class="tcmd"><button class="btn primary" onclick="tRefOpen('${key}')">+ Создать</button><button class="btn" onclick="tRefExport('${key}')">Вывести список</button>
+            return `<div class="tcmd"><button class="btn primary" onclick="tRefOpen('${esc(key)}')">+ Создать</button><button class="btn" onclick="tRefExport('${esc(key)}')">Вывести список</button>
                 <input type="text" placeholder="Поиск…" value="${esc(tFilters.search)}" oninput="tFilters.search=this.value;renderPage();tFocusFilter('refSearch',true)" id="refSearch" style="padding:7px 10px;border:1px solid var(--border-input);border-radius:4px;margin-left:auto"></div>
             <div class="table-container"><table><thead><tr>${R.cols.map(c => `<th>${(R.fields.find(f => f.k === c) || {}).l || c}</th>`).join('')}<th>Действия</th></tr></thead>
-            <tbody>${rows.map(it => `<tr ondblclick="tRefOpen('${key}','${it.id}')">${R.cols.map(c => `<td>${esc(val(it, c))}</td>`).join('')}<td><div class="action-buttons"><button class="action-btn" onclick="tRefOpen('${key}','${it.id}')">✏️</button><button class="action-btn" onclick="tRefDel('${key}','${it.id}')">🗑️</button></div></td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="10" class="empty-state">Пусто</td></tr>'}</tbody></table></div>`;
+            <tbody>${rows.map(it => `<tr ondblclick="tRefOpen('${esc(key)}','${esc(it.id)}')">${R.cols.map(c => `<td>${esc(val(it, c))}</td>`).join('')}<td><div class="action-buttons"><button class="action-btn" onclick="tRefOpen('${esc(key)}','${esc(it.id)}')">✏️</button><button class="action-btn" onclick="tRefDel('${esc(key)}','${esc(it.id)}')">🗑️</button></div></td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="10" class="empty-state">Пусто</td></tr>'}</tbody></table></div>`;
         }
         function tRefOpen(key, id, cb) {
             const R = REFS[key]; refEdit = { key, id, cb };
@@ -3801,7 +3803,7 @@
                 const v = item[f.k] == null ? '' : item[f.k];
                 let ctl;
                 if (f.type === 'select') ctl = `<select id="rf_${f.k}">${f.opts.map(o => `<option value="${o}" ${String(v) === o ? 'selected' : ''}>${o === 'true' ? 'Да' : o === 'false' ? 'Нет' : o}</option>`).join('')}</select>`;
-                else if (f.type === 'ref') ctl = `<select id="rf_${f.k}"><option value="">—</option>${db.trade[f.ref].map(x => `<option value="${x.id}" ${v === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`;
+                else if (f.type === 'ref') ctl = `<select id="rf_${f.k}"><option value="">—</option>${db.trade[f.ref].map(x => `<option value="${esc(x.id)}" ${v === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`;
                 else ctl = `<input id="rf_${f.k}" type="${f.type || 'text'}" value="${esc(v)}" ${f.req ? 'required' : ''}>`;
                 return `<div class="fg ${['name', 'full', 'address'].includes(f.k) ? 'wide' : ''}"><label>${f.l}</label>${ctl}</div>`;
             }).join('') + '</div>';
@@ -4045,10 +4047,10 @@
         // ---------- Дополнительные поля шапки для складских и производственных документов ----------
         function tHeadExtra(d) {
             const cfg = TT[d.type];
-            const whOpts = (sel) => db.trade.warehouses.map(w => `<option value="${w.id}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
-            const depOpts = (sel) => '<option value="">—</option>' + (db.trade.departments || []).map(w => `<option value="${w.id}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
-            const ngOpts = (sel) => '<option value="">—</option>' + (db.trade.nomGroups || []).map(w => `<option value="${w.id}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
-            const prodOpts = (sel) => '<option value="">Выбрать…</option>' + db.trade.nomenclature.filter(n => ['Продукция', 'Товар'].includes(n.kind)).map(n => `<option value="${n.id}" ${sel === n.id ? 'selected' : ''}>${esc(n.name)}</option>`).join('');
+            const whOpts = (sel) => db.trade.warehouses.map(w => `<option value="${esc(w.id)}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
+            const depOpts = (sel) => '<option value="">—</option>' + (db.trade.departments || []).map(w => `<option value="${esc(w.id)}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
+            const ngOpts = (sel) => '<option value="">—</option>' + (db.trade.nomGroups || []).map(w => `<option value="${esc(w.id)}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
+            const prodOpts = (sel) => '<option value="">Выбрать…</option>' + db.trade.nomenclature.filter(n => ['Продукция', 'Товар'].includes(n.kind)).map(n => `<option value="${esc(n.id)}" ${sel === n.id ? 'selected' : ''}>${esc(n.name)}</option>`).join('');
             let h = '';
             if (cfg.warehouse && !cfg.tabs.includes('goods')) h += `<div class="fg"><label>Склад</label><select onchange="tDoc.warehouse=this.value">${whOpts(d.warehouse)}</select></div>`;
             if (d.type === 'transfer') h += `<div class="fg"><label>Склад-получатель</label><select onchange="tDoc.warehouseTo=this.value">${whOpts(d.warehouseTo)}</select></div>`;
@@ -4060,7 +4062,7 @@
             if (['requisition', 'shift_report', 'wip_inventory', 'month_close', 'from_processing'].includes(d.type)) h += `<div class="fg"><label>Подразделение</label><select onchange="tDoc.department=this.value">${depOpts(d.department)}</select></div>`;
             if (['requisition', 'shift_report', 'from_processing'].includes(d.type)) h += `<div class="fg"><label>Счет затрат</label><select onchange="tDoc.costAccount=this.value">${['20.01', '23', '25', '26', '44.01'].map(a => `<option ${(d.costAccount || '20.01') === a ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
                 <div class="fg"><label>Номенклатурная группа</label><select onchange="tDoc.nomGroup=this.value">${ngOpts(d.nomGroup)}</select></div>`;
-            if (d.type === 'price_setting' || d.type === 'plan_prices') h += d.type === 'price_setting' ? `<div class="fg"><label>Тип цен</label><select onchange="tDoc.priceType=this.value;tRenderForm(false)">${db.trade.priceTypes.map(p => `<option value="${p.id}" ${d.priceType === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>` : `<div class="fg"><label>Вид цен</label><input value="Плановая себестоимость" disabled></div>`;
+            if (d.type === 'price_setting' || d.type === 'plan_prices') h += d.type === 'price_setting' ? `<div class="fg"><label>Тип цен</label><select onchange="tDoc.priceType=this.value;tRenderForm(false)">${db.trade.priceTypes.map(p => `<option value="${esc(p.id)}" ${d.priceType === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>` : `<div class="fg"><label>Вид цен</label><input value="Плановая себестоимость" disabled></div>`;
             if (d.type === 'month_close' || d.type === 'wip_inventory') h += `<div class="fg"><label>Месяц</label><input type="month" value="${d.period || d.date.slice(0, 7)}" onchange="tDoc.period=this.value;tDoc.date=this.value+'-'+String(new Date(this.value.slice(0,4), this.value.slice(5), 0).getDate()).padStart(2,'0');tRenderForm(false)"></div>`;
             if (d.type === 'to_processing' || d.type === 'from_processing') h += `<div class="fg"><label>Счет передачи</label><input value="10.07 (материалы в переработке)" disabled></div>`;
             return h + tHeadExtraHR(d);
@@ -4069,9 +4071,9 @@
         // ---------- Вкладки складских/производственных документов ----------
         function tRenderExtraTab(tab) {
             const d = tDoc, cfg = TT[d.type];
-            const nomOpts = (kinds, sel) => '<option value="">…</option>' + db.trade.nomenclature.filter(n => kinds.includes(n.kind)).map(n => `<option value="${n.id}" ${sel === n.id ? 'selected' : ''}>${esc(n.name)}</option>`).join('');
+            const nomOpts = (kinds, sel) => '<option value="">…</option>' + db.trade.nomenclature.filter(n => kinds.includes(n.kind)).map(n => `<option value="${esc(n.id)}" ${sel === n.id ? 'selected' : ''}>${esc(n.name)}</option>`).join('');
             const inp = (arr, i, f, type, extra) => `<input class="tcell" type="${type || 'text'}" ${type === 'number' ? 'step="0.01"' : ''} data-i="${i}" data-f="${f}" data-tab="${arr}" value="${esc(d[arr][i][f] == null ? '' : d[arr][i][f])}" ${extra || ''}>`;
-            const rowsBar = (arr, extraBtns) => `<div class="tcmd small"><button class="btn" onclick="tAddRow('${arr}')">Добавить</button><button class="btn" onclick="tOpenPick('${arr}')">Подбор</button><button class="btn" onclick="tDelRow('${arr}')">Удалить</button><button class="btn" onclick="tMoveRow('${arr}',-1)">↑</button><button class="btn" onclick="tMoveRow('${arr}',1)">↓</button>${extraBtns || ''}<span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">Строк: ${d[arr].length}</span></div>`;
+            const rowsBar = (arr, extraBtns) => `<div class="tcmd small"><button class="btn" onclick="tAddRow('${esc(arr)}')">Добавить</button><button class="btn" onclick="tOpenPick('${esc(arr)}')">Подбор</button><button class="btn" onclick="tDelRow('${esc(arr)}')">Удалить</button><button class="btn" onclick="tMoveRow('${esc(arr)}',-1)">↑</button><button class="btn" onclick="tMoveRow('${esc(arr)}',1)">↓</button>${extraBtns || ''}<span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">Строк: ${d[arr].length}</span></div>`;
             const sumRow = (arr) => d[arr].reduce((s, r) => s + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
             const bal = (nom, wh) => stockQty(nom, wh || d.warehouse, d.date, d.id);
 
@@ -4083,7 +4085,7 @@
                     <td><select class="tcell" data-i="${i}" data-f="nom" data-tab="materials">${nomOpts(['Материал', 'Товар', 'Продукция'], r.nom)}</select></td>
                     <td>${inp('materials', i, 'qty', 'number')}</td><td>${n.unit || ''}</td><td class="num" style="color:${b != null && b < (Number(r.qty) || 0) ? 'var(--danger)' : 'var(--success)'}">${b == null ? '—' : b}</td>
                     <td>${inp('materials', i, 'price', 'number')}</td><td class="num">${formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0))}</td><td>${inp('materials', i, 'account')}</td>
-                    ${cfg.specDoc ? '' : `<td>${inp('materials', i, 'costAccount', 'text', 'placeholder="' + (d.costAccount || '20.01') + '"')}</td><td><select class="tcell" data-i="${i}" data-f="costItem" data-tab="materials"><option value="">—</option>${(db.trade.costItems || []).map(c => `<option value="${c.id}" ${r.costItem === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></td>`}</tr>`; }).join('')}
+                    ${cfg.specDoc ? '' : `<td>${inp('materials', i, 'costAccount', 'text', 'placeholder="' + (d.costAccount || '20.01') + '"')}</td><td><select class="tcell" data-i="${i}" data-f="costItem" data-tab="materials"><option value="">—</option>${(db.trade.costItems || []).map(c => `<option value="${esc(c.id)}" ${r.costItem === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></td>`}</tr>`; }).join('')}
                 ${d.materials.length ? '' : '<tr><td colspan="' + (cfg.specDoc ? 8 : 10) + '" style="text-align:center;color:var(--text-muted);padding:25px">Нет строк. «Добавить», «Подбор»' + (d.type === 'shift_report' ? ' или «Заполнить по спецификации»' : '') + '.</td></tr>'}</tbody>
                 ${d.materials.length ? `<tfoot><tr><td colspan="6" style="text-align:right;font-weight:600">Итого:</td><td class="num amount">${formatAmount(sumRow('materials'))}</td><td colspan="3"></td></tr></tfoot>` : ''}</table></div>`;
             }
@@ -4093,8 +4095,8 @@
                 <tbody>${d.products.map((r, i) => { const n = tNom(r.nom) || {}; const specs = tSpecsFor(r.nom); return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td>
                     <td><select class="tcell" data-i="${i}" data-f="nom" data-tab="products">${nomOpts(['Продукция', 'Товар'], r.nom)}</select></td>
                     <td>${inp('products', i, 'qty', 'number')}</td><td>${n.unit || ''}</td><td>${inp('products', i, 'price', 'number')}</td><td class="num"><b>${formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0))}</b></td>
-                    <td><select class="tcell" data-i="${i}" data-f="spec" data-tab="products"><option value="">—</option>${specs.map(s => `<option value="${s.id}" ${r.spec === s.id ? 'selected' : ''}>${esc(s.specName || s.number)}</option>`).join('')}</select></td>
-                    <td>${inp('products', i, 'account', 'text', 'placeholder="43"')}</td><td><select class="tcell" data-i="${i}" data-f="nomGroup" data-tab="products"><option value="">—</option>${(db.trade.nomGroups || []).map(g => `<option value="${g.id}" ${(r.nomGroup || n.nomGroup) === g.id ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></td></tr>`; }).join('')}
+                    <td><select class="tcell" data-i="${i}" data-f="spec" data-tab="products"><option value="">—</option>${specs.map(s => `<option value="${esc(s.id)}" ${r.spec === s.id ? 'selected' : ''}>${esc(s.specName || s.number)}</option>`).join('')}</select></td>
+                    <td>${inp('products', i, 'account', 'text', 'placeholder="43"')}</td><td><select class="tcell" data-i="${i}" data-f="nomGroup" data-tab="products"><option value="">—</option>${(db.trade.nomGroups || []).map(g => `<option value="${esc(g.id)}" ${(r.nomGroup || n.nomGroup) === g.id ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></td></tr>`; }).join('')}
                 ${d.products.length ? '' : '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:25px">Нет строк. Добавьте выпускаемую продукцию.</td></tr>'}</tbody>
                 ${d.products.length ? `<tfoot><tr><td colspan="5" style="text-align:right;font-weight:600">Итого по плановой стоимости:</td><td class="num amount">${formatAmount(sumRow('products'))}</td><td colspan="3"></td></tr></tfoot>` : ''}</table></div>`;
             }
@@ -4106,9 +4108,9 @@
             }
             if (tab === 'costacc') return `<div class="thead-grid">
                 <div class="fg"><label>Счет затрат</label><select onchange="tDoc.costAccount=this.value">${['20.01', '23', '25', '26', '44.01', '91.02'].map(a => `<option ${(d.costAccount || '20.01') === a ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
-                <div class="fg"><label>Подразделение затрат</label><select onchange="tDoc.department=this.value"><option value="">—</option>${(db.trade.departments || []).map(w => `<option value="${w.id}" ${d.department === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
-                <div class="fg"><label>Номенклатурная группа</label><select onchange="tDoc.nomGroup=this.value"><option value="">—</option>${(db.trade.nomGroups || []).map(w => `<option value="${w.id}" ${d.nomGroup === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
-                <div class="fg"><label>Статья затрат</label><select onchange="tDoc.costItem=this.value"><option value="">—</option>${(db.trade.costItems || []).map(c => `<option value="${c.id}" ${d.costItem === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>
+                <div class="fg"><label>Подразделение затрат</label><select onchange="tDoc.department=this.value"><option value="">—</option>${(db.trade.departments || []).map(w => `<option value="${esc(w.id)}" ${d.department === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
+                <div class="fg"><label>Номенклатурная группа</label><select onchange="tDoc.nomGroup=this.value"><option value="">—</option>${(db.trade.nomGroups || []).map(w => `<option value="${esc(w.id)}" ${d.nomGroup === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
+                <div class="fg"><label>Статья затрат</label><select onchange="tDoc.costItem=this.value"><option value="">—</option>${(db.trade.costItems || []).map(c => `<option value="${esc(c.id)}" ${d.costItem === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>
                 <div class="fg wide2"><p style="color:var(--text-secondary);font-size:12px;margin-top:6px">Материалы списываются проводкой Дт ${d.costAccount || '20.01'} Кт 10.01 (счет учета из строки). Аналитика: подразделение, номенклатурная группа, статья затрат — участвует в расчете себестоимости при закрытии месяца.</p></div></div>`;
             if (tab === 'inv') {
                 d.goods = d.goods || [];
@@ -4143,7 +4145,7 @@
                 d.wip = d.wip || [];
                 return `<div class="tcmd small"><button class="btn" onclick="tDoc.wip.push({nomGroup:'',sum:0});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('wip')">Удалить</button><button class="btn" onclick="tDoc.wip=(db.trade.nomGroups||[]).map(g=>({nomGroup:g.id,sum:0}));tRecalcAll()">Заполнить по номенклатурным группам</button></div>
                 <div class="table-container"><table class="ttable"><thead><tr><th>№</th><th>Номенклатурная группа</th><th>Подразделение</th><th>Сумма НЗП на конец месяца</th></tr></thead>
-                <tbody>${d.wip.map((r, i) => `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="nomGroup" data-tab="wip"><option value="">—</option>${(db.trade.nomGroups || []).map(g => `<option value="${g.id}" ${r.nomGroup === g.id ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></td><td>${esc(tDep(d.department))}</td><td>${inp('wip', i, 'sum', 'number')}</td></tr>`).join('')}
+                <tbody>${d.wip.map((r, i) => `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="nomGroup" data-tab="wip"><option value="">—</option>${(db.trade.nomGroups || []).map(g => `<option value="${esc(g.id)}" ${r.nomGroup === g.id ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></td><td>${esc(tDep(d.department))}</td><td>${inp('wip', i, 'sum', 'number')}</td></tr>`).join('')}
                 ${d.wip.length ? '' : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:25px">Укажите остатки незавершенного производства по группам</td></tr>'}</tbody>
                 <tfoot><tr><td colspan="3" style="text-align:right;font-weight:600">Итого НЗП:</td><td class="num amount">${formatAmount(d.wip.reduce((s, r) => s + (Number(r.sum) || 0), 0))}</td></tr></tfoot></table></div>
                 <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">Сумма НЗП исключается из затрат месяца при расчете фактической себестоимости (закрытие месяца).</p>`;
@@ -4333,7 +4335,7 @@
             const byWh = {}; bal.forEach(b => (byWh[b.wh] = byWh[b.wh] || []).push(b));
             const totalSum = bal.reduce((s, b) => s + b.sum, 0);
             return `<div class="filters"><div class="filter-group"><label>На дату</label><input type="date" value="${sFilters.date}" onchange="sFilters.date=this.value;renderPage()"></div>
-            <div class="filter-group"><label>Склад</label><select onchange="sFilters.wh=this.value;renderPage()"><option value="">Все склады</option>${db.trade.warehouses.map(w => `<option value="${w.id}" ${sFilters.wh === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
+            <div class="filter-group"><label>Склад</label><select onchange="sFilters.wh=this.value;renderPage()"><option value="">Все склады</option>${db.trade.warehouses.map(w => `<option value="${esc(w.id)}" ${sFilters.wh === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
             <button class="quick-btn" onclick="sFilters={wh:'',date:''};renderPage()">Сбросить</button><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
             <div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">ПОЗИЦИЙ НА ОСТАТКЕ</div><div class="stat-value">${bal.length}</div></div><div class="stat-card"><div class="stat-label">СТОИМОСТЬ ЗАПАСОВ</div><div class="stat-value">${formatAmount(totalSum)}</div></div><div class="stat-card"><div class="stat-label">ОТРИЦАТЕЛЬНЫХ ОСТАТКОВ</div><div class="stat-value" style="color:${bal.some(b => b.qty < 0) ? 'var(--danger)' : 'var(--success)'}">${bal.filter(b => b.qty < 0).length}</div></div></div>
             ${Object.entries(byWh).map(([wh, list]) => `<div class="table-container" style="margin-bottom:15px"><div style="padding:10px 15px;background:var(--bg-table-head);border-bottom:1px solid var(--border-input)"><b>${esc(tWh(wh))}</b></div><table><thead><tr><th>Артикул</th><th>Номенклатура</th><th>Вид</th><th>Счет</th><th>Ед.</th><th style="text-align:right">Количество</th><th style="text-align:right">Средняя себестоимость</th><th style="text-align:right">Сумма</th></tr></thead>
@@ -4351,8 +4353,8 @@
             rows.sort((a, b) => tNomName(a.nom).localeCompare(tNomName(b.nom)));
             const detail = sMoveNom ? all.filter(m => m.nom === sMoveNom && (!from || m.date >= from)).sort((a, b) => a.date.localeCompare(b.date)) : [];
             return `<div class="filters"><div class="filter-group"><label>Период с</label><input type="date" value="${rFilters.from}" onchange="rFilters.from=this.value;renderPage()"></div><div class="filter-group"><label>по</label><input type="date" value="${rFilters.to}" onchange="rFilters.to=this.value;renderPage()"></div>
-            <div class="filter-group"><label>Склад</label><select onchange="sFilters.wh=this.value;renderPage()"><option value="">Все склады</option>${db.trade.warehouses.map(w => `<option value="${w.id}" ${sFilters.wh === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
-            <div class="filter-group"><label>Номенклатура</label><select onchange="sMoveNom=this.value;renderPage()"><option value="">Вся</option>${db.trade.nomenclature.filter(n => n.kind !== 'Услуга').map(n => `<option value="${n.id}" ${sMoveNom === n.id ? 'selected' : ''}>${esc(n.name)}</option>`).join('')}</select></div>
+            <div class="filter-group"><label>Склад</label><select onchange="sFilters.wh=this.value;renderPage()"><option value="">Все склады</option>${db.trade.warehouses.map(w => `<option value="${esc(w.id)}" ${sFilters.wh === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
+            <div class="filter-group"><label>Номенклатура</label><select onchange="sMoveNom=this.value;renderPage()"><option value="">Вся</option>${db.trade.nomenclature.filter(n => n.kind !== 'Услуга').map(n => `<option value="${esc(n.id)}" ${sMoveNom === n.id ? 'selected' : ''}>${esc(n.name)}</option>`).join('')}</select></div>
             <button class="quick-btn" onclick="rFilters={from:'',to:''};sFilters.wh='';sMoveNom='';renderPage()">Сбросить</button><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
             <div id="tReport"><div class="table-container"><table><thead><tr><th rowspan="2">Номенклатура</th><th rowspan="2">Склад</th><th colspan="2" style="text-align:center">Начальный остаток</th><th colspan="2" style="text-align:center">Приход</th><th colspan="2" style="text-align:center">Расход</th><th colspan="2" style="text-align:center">Конечный остаток</th></tr>
             <tr><th style="text-align:right">Кол-во</th><th style="text-align:right">Сумма</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Сумма</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Сумма</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Сумма</th></tr></thead>
@@ -4374,7 +4376,7 @@
             const types = Object.keys(TT).filter(t => ['stock', 'prod'].includes(TT[t].group));
             const docs = db.trade.docs.filter(d => types.includes(d.type)).filter(d => tInPeriod(d)).sort(docCmp);
             return tReportBar() + `<div id="tReport"><div class="table-container"><table><thead><tr><th></th><th>Дата</th><th>Номер</th><th>Документ</th><th>Вид операции</th><th>Склад</th><th style="text-align:right">Сумма</th><th>Комментарий</th></tr></thead>
-            <tbody>${docs.map(d => `<tr ondblclick="tOpen('${d.id}')" style="cursor:pointer"><td>${tStatusIcon(d)}</td><td>${formatDate(d.date)}</td><td><b>${esc(d.number)}</b></td><td>${esc(TT[d.type].short)}</td><td>${esc(d.opKind || '')}</td><td>${TT[d.type].warehouse ? esc(tWh(d.warehouse)) + (d.type === 'transfer' ? ' → ' + esc(tWh(d.warehouseTo)) : '') : ''}</td><td class="num">${TT[d.type].noSum ? '' : formatAmount(d.total)}</td><td>${esc((d.extra && d.extra.comment) || '')}</td></tr>`).join('')}${docs.length ? '' : '<tr><td colspan="8" class="empty-state">Документов нет</td></tr>'}</tbody></table></div></div>`;
+            <tbody>${docs.map(d => `<tr ondblclick="tOpen('${esc(d.id)}')" style="cursor:pointer"><td>${tStatusIcon(d)}</td><td>${formatDate(d.date)}</td><td><b>${esc(d.number)}</b></td><td>${esc(TT[d.type].short)}</td><td>${esc(d.opKind || '')}</td><td>${TT[d.type].warehouse ? esc(tWh(d.warehouse)) + (d.type === 'transfer' ? ' → ' + esc(tWh(d.warehouseTo)) : '') : ''}</td><td class="num">${TT[d.type].noSum ? '' : formatAmount(d.total)}</td><td>${esc((d.extra && d.extra.comment) || '')}</td></tr>`).join('')}${docs.length ? '' : '<tr><td colspan="8" class="empty-state">Документов нет</td></tr>'}</tbody></table></div></div>`;
         }
         // ---------- Отчеты производства ----------
         function renderOutputReport() {
@@ -4408,7 +4410,7 @@
         function renderCostCalcReport() {
             const closes = db.trade.docs.filter(d => d.type === 'month_close' && d.status === 'posted').sort((a, b) => (b.period || '').localeCompare(a.period || ''));
             return `<div class="filters"><span style="color:var(--text-secondary);font-size:13px">Фактическая себестоимость по результатам закрытия месяца. Для расчета проведите документ «Закрытие месяца» (Производство → Закрытие месяца).</span><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
-            <div id="tReport">${closes.length ? closes.map(d => `<h3 style="margin:10px 0">Период ${d.period} — ${esc(d.number)}${d.department ? ', ' + esc(tDep(d.department)) : ''} <button class="btn" style="margin-left:10px" onclick="tPrint('${d.id}','Справка-расчет «Калькуляция себестоимости»')">🖨 Справка-расчет</button></h3>
+            <div id="tReport">${closes.length ? closes.map(d => `<h3 style="margin:10px 0">Период ${d.period} — ${esc(d.number)}${d.department ? ', ' + esc(tDep(d.department)) : ''} <button class="btn" style="margin-left:10px" onclick="tPrint('${esc(d.id)}','Справка-расчет «Калькуляция себестоимости»')">🖨 Справка-расчет</button></h3>
             ${(d.calc || []).map(g => `<div class="table-container" style="margin-bottom:12px"><div style="padding:8px 15px;background:var(--bg-table-head);border-bottom:1px solid var(--border-input)"><b>${esc(tNG(g.nomGroup))}</b> — затраты ${formatAmount(g.toDistribute)}, план ${formatAmount(g.planOut)}, коэффициент ${g.k.toFixed(4)}</div><table><thead><tr><th>Продукция</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Плановая цена</th><th style="text-align:right">Фактическая цена</th><th style="text-align:right">Плановая сумма</th><th style="text-align:right">Фактическая сумма</th><th style="text-align:right">Отклонение</th></tr></thead><tbody>${g.productList.map(p => `<tr><td>${esc(tNomName(p.nom))}</td><td class="num">${p.qty}</td><td class="num">${formatAmount(p.planPrice)}</td><td class="num"><b>${formatAmount(p.factPrice)}</b></td><td class="num">${formatAmount(p.plan)}</td><td class="num">${formatAmount(p.fact)}</td><td class="num" style="color:${p.corr > 0 ? 'var(--danger)' : 'var(--success)'}">${p.corr >= 0 ? '+' : ''}${formatAmount(p.corr)}</td></tr>`).join('')}</tbody></table></div>`).join('')}`).join('') : '<div class="empty-state">Закрытие месяца еще не выполнялось</div>'}</div>`;
         }
         function renderStockPage(page) {
@@ -4651,13 +4653,13 @@
         // ---------- Шапка кадровых документов ----------
         function tHeadExtraHR(d) {
             const cfg = TT[d.type]; if (!cfg.hr) return '';
-            const empOpts = (sel, onlyActive) => '<option value="">Выбрать…</option>' + (db.trade.employees || []).filter(e => !onlyActive || e.status !== 'Уволен' || e.id === sel).map(e => `<option value="${e.id}" ${sel === e.id ? 'selected' : ''}>${esc(e.tabNo ? e.tabNo + ' · ' : '')}${esc(e.name)}</option>`).join('');
-            const depOpts = (sel) => '<option value="">Все подразделения</option>' + (db.trade.departments || []).map(w => `<option value="${w.id}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
+            const empOpts = (sel, onlyActive) => '<option value="">Выбрать…</option>' + (db.trade.employees || []).filter(e => !onlyActive || e.status !== 'Уволен' || e.id === sel).map(e => `<option value="${esc(e.id)}" ${sel === e.id ? 'selected' : ''}>${esc(e.tabNo ? e.tabNo + ' · ' : '')}${esc(e.name)}</option>`).join('');
+            const depOpts = (sel) => '<option value="">Все подразделения</option>' + (db.trade.departments || []).map(w => `<option value="${esc(w.id)}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
             let h = '';
             if (cfg.empDoc) { const e = tEmp(d.employee) || {}; h += `<div class="fg wide"><label>Сотрудник *</label><div style="display:flex;gap:6px"><select onchange="tDoc.employee=this.value;tOnEmployeeChange();tRenderForm(false)" style="flex:1">${empOpts(d.employee, d.type !== 'hire')}</select><button class="btn" title="Новый сотрудник" onclick="tQuickRef('employees')">+</button></div></div>
                 ${d.employee ? `<div class="fg wide"><label>Текущие данные</label><div style="font-size:12px;color:var(--text-secondary);padding:6px 0">${esc(tDep(e.department))} · ${esc(tPos(e.position))} · оклад ${formatAmount(e.salary)} · ${esc(e.status || '')}${e.hireDate ? ' с ' + formatDate(e.hireDate) : ''}</div></div>` : ''}`; }
             if (cfg.monthDoc) h += `<div class="fg"><label>Месяц начисления *</label><input type="month" value="${d.period || d.date.slice(0, 7)}" onchange="tDoc.period=this.value;tDoc.rows=[];tRenderForm(false)"></div><div class="fg"><label>Подразделение</label><select onchange="tDoc.department=this.value;tDoc.rows=[];tRenderForm(false)">${depOpts(d.department)}</select></div>`;
-            if (cfg.payoutDoc) h += `<div class="fg"><label>${d.type === 'payout_bank' ? 'Банковский счет организации' : 'Касса'}</label><select onchange="tDoc.payAccount=this.value">${db.accounts.filter(a => a.type === (d.type === 'payout_bank' ? 'bank' : 'cash')).map(a => `<option value="${a.id}" ${d.payAccount === a.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></div>`;
+            if (cfg.payoutDoc) h += `<div class="fg"><label>${d.type === 'payout_bank' ? 'Банковский счет организации' : 'Касса'}</label><select onchange="tDoc.payAccount=this.value">${db.accounts.filter(a => a.type === (d.type === 'payout_bank' ? 'bank' : 'cash')).map(a => `<option value="${esc(a.id)}" ${d.payAccount === a.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></div>`;
             return h;
         }
         function tOnEmployeeChange() {
@@ -4671,9 +4673,9 @@
         // ---------- Вкладки ----------
         function tRenderHRTab(tab) {
             const d = tDoc, cfg = TT[d.type], P = db.trade.payroll, e = tEmp(d.employee) || {};
-            const depOpts = (sel) => '<option value="">—</option>' + (db.trade.departments || []).map(w => `<option value="${w.id}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
-            const posOpts = (sel) => '<option value="">—</option>' + (db.trade.positions || []).map(w => `<option value="${w.id}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
-            const schOpts = (sel) => '<option value="">—</option>' + (db.trade.schedules || []).map(w => `<option value="${w.id}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
+            const depOpts = (sel) => '<option value="">—</option>' + (db.trade.departments || []).map(w => `<option value="${esc(w.id)}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
+            const posOpts = (sel) => '<option value="">—</option>' + (db.trade.positions || []).map(w => `<option value="${esc(w.id)}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
+            const schOpts = (sel) => '<option value="">—</option>' + (db.trade.schedules || []).map(w => `<option value="${esc(w.id)}" ${sel === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
             const inp = (i, f, type, extra) => `<input class="tcell" type="${type || 'text'}" ${type === 'number' ? 'step="0.01"' : ''} data-i="${i}" data-f="${f}" data-tab="rows" value="${esc(d.rows[i][f] == null ? '' : d.rows[i][f])}" ${extra || ''}>`;
             if (tab === 'hire') return `<div class="thead-grid">
                 <div class="fg"><label>Дата приема</label><input type="date" value="${d.date}" onchange="tDoc.date=this.value"></div>
@@ -4730,13 +4732,13 @@
                 <div class="fg wide2"><p style="color:var(--text-secondary);font-size:12px">Пособие рассчитывается по рабочим дням: средний дневной (оклад + премия) / 21.6 × дни × %. Пособие облагается подоходным налогом, взносами в Соцфонд не облагается.</p></div></div>`;
             if (tab === 'timesheet') { d.rows = d.rows || []; const r = d.period ? tMonthRange(d.period) : null; return `<div class="tcmd small"><button class="btn primary" onclick="tFillTimesheet()">Заполнить</button><button class="btn" onclick="tDoc.rows.push({employee:'',norm:0,days:0,hours:0,vac:0,sick:0,absent:0});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('rows')">Удалить</button><span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">${r ? 'Норма рабочих дней (5-дневка): ' + tWorkDays(r.from, r.to, 5) : ''}</span></div>
                 <div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Сотрудник</th><th>Подразделение</th><th>Норма дней</th><th>Отработано дней</th><th>Часов</th><th>Отпуск (дн.)</th><th>Болезнь (дн.)</th><th>Неявки (дн.)</th></tr></thead>
-                <tbody>${d.rows.map((row, i) => `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="employee" data-tab="rows"><option value="">…</option>${(db.trade.employees || []).map(x => `<option value="${x.id}" ${row.employee === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td><td>${esc(tDep((tEmp(row.employee) || {}).department))}</td><td>${inp(i, 'norm', 'number')}</td><td>${inp(i, 'days', 'number')}</td><td>${inp(i, 'hours', 'number')}</td><td>${inp(i, 'vac', 'number')}</td><td>${inp(i, 'sick', 'number')}</td><td>${inp(i, 'absent', 'number')}</td></tr>`).join('')}
+                <tbody>${d.rows.map((row, i) => `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="employee" data-tab="rows"><option value="">…</option>${(db.trade.employees || []).map(x => `<option value="${esc(x.id)}" ${row.employee === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td><td>${esc(tDep((tEmp(row.employee) || {}).department))}</td><td>${inp(i, 'norm', 'number')}</td><td>${inp(i, 'days', 'number')}</td><td>${inp(i, 'hours', 'number')}</td><td>${inp(i, 'vac', 'number')}</td><td>${inp(i, 'sick', 'number')}</td><td>${inp(i, 'absent', 'number')}</td></tr>`).join('')}
                 ${d.rows.length ? '' : '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:25px">Нажмите «Заполнить» — табель заполнится по графикам, отпускам и больничным</td></tr>'}</tbody></table></div>
                 <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">Проведенный табель используется документом «Начисление зарплаты» как источник отработанных дней.</p>`; }
             if (tab === 'payroll') { d.rows = d.rows || []; return `<div class="tcmd small"><button class="btn primary" onclick="tFillPayroll()">Заполнить</button><button class="btn" onclick="tRecalcAll()">Пересчитать</button><button class="btn" onclick="tDoc.rows.push({employee:'',other:0,advance:0});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('rows')">Удалить</button><span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">Сотрудников: ${d.rows.length}</span></div>
                 <div class="table-container" style="overflow-x:auto"><table class="ttable" style="min-width:1500px"><thead><tr><th>№</th><th style="min-width:180px">Сотрудник</th><th>Должность</th><th>Оклад</th><th>Норма дн.</th><th title="Пусто — автоматически по табелю/графику">Отработано</th><th>По окладу</th><th title="Пусто — по карточке пропорционально дням">Премия</th><th>Отпускные</th><th>Больничный</th><th>Компенс.</th><th>Прочее</th><th><b>Начислено</b></th><th>Вычет</th><th>Соцфонд ${P.sfEmployee}%</th><th>Подоходный ${P.incomeTax}%</th><th title="Пусто — по карточке">Удержания</th><th>Аванс</th><th><b>К выплате</b></th></tr></thead>
                 <tbody>${d.rows.map((row, i) => `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td>
-                    <td><select class="tcell" data-i="${i}" data-f="employee" data-tab="rows"><option value="">…</option>${(db.trade.employees || []).map(x => `<option value="${x.id}" ${row.employee === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td>
+                    <td><select class="tcell" data-i="${i}" data-f="employee" data-tab="rows"><option value="">…</option>${(db.trade.employees || []).map(x => `<option value="${esc(x.id)}" ${row.employee === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td>
                     <td style="font-size:12px">${esc(tPos(row.position))}</td><td class="num">${formatAmount(row.salary)}</td><td class="num">${row.normDays || 0}</td>
                     <td>${inp(i, 'manualDays', 'number', 'placeholder="' + (row.workedDays || 0) + '" style="width:70px"')}</td><td class="num">${formatAmount(row.salaryPay)}</td>
                     <td>${inp(i, 'bonusManual', 'number', 'placeholder="' + formatAmount(row.bonus) + '" style="width:90px"')}</td><td class="num">${formatAmount(row.vacPay)}</td><td class="num">${formatAmount(row.sickPay)}</td><td class="num">${formatAmount(row.compensation)}</td>
@@ -4757,7 +4759,7 @@
                 <div class="stats" style="margin-top:12px"><div class="stat-card"><div class="stat-label">ФОТ (НАЧИСЛЕНО)</div><div class="stat-value">${formatAmount(d.total)}</div></div><div class="stat-card"><div class="stat-label">К ВЫПЛАТЕ</div><div class="stat-value">${formatAmount(d.netTotal || 0)}</div></div><div class="stat-card"><div class="stat-label">ПОЛНАЯ СТОИМОСТЬ ДЛЯ РАБОТОДАТЕЛЯ</div><div class="stat-value">${formatAmount((d.total || 0) + (d.sfEmployerTotal || 0))}</div></div></div>`; }
             if (tab === 'payout') { d.rows = d.rows || []; const isBank = d.type === 'payout_bank'; return `<div class="tcmd small"><button class="btn primary" onclick="tFillPayout()">Заполнить по начислению</button><button class="btn" onclick="tDoc.rows.push({employee:'',sum:0,account:''});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('rows')">Удалить</button><span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">Сотрудников: ${d.rows.length}</span></div>
                 <div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Сотрудник</th><th>Подразделение</th>${isBank ? '<th>Счет / карта</th>' : ''}<th>Сумма к выплате</th>${isBank ? '' : '<th>Подпись в получении</th>'}</tr></thead>
-                <tbody>${d.rows.map((row, i) => `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="employee" data-tab="rows"><option value="">…</option>${(db.trade.employees || []).map(x => `<option value="${x.id}" ${row.employee === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td><td>${esc(tDep((tEmp(row.employee) || {}).department))}</td>${isBank ? `<td>${inp(i, 'account')}</td>` : ''}<td>${inp(i, 'sum', 'number')}</td>${isBank ? '' : '<td style="color:var(--text-muted)">______________</td>'}</tr>`).join('')}
+                <tbody>${d.rows.map((row, i) => `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="employee" data-tab="rows"><option value="">…</option>${(db.trade.employees || []).map(x => `<option value="${esc(x.id)}" ${row.employee === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td><td>${esc(tDep((tEmp(row.employee) || {}).department))}</td>${isBank ? `<td>${inp(i, 'account')}</td>` : ''}<td>${inp(i, 'sum', 'number')}</td>${isBank ? '' : '<td style="color:var(--text-muted)">______________</td>'}</tr>`).join('')}
                 ${d.rows.length ? '' : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:25px">Нажмите «Заполнить по начислению» — подставятся суммы к выплате из проведенного начисления за месяц</td></tr>'}</tbody>
                 ${d.rows.length ? `<tfoot><tr><td colspan="${isBank ? 4 : 3}" style="text-align:right;font-weight:600">Итого к выплате:</td><td class="num amount">${formatAmount(d.total)}</td>${isBank ? '' : '<td></td>'}</tr></tfoot>` : ''}</table></div>
                 <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">После проведения используйте «Создать на основании → ${isBank ? 'Списание с расчетного счета' : 'Расходный кассовый ордер'}» — оплата попадет в раздел «Банк и касса» (Дт 70 Кт ${isBank ? '51' : '50'}).</p>`; }
@@ -4878,7 +4880,7 @@
         }
         function renderPayslipsReport() {
             const docs = db.trade.docs.filter(d => d.type === 'payroll' && d.status === 'posted' && d.period === (hFilters.month || tPayrollMonths()[0]));
-            const empOpts = `<div class="filter-group"><label>Сотрудник</label><select onchange="hFilters.emp=this.value;renderPage()"><option value="">Все</option>${(db.trade.employees || []).map(e => `<option value="${e.id}" ${hFilters.emp === e.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></div>`;
+            const empOpts = `<div class="filter-group"><label>Сотрудник</label><select onchange="hFilters.emp=this.value;renderPage()"><option value="">Все</option>${(db.trade.employees || []).map(e => `<option value="${esc(e.id)}" ${hFilters.emp === e.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></div>`;
             const items = docs.flatMap(d => (d.rows || []).filter(r => !hFilters.emp || r.employee === hFilters.emp).map(r => tPayslipHtml(d, r)));
             return tMonthBar(empOpts) + `<div id="tReport" class="payslips">${items.length ? items.join('') : '<div class="empty-state">Нет начислений за месяц</div>'}</div>`;
         }
@@ -4906,7 +4908,7 @@
             return `<div class="filters"><span style="color:var(--text-secondary);font-size:13px">Штатное расписание (форма Т-3) и список сотрудников с личными карточками (Т-2)</span><span style="flex:1"></span><button class="btn" onclick="selectPageById('ref_employees')">Справочник «Сотрудники»</button><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
             <div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">РАБОТАЕТ</div><div class="stat-value">${active.length}</div></div><div class="stat-card"><div class="stat-label">ШТАТНЫХ ЕДИНИЦ</div><div class="stat-value">${pos.reduce((s, p) => s + (Number(p.count) || 0), 0)}</div></div><div class="stat-card"><div class="stat-label">ВАКАНСИЙ</div><div class="stat-value">${Math.max(0, pos.reduce((s, p) => s + (Number(p.count) || 0), 0) - active.length)}</div></div><div class="stat-card"><div class="stat-label">ФОТ ПО ОКЛАДАМ / МЕС.</div><div class="stat-value">${formatAmount(active.reduce((s, e) => s + (Number(e.salary) || 0) + (Number(e.bonus) || 0), 0))}</div></div></div>
             <h3 style="margin:10px 0">Штатное расписание</h3><div class="table-container"><table><thead><tr><th>Подразделение</th><th>Должность</th><th style="text-align:right">Штатных единиц</th><th style="text-align:right">Занято</th><th style="text-align:right">Оклад по ШР</th><th style="text-align:right">Месячный фонд</th></tr></thead><tbody>${pos.map(p => { const n = active.filter(e => e.position === p.id).length; return `<tr><td>${esc(tDep(p.department))}</td><td>${esc(p.name)}</td><td class="num">${p.count || 0}</td><td class="num" style="color:${n < (p.count || 0) ? 'var(--danger)' : 'var(--success)'}">${n}</td><td class="num">${formatAmount(p.baseSalary)}</td><td class="num">${formatAmount((p.count || 0) * (p.baseSalary || 0))}</td></tr>`; }).join('')}</tbody></table></div>
-            <h3 style="margin:18px 0 8px">Сотрудники</h3><div class="table-container"><table><thead><tr><th>Таб. №</th><th>ФИО</th><th>Подразделение</th><th>Должность</th><th style="text-align:right">Оклад</th><th>Дата приема</th><th>Статус</th><th>Личная карточка</th></tr></thead><tbody>${emps.map(e => `<tr><td>${esc(e.tabNo || '')}</td><td>${esc(e.name)}</td><td>${esc(tDep(e.department))}</td><td>${esc(tPos(e.position))}</td><td class="num">${formatAmount(e.salary)}</td><td>${e.hireDate ? formatDate(e.hireDate) : ''}</td><td><span class="badge ${e.status === 'Уволен' ? 'draft' : 'posted'}">${esc(e.status || '')}</span></td><td><button class="action-btn" onclick="tPrintT2('${e.id}')">🖨 Т-2</button></td></tr>`).join('')}</tbody></table></div></div>`;
+            <h3 style="margin:18px 0 8px">Сотрудники</h3><div class="table-container"><table><thead><tr><th>Таб. №</th><th>ФИО</th><th>Подразделение</th><th>Должность</th><th style="text-align:right">Оклад</th><th>Дата приема</th><th>Статус</th><th>Личная карточка</th></tr></thead><tbody>${emps.map(e => `<tr><td>${esc(e.tabNo || '')}</td><td>${esc(e.name)}</td><td>${esc(tDep(e.department))}</td><td>${esc(tPos(e.position))}</td><td class="num">${formatAmount(e.salary)}</td><td>${e.hireDate ? formatDate(e.hireDate) : ''}</td><td><span class="badge ${e.status === 'Уволен' ? 'draft' : 'posted'}">${esc(e.status || '')}</span></td><td><button class="action-btn" onclick="tPrintT2('${esc(e.id)}')">🖨 Т-2</button></td></tr>`).join('')}</tbody></table></div></div>`;
         }
         function tPrintT2(empId) {
             const e = tEmp(empId); if (!e) return; const org = db.trade.org;
@@ -4919,7 +4921,7 @@
         function renderAbsencesReport() {
             const docs = db.trade.docs.filter(d => ['vacation', 'sick_leave'].includes(d.type) && d.status !== 'deleted' && tInPeriod(d)).sort((a, b) => (b.absFrom || b.date).localeCompare(a.absFrom || a.date));
             return tReportBar() + `<div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">ОТПУСКОВ</div><div class="stat-value">${docs.filter(d => d.type === 'vacation').length}</div></div><div class="stat-card"><div class="stat-label">БОЛЬНИЧНЫХ</div><div class="stat-value">${docs.filter(d => d.type === 'sick_leave').length}</div></div><div class="stat-card"><div class="stat-label">СУММА ОТПУСКНЫХ</div><div class="stat-value">${formatAmount(docs.filter(d => d.type === 'vacation').reduce((s, d) => s + d.total, 0))}</div></div><div class="stat-card"><div class="stat-label">СУММА ПОСОБИЙ</div><div class="stat-value">${formatAmount(docs.filter(d => d.type === 'sick_leave').reduce((s, d) => s + d.total, 0))}</div></div></div>
-            <div class="table-container"><table><thead><tr><th></th><th>Сотрудник</th><th>Вид</th><th>Период</th><th style="text-align:right">Дней</th><th style="text-align:right">Средний дневной</th><th style="text-align:right">Сумма</th><th>Документ</th></tr></thead><tbody>${docs.map(d => `<tr ondblclick="tOpen('${d.id}')" style="cursor:pointer"><td>${tStatusIcon(d)}</td><td>${esc(tEmpName(d.employee))}</td><td>${esc(d.opKind || TT[d.type].short)}</td><td>${d.absFrom ? formatDate(d.absFrom) : ''} — ${d.absTo ? formatDate(d.absTo) : ''}</td><td class="num">${d.absDays || 0}</td><td class="num">${formatAmount(d.avgDay)}</td><td class="num amount">${formatAmount(d.total)}</td><td>${esc(d.number)}</td></tr>`).join('')}${docs.length ? '' : '<tr><td colspan="8" class="empty-state">Нет отпусков и больничных за период</td></tr>'}</tbody></table></div></div>`;
+            <div class="table-container"><table><thead><tr><th></th><th>Сотрудник</th><th>Вид</th><th>Период</th><th style="text-align:right">Дней</th><th style="text-align:right">Средний дневной</th><th style="text-align:right">Сумма</th><th>Документ</th></tr></thead><tbody>${docs.map(d => `<tr ondblclick="tOpen('${esc(d.id)}')" style="cursor:pointer"><td>${tStatusIcon(d)}</td><td>${esc(tEmpName(d.employee))}</td><td>${esc(d.opKind || TT[d.type].short)}</td><td>${d.absFrom ? formatDate(d.absFrom) : ''} — ${d.absTo ? formatDate(d.absTo) : ''}</td><td class="num">${d.absDays || 0}</td><td class="num">${formatAmount(d.avgDay)}</td><td class="num amount">${formatAmount(d.total)}</td><td>${esc(d.number)}</td></tr>`).join('')}${docs.length ? '' : '<tr><td colspan="8" class="empty-state">Нет отпусков и больничных за период</td></tr>'}</tbody></table></div></div>`;
         }
         function renderDebt70Report() {
             const emps = db.trade.employees || [];
