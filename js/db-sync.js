@@ -23,6 +23,40 @@ const DbSync = (function() {
     let _offlinePending = null; // data queued while offline
     let _inited = false;
     let _onSaveCallback = null;
+    let _lastSavedSize = 0; // record count at last successful load/save
+    let _awaitingConfirm = false;
+
+    function countRecords(obj) {
+        let total = 0;
+        for (const key in obj) {
+            if (Array.isArray(obj[key])) total += obj[key].length;
+        }
+        return total;
+    }
+
+    function showDataLossConfirm(oldCount, newCount) {
+        return new Promise((resolve) => {
+            _awaitingConfirm = true;
+            const pct = Math.round((1 - newCount / oldCount) * 100);
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+                <div style="background:#fff;border-radius:12px;padding:30px;max-width:420px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+                    <div style="font-size:48px;margin-bottom:15px;">&#9888;</div>
+                    <h3 style="color:#d32f2f;margin-bottom:10px;">Внимание! Потеря данных</h3>
+                    <p style="margin-bottom:15px;color:#333;">Количество записей уменьшилось на <b>${pct}%</b></p>
+                    <p style="margin-bottom:20px;color:#666;font-size:14px;">Было: <b>${oldCount}</b> записей &rarr; Стало: <b>${newCount}</b> записей</p>
+                    <p style="margin-bottom:20px;color:#d32f2f;font-size:13px;">Вы уверены, что хотите сохранить эти изменения?</p>
+                    <div style="display:flex;gap:10px;justify-content:center;">
+                        <button id="_dlc_cancel" style="padding:10px 24px;border:1px solid #ccc;border-radius:8px;background:#f5f5f5;cursor:pointer;font-size:15px;">Отменить</button>
+                        <button id="_dlc_confirm" style="padding:10px 24px;border:none;border-radius:8px;background:#d32f2f;color:#fff;cursor:pointer;font-size:15px;">Сохранить</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+            overlay.querySelector('#_dlc_cancel').onclick = () => { overlay.remove(); _awaitingConfirm = false; resolve(false); };
+            overlay.querySelector('#_dlc_confirm').onclick = () => { overlay.remove(); _awaitingConfirm = false; resolve(true); };
+        });
+    }
 
     function _loadOfflinePending() {
         try {
@@ -127,6 +161,7 @@ const DbSync = (function() {
                 if (cached) {
                     const parsed = JSON.parse(cached);
                     _lastHash = hashData(parsed);
+                    _lastSavedSize = countRecords(parsed);
                     _dataLoaded = true;
                     showSyncStatus('offline');
                     return parsed;
@@ -162,6 +197,7 @@ const DbSync = (function() {
                     if (cached) {
                         const parsed = JSON.parse(cached);
                         _lastHash = hashData(parsed);
+                        _lastSavedSize = countRecords(parsed);
                         _dataLoaded = true;
                         return parsed;
                     }
@@ -183,6 +219,7 @@ const DbSync = (function() {
             }
 
             _lastHash = hashData(parsed);
+            _lastSavedSize = countRecords(parsed);
             _dataLoaded = true;
 
             // Cache locally with SHA for offline fallback
@@ -233,6 +270,19 @@ const DbSync = (function() {
 
         const currentHash = hashData(dbObject);
         if (currentHash === _lastHash) return;
+
+        // Data loss protection: if records decreased by ≥20%, ask for confirmation
+        if (_lastSavedSize > 0 && retryCount === 0) {
+            const newSize = countRecords(dbObject);
+            if (newSize < _lastSavedSize * 0.8) {
+                if (_awaitingConfirm) return;
+                const confirmed = await showDataLossConfirm(_lastSavedSize, newSize);
+                if (!confirmed) {
+                    showSyncStatus('error');
+                    return;
+                }
+            }
+        }
 
         _saving = true;
         showSyncStatus('saving');
@@ -302,6 +352,7 @@ const DbSync = (function() {
             const result = await res.json();
             _fileSha = result.content.sha;
             _lastHash = currentHash;
+            _lastSavedSize = countRecords(dbObject);
             // Update cache SHA so next load won't re-download
             try { localStorage.setItem('db_cache_sha', _fileSha); } catch(e) {}
             showSyncStatus('saved');
