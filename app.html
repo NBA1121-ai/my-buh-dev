@@ -382,7 +382,7 @@
                 const session = localStorage.getItem('auth_session');
                 if (!session) { window.location.href = 'index.html'; return; }
                 const s = JSON.parse(session);
-                if (!s || !s.authenticated || !s.expires || s.expires <= Date.now()) {
+                if (!DbSync.verifySession(s)) {
                     localStorage.removeItem('auth_session');
                     window.location.href = 'index.html';
                     return;
@@ -396,6 +396,7 @@
                         const serverUser = ghUsers.find(u => u.name === s.name);
                         if (serverUser) {
                             s.role = serverUser.role || 'user';
+                            s.sig = DbSync.createSession(s.name, s.role).sig;
                             localStorage.setItem('auth_session', JSON.stringify(s));
                         }
                     }
@@ -461,7 +462,7 @@
             setInterval(() => {
                 try {
                     const s = JSON.parse(localStorage.getItem('auth_session') || '{}');
-                    if (!s.authenticated || !s.expires || s.expires <= Date.now()) {
+                    if (!DbSync.verifySession(s)) {
                         window.location.href = 'index.html';
                     }
                 } catch(e) { window.location.href = 'index.html'; }
@@ -595,7 +596,7 @@
 
         // ==================== NAVIGATION ====================
         const _restrictedPages = ['admin', 'users', 'activity_log', 'r_payroll', 'r_payslip', 'r_debt70', 'p_payroll', 'p_payout_bank', 'p_payout_cash', 'p_vacation', 'ref_employees', 'ref_departments', 'ref_positions', 'ref_schedules', 'ref_accruals', 'ref_deductions'];
-        function isAdmin() { try { return JSON.parse(localStorage.getItem('auth_session') || '{}').role === 'admin'; } catch(e) { return false; } }
+        function isAdmin() { try { const s = JSON.parse(localStorage.getItem('auth_session') || '{}'); return DbSync.verifySession(s) && s.role === 'admin'; } catch(e) { return false; } }
         function selectPage(page) {
             if (_restrictedPages.includes(page) && !isAdmin()) { showToast('Доступ запрещён. Обратитесь к администратору.', 'error'); return; }
             currentPage = page;
@@ -3424,9 +3425,9 @@
             const templates = (db.trade.templates || []).filter(t => t.type === type);
             if (!templates.length) { showToast('Нет шаблонов для данного типа документа'); return; }
             const body = `<div style="display:flex;flex-direction:column;gap:8px">${templates.map(t =>
-                `<div style="display:flex;align-items:center;gap:10px;background:var(--bg-card,#f8f8f8);padding:12px;border-radius:8px;border:1px solid var(--border,#eee);cursor:pointer" onclick="tCreateFromTemplate('${t._templateId}')">
+                `<div style="display:flex;align-items:center;gap:10px;background:var(--bg-card,#f8f8f8);padding:12px;border-radius:8px;border:1px solid var(--border,#eee);cursor:pointer" onclick="tCreateFromTemplate('${esc(t._templateId)}')">
                     <div style="flex:1"><strong>${esc(t._templateName)}</strong><br><span style="font-size:12px;color:var(--text-muted)">${esc(tContractorName(t.contractor) || '—')} | ${esc(t.opKind || '')} | Сумма: ${formatAmount(t.total || 0)}</span></div>
-                    <button class="btn" style="padding:4px 8px;font-size:11px" onclick="event.stopPropagation();tDeleteTemplate('${t._templateId}')">🗑️</button>
+                    <button class="btn" style="padding:4px 8px;font-size:11px" onclick="event.stopPropagation();tDeleteTemplate('${esc(t._templateId)}')">🗑️</button>
                 </div>`
             ).join('')}</div>`;
             document.getElementById('tPostTitle').textContent = 'Создать из шаблона';

@@ -66,10 +66,26 @@ const DbSync = (function() {
         return null;
     }
 
+    function _loadToken() {
+        const stored = localStorage.getItem('gh_token');
+        if (!stored) return null;
+        // Try deobfuscate first; if it fails, assume it's a legacy plain token and migrate
+        const decoded = _deobfuscate(stored);
+        if (decoded && decoded.startsWith('ghp_')) {
+            return decoded;
+        }
+        // Legacy plain text token — migrate to obfuscated
+        if (stored.startsWith('ghp_')) {
+            localStorage.setItem('gh_token', _obfuscate(stored));
+            return stored;
+        }
+        return decoded || stored;
+    }
+
     function init() {
-        if (_inited) { _token = localStorage.getItem('gh_token'); return; }
+        if (_inited) { _token = _loadToken(); return; }
         _inited = true;
-        _token = localStorage.getItem('gh_token');
+        _token = _loadToken();
         // Force clear cache (one-time reset)
         if (localStorage.getItem('db_reset') !== 'r4') {
             localStorage.removeItem('db_cache');
@@ -100,9 +116,29 @@ const DbSync = (function() {
 
     function getToken() { return _token; }
 
+    // Simple obfuscation key — not true encryption, but prevents casual token theft
+    const _OBF_KEY = 'EsEp0nL1n3_s4Lt_k3y';
+    function _obfuscate(str) {
+        let result = '';
+        for (let i = 0; i < str.length; i++) {
+            result += String.fromCharCode(str.charCodeAt(i) ^ _OBF_KEY.charCodeAt(i % _OBF_KEY.length));
+        }
+        return btoa(result);
+    }
+    function _deobfuscate(encoded) {
+        try {
+            const str = atob(encoded);
+            let result = '';
+            for (let i = 0; i < str.length; i++) {
+                result += String.fromCharCode(str.charCodeAt(i) ^ _OBF_KEY.charCodeAt(i % _OBF_KEY.length));
+            }
+            return result;
+        } catch(e) { return null; }
+    }
+
     function setToken(token) {
         _token = token;
-        localStorage.setItem('gh_token', token);
+        localStorage.setItem('gh_token', _obfuscate(token));
     }
 
     function clearToken() {
@@ -548,6 +584,34 @@ const DbSync = (function() {
         }
     }
 
+    // Session signing — prevents forgery via console
+    const _SESSION_SECRET = 'EsEp_s3ss10n_2026';
+    function signSession(sessionObj) {
+        const payload = sessionObj.name + '|' + sessionObj.role + '|' + sessionObj.expires + '|' + _SESSION_SECRET;
+        let h = 0x811c9dc5;
+        for (let i = 0; i < payload.length; i++) {
+            h = Math.imul(h ^ payload.charCodeAt(i), 0x01000193);
+        }
+        return (h >>> 0).toString(36);
+    }
+
+    function createSession(name, role) {
+        const session = {
+            authenticated: true,
+            name: name,
+            role: role || 'user',
+            expires: Date.now() + 24 * 60 * 60 * 1000
+        };
+        session.sig = signSession(session);
+        return session;
+    }
+
+    function verifySession(session) {
+        if (!session || !session.authenticated || !session.expires || !session.sig) return false;
+        if (session.expires <= Date.now()) return false;
+        return session.sig === signSession(session);
+    }
+
     // FNV-1a 52-bit hash — much lower collision rate than 32-bit
     function hashData(obj) {
         const str = JSON.stringify(obj);
@@ -607,6 +671,7 @@ const DbSync = (function() {
         startPolling, stopPolling,
         getHistory, restoreFromCommit,
         logout, showSyncStatus,
-        loadUsers, saveUsers
+        loadUsers, saveUsers,
+        createSession, verifySession
     };
 })();

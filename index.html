@@ -194,15 +194,8 @@
             }
         }
 
-        // Fallback admin user (always available even if GitHub is down)
-        const FALLBACK_USERS = [
-            {
-                login: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918',
-                pass: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
-                name: 'Администратор',
-                role: 'admin'
-            }
-        ];
+        // No fallback users — authentication requires GitHub connection
+        const FALLBACK_USERS = [];
 
         let _allUsers = [];
 
@@ -223,11 +216,13 @@
             if (session) {
                 try {
                     const s = JSON.parse(session);
-                    if (s.authenticated && s.expires > Date.now()) {
+                    if (DbSync.verifySession(s)) {
                         window.location.href = 'app.html';
                         return;
+                    } else {
+                        localStorage.removeItem('auth_session');
                     }
-                } catch(e) {}
+                } catch(e) { localStorage.removeItem('auth_session'); }
             }
 
             // If no token in localStorage, show token setup form
@@ -237,16 +232,21 @@
                 return;
             }
 
-            // Load users from GitHub
+            // Load users from GitHub (no fallback — GitHub required)
             try {
                 const ghUsers = await DbSync.loadUsers();
                 if (ghUsers && ghUsers.length) {
                     _allUsers = ghUsers;
                 } else {
-                    _allUsers = FALLBACK_USERS;
+                    _allUsers = [];
                 }
             } catch(e) {
-                _allUsers = FALLBACK_USERS;
+                _allUsers = [];
+            }
+
+            if (!_allUsers.length) {
+                document.getElementById('loading').innerHTML = '<div style="color:#d32f2f;text-align:center;padding:20px;"><b>Нет подключения к серверу</b><br><br>Не удалось загрузить список пользователей.<br>Проверьте интернет-соединение и обновите страницу.</div>';
+                return;
             }
 
             document.getElementById('loading').style.display = 'none';
@@ -273,8 +273,8 @@
             try {
                 const ghUsers = await DbSync.loadUsers();
                 if (ghUsers && ghUsers.length) _allUsers = ghUsers;
-                else _allUsers = FALLBACK_USERS;
-            } catch(e) { _allUsers = FALLBACK_USERS; }
+                else _allUsers = [];
+            } catch(e) { _allUsers = []; }
             document.getElementById('tokenSetup').style.display = 'none';
             document.getElementById('authForm').style.display = 'block';
             document.getElementById('loginInput').focus();
@@ -346,13 +346,9 @@
             }
             _failCount = 0;
 
-            // Save session (24 hours) with role
-            localStorage.setItem('auth_session', JSON.stringify({
-                authenticated: true,
-                name: user.name,
-                role: user.role || 'user',
-                expires: Date.now() + 24 * 60 * 60 * 1000
-            }));
+            // Save signed session (24 hours) with role
+            const session = DbSync.createSession(user.name, user.role);
+            localStorage.setItem('auth_session', JSON.stringify(session));
 
             window.location.href = 'app.html';
         }
