@@ -5545,9 +5545,12 @@
                 else if (d.type === 'payment_out' || d.type === 'rko') r.paymentsOut += sum;
             });
             const rows = Object.values(result).filter(r => r.sales || r.purchases || r.paymentsIn || r.paymentsOut).map(r => {
-                const debit = r.sales - r.paymentsIn; // they owe us
-                const credit = r.purchases - r.paymentsOut; // we owe them
-                return { ...r, debit: Math.max(0, debit), credit: Math.max(0, credit) };
+                const rawDebit = r.sales - r.paymentsIn; // they owe us (negative = they overpaid)
+                const rawCredit = r.purchases - r.paymentsOut; // we owe them (negative = we overpaid)
+                // Переплата покупателя → кредиторка перед ним, переплата поставщику → дебиторка
+                const debit = Math.max(0, rawDebit) + Math.max(0, -rawCredit);
+                const credit = Math.max(0, rawCredit) + Math.max(0, -rawDebit);
+                return { ...r, debit, credit };
             }).sort((a, b) => (b.debit + b.credit) - (a.debit + a.credit));
 
             const totalDebit = rows.reduce((s, r) => s + r.debit, 0);
