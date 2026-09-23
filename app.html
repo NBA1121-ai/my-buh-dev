@@ -225,12 +225,18 @@
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Банковский счет / Касса</label>
+                            <label id="docAccountLabel">Банковский счет / Касса</label>
                             <select id="docAccount">
                                 <option value="">Выбрать...</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="docAccountToGroup" style="display:none">
+                            <label>Счёт назначения (зачисление)</label>
+                            <select id="docAccountTo">
+                                <option value="">Выбрать...</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="docContractorGroup">
                             <label>Контрагент</label>
                             <input type="text" id="docContractor" placeholder="ООО Компания">
                         </div>
@@ -733,7 +739,7 @@
                                 <td><strong>${esc(d.number)}</strong></td>
                                 <td>${formatDate(d.date)}</td>
                                 <td>${getDocTypeLabel(d.type)}</td>
-                                <td>${getAccountName(d.account)}</td>
+                                <td>${getAccountName(d.account)}${d.type === 'conversion' && d.accountTo ? '<br><span style="font-size:11px;color:#888">\u2192 ' + getAccountName(d.accountTo) + '</span>' : ''}</td>
                                 <td>${esc(d.contractor || '-')}</td>
                                 <td class="num amount">${formatAmountCur(d.sum, d.currency, d.rate)}</td>
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
@@ -797,7 +803,7 @@
                                 <td><strong>${esc(d.number)}</strong></td>
                                 <td>${formatDate(d.date)}</td>
                                 <td>${getDocTypeLabel(d.type)}</td>
-                                <td>${getAccountName(d.account)}</td>
+                                <td>${getAccountName(d.account)}${d.type === 'conversion' && d.accountTo ? '<br><span style="font-size:11px;color:#888">\u2192 ' + getAccountName(d.accountTo) + '</span>' : ''}</td>
                                 <td>${esc(d.contractor || '-')}</td>
                                 <td class="num amount">${formatAmountCur(d.sum, d.currency, d.rate)}</td>
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
@@ -1390,8 +1396,13 @@
                 const isOut = ['payment_out', 'rko', 'payment_order', 'statement', 'directbank'].includes(d.type);
                 if (isIn) accBalances[d.account] += sum;
                 else if (isOut) accBalances[d.account] -= sum;
-                // conversion: списание с текущего счёта
-                else if (d.type === 'conversion') accBalances[d.account] -= sum;
+                // conversion: списание с исходного счёта, зачисление на целевой
+                else if (d.type === 'conversion') {
+                    accBalances[d.account] -= sum;
+                    if (d.accountTo && accBalances[d.accountTo] !== undefined) {
+                        accBalances[d.accountTo] += sum * (Number(d.rate) || 1);
+                    }
+                }
             });
 
             // Account balance cards — grouped by currency
@@ -2096,6 +2107,7 @@
             document.getElementById('docDate').value = doc.date;
             document.getElementById('docStatus').value = doc.status;
             document.getElementById('docAccount').value = doc.account || '';
+            if (doc.accountTo) document.getElementById('docAccountTo').value = doc.accountTo;
             document.getElementById('docContractor').value = doc.contractor || '';
             document.getElementById('docArticle').value = doc.article || '';
             document.getElementById('docCurrency').value = doc.currency || '';
@@ -2119,13 +2131,23 @@
             const rateVal = parseFloat(document.getElementById('docRate').value) || 1;
             if (rateVal <= 0) { alert('Курс должен быть положительным числом'); return; }
 
+            const docType = document.getElementById('docType').value;
+            if (docType === 'conversion') {
+                const accTo = document.getElementById('docAccountTo').value;
+                const accFrom = document.getElementById('docAccount').value;
+                if (!accFrom) { alert('Выберите счёт списания'); return; }
+                if (!accTo) { alert('Выберите счёт назначения'); return; }
+                if (accFrom === accTo) { alert('Счёт списания и назначения не могут совпадать'); return; }
+            }
+
             const doc = {
                 id: editingId || uid(),
-                type: document.getElementById('docType').value,
+                type: docType,
                 number: document.getElementById('docNumber').value,
                 date: document.getElementById('docDate').value,
                 status: document.getElementById('docStatus').value,
                 account: document.getElementById('docAccount').value,
+                accountTo: docType === 'conversion' ? document.getElementById('docAccountTo').value : '',
                 contractor: document.getElementById('docContractor').value,
                 article: document.getElementById('docArticle').value,
                 currency: document.getElementById('docCurrency').value,
@@ -2174,12 +2196,30 @@
         function updateFormByType() {
             const type = document.getElementById('docType').value;
             const isCash = CASH_TYPES.includes(type);
+            const isConversion = type === 'conversion';
             const accountSelect = document.getElementById('docAccount');
             const filtered = db.accounts.filter(a => isCash ? a.type === 'cash' : a.type !== 'cash');
             const current = accountSelect.value;
             accountSelect.innerHTML = '<option value="">Выбрать...</option>' +
                 filtered.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
             if (filtered.find(a => a.id === current)) accountSelect.value = current;
+            // Счёт назначения — только для конвертации
+            const accToGroup = document.getElementById('docAccountToGroup');
+            const accToSelect = document.getElementById('docAccountTo');
+            const contractorGroup = document.getElementById('docContractorGroup');
+            if (isConversion) {
+                accToGroup.style.display = '';
+                contractorGroup.style.display = 'none';
+                document.getElementById('docAccountLabel').textContent = 'Счёт списания (откуда)';
+                const currentTo = accToSelect.value;
+                accToSelect.innerHTML = '<option value="">Выбрать...</option>' +
+                    filtered.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
+                if (filtered.find(a => a.id === currentTo)) accToSelect.value = currentTo;
+            } else {
+                accToGroup.style.display = 'none';
+                contractorGroup.style.display = '';
+                document.getElementById('docAccountLabel').textContent = 'Банковский счет / Касса';
+            }
             // Filter articles by type
             const artSelect = document.getElementById('docArticle');
             const artFiltered = db.articles;
@@ -5553,7 +5593,18 @@
                 else if (d.type === 'rko') { postings.push({ dt: '71', kt: '50', sum, date: d.date }); }
                 else if (d.type === 'pko') { postings.push({ dt: '50', kt: '71', sum, date: d.date }); }
                 else if (d.type === 'payment_order') { postings.push({ dt: '60.02', kt: '51', sum, date: d.date }); }
-                else if (d.type === 'conversion') { postings.push({ dt: '51', kt: '52', sum, date: d.date }); }
+                else if (d.type === 'conversion') {
+                    const sumOrig = Number(d.sum || 0);
+                    const sumKGS = sumOrig * (Number(d.rate) || 1);
+                    // Списание с валютного счёта (52) и зачисление на расчётный (51)
+                    postings.push({ dt: '51', kt: '52', sum: sumKGS, date: d.date });
+                    // Курсовая разница (если есть)
+                    const diff = sumKGS - sumOrig;
+                    if (Math.abs(diff) > 0.01) {
+                        if (diff > 0) postings.push({ dt: '52', kt: '91.01', sum: diff, date: d.date });
+                        else postings.push({ dt: '91.02', kt: '52', sum: Math.abs(diff), date: d.date });
+                    }
+                }
             });
             return postings;
         }
