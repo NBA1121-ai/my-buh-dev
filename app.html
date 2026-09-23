@@ -1400,7 +1400,14 @@
                 else if (d.type === 'conversion') {
                     accBalances[d.account] -= sum;
                     if (d.accountTo && accBalances[d.accountTo] !== undefined) {
-                        accBalances[d.accountTo] += sum * (Number(d.rate) || 1);
+                        // Если валюты счетов совпадают — зачисляем ту же сумму
+                        // Если разные — пересчитываем по курсу
+                        const accFrom = (db.accounts || []).find(a => a.id === d.account);
+                        const accTo = (db.accounts || []).find(a => a.id === d.accountTo);
+                        const curFrom = accFrom ? accFrom.currency || '' : '';
+                        const curTo = accTo ? accTo.currency || '' : '';
+                        const creditSum = (curFrom === curTo) ? sum : sum * (Number(d.rate) || 1);
+                        accBalances[d.accountTo] += creditSum;
                     }
                 }
             });
@@ -5594,16 +5601,13 @@
                 else if (d.type === 'pko') { postings.push({ dt: '50', kt: '71', sum, date: d.date }); }
                 else if (d.type === 'payment_order') { postings.push({ dt: '60.02', kt: '51', sum, date: d.date }); }
                 else if (d.type === 'conversion') {
-                    const sumOrig = Number(d.sum || 0);
-                    const sumKGS = sumOrig * (Number(d.rate) || 1);
-                    // Списание с валютного счёта (52) и зачисление на расчётный (51)
-                    postings.push({ dt: '51', kt: '52', sum: sumKGS, date: d.date });
-                    // Курсовая разница (если есть)
-                    const diff = sumKGS - sumOrig;
-                    if (Math.abs(diff) > 0.01) {
-                        if (diff > 0) postings.push({ dt: '52', kt: '91.01', sum: diff, date: d.date });
-                        else postings.push({ dt: '91.02', kt: '52', sum: Math.abs(diff), date: d.date });
-                    }
+                    const sumKGS = (d.sum || 0) * (Number(d.rate) || 1);
+                    // Определяем счета по типу (валютный=52, расчётный=51, касса=50)
+                    const accFrom = (db.accounts || []).find(a => a.id === d.account);
+                    const accTo = (db.accounts || []).find(a => a.id === d.accountTo);
+                    const dtAcc = accTo ? (accTo.currency && accTo.currency !== '' ? '52' : accTo.type === 'cash' ? '50' : '51') : '51';
+                    const ktAcc = accFrom ? (accFrom.currency && accFrom.currency !== '' ? '52' : accFrom.type === 'cash' ? '50' : '51') : '52';
+                    postings.push({ dt: dtAcc, kt: ktAcc, sum: sumKGS, date: d.date });
                 }
             });
             return postings;
