@@ -420,11 +420,25 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('docDate').value = today;
 
-            try {
-                await loadData();
-            } catch(e) {
-                console.error('Failed to load data:', e);
-                showToast('Не удалось загрузить данные с сервера. Работа с локальным кэшем.');
+            // ONE-TIME DB WIPE — remove this block after clearing
+            if (!sessionStorage.getItem('_db_wiped_v1')) {
+                sessionStorage.setItem('_db_wiped_v1', '1');
+                localStorage.removeItem('db_cache');
+                localStorage.removeItem('db_cache_sha');
+                localStorage.removeItem('offline_pending');
+                const emptyDb = { bankDocuments:[], cashDocuments:[], accounts:[], banks:[], cashs:[], currencies:[], articles:[], trade:{ contractors:[], contracts:[], nomenclature:[], docs:[], warehouses:[], priceTypes:[], employees:[], departments:[], positions:[], schedules:[], salaryDocs:[], absences:[] } };
+                Object.keys(db).forEach(k => delete db[k]);
+                Object.assign(db, emptyDb);
+                await DbSync.forceSave(db);
+                localStorage.setItem('db_cache', JSON.stringify(db));
+                showToast('База данных очищена');
+            } else {
+                try {
+                    await loadData();
+                } catch(e) {
+                    console.error('Failed to load data:', e);
+                    showToast('Не удалось загрузить данные с сервера.');
+                }
             }
 
             initializeDefaults();
