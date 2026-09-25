@@ -2111,11 +2111,13 @@
         const CASH_TYPES = ['pko', 'rko', 'advance'];
 
         // Показывает в списке типов только банковские или только кассовые документы
+        // internal_transfer доступен в обоих группах
         function setTypeOptions(group) {
             const allowed = group === 'cash' ? CASH_TYPES : BANK_TYPES;
             Array.from(document.getElementById('docType').options).forEach(opt => {
-                opt.hidden = !allowed.includes(opt.value);
-                opt.disabled = !allowed.includes(opt.value);
+                const show = allowed.includes(opt.value) || opt.value === 'internal_transfer';
+                opt.hidden = !show;
+                opt.disabled = !show;
             });
         }
 
@@ -2151,7 +2153,8 @@
             if (!doc) return;
 
             document.getElementById('modalTitle').textContent = 'Редактировать документ';
-            setTypeOptions(CASH_TYPES.includes(doc.type) ? 'cash' : 'bank');
+            const isCashDoc = CASH_TYPES.includes(doc.type) || (doc.type === 'internal_transfer' && db.cashDocuments.some(d => d.id === id));
+            setTypeOptions(isCashDoc ? 'cash' : 'bank');
             document.getElementById('docType').value = doc.type;
             updateFormByType();
             document.getElementById('docNumber').value = doc.number;
@@ -2215,8 +2218,9 @@
                 db.bankDocuments = db.bankDocuments.filter(d => d.id !== editingId);
                 db.cashDocuments = db.cashDocuments.filter(d => d.id !== editingId);
             }
-            // Кассовые документы — только в кассу, банковские — только в банк
-            if (CASH_TYPES.includes(doc.type)) {
+            // Кассовые документы — в кассу, банковские — в банк
+            // internal_transfer — по текущей странице
+            if (CASH_TYPES.includes(doc.type) || (doc.type === 'internal_transfer' && currentPage === 'cash')) {
                 db.cashDocuments.push(doc);
             } else {
                 db.bankDocuments.push(doc);
