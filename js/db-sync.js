@@ -93,11 +93,11 @@ const DbSync = (function() {
         _inited = true;
         _token = await _loadToken();
         // Force clear cache (one-time reset)
-        if (localStorage.getItem('db_reset') !== 'r6') {
+        if (localStorage.getItem('db_reset') !== 'r7') {
             localStorage.removeItem('db_cache');
             localStorage.removeItem('db_cache_sha');
             localStorage.removeItem('offline_pending');
-            localStorage.setItem('db_reset', 'r6');
+            localStorage.setItem('db_reset', 'r7');
         }
         // When browser comes back online, send queued offline data
         window.addEventListener('online', () => {
