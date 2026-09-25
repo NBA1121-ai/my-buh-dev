@@ -734,7 +734,7 @@
 
             const posted = docs.filter(d => d.status === 'posted');
             const totalIn = posted.filter(d => ['payment_in'].includes(d.type)).reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
-            const totalOut = posted.filter(d => ['payment_out', 'payment_order', 'conversion', 'statement', 'directbank'].includes(d.type)).reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
+            const totalOut = posted.filter(d => ['payment_out', 'payment_order', 'statement', 'directbank'].includes(d.type)).reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
             const pg = paginate(docs, 'bank');
 
             return `
