@@ -579,6 +579,34 @@
                 db.accounts.push({ id: '_4_usd', name: 'Валютный счет МБанк (USD)', number: '1033220001116529', bank: 'ОАО «Mbank», SWIFT: KYRSKG22, BIC: 103032', type: 'bank', currency: 'USD', beneficiary: 'OSOO "GLOBAL KARGO"', inn: '00108202210232' });
             }
 
+            // Миграция: начальные остатки на 25.09.2026
+            const openingMigrations = [
+                { id: '_3', openingBalance: 917500 },       // Наличка касса
+                { id: '_1', openingBalance: 207045 },       // Р/с
+            ];
+            openingMigrations.forEach(m => {
+                const acc = db.accounts.find(a => a.id === m.id);
+                if (acc && acc.openingBalance === undefined) { acc.openingBalance = m.openingBalance; changed = true; }
+            });
+            // Миграция: МБанк (сом) — банковский счёт
+            if (!db.accounts.find(a => a.id === '_mbank_kgs')) {
+                changed = true;
+                db.accounts.push({ id: '_mbank_kgs', name: 'МБанк', number: '', bank: 'МБанк', type: 'bank', openingBalance: 434850 });
+            }
+            // Миграция: подотчётные лица как кассы
+            if (!db.accounts.find(a => a.id === '_pod_tynchtyk')) {
+                changed = true;
+                db.accounts.push({ id: '_pod_tynchtyk', name: 'Тынчтык (подотчёт)', number: '', bank: '', type: 'cash', openingBalance: 1550201 });
+            }
+            if (!db.accounts.find(a => a.id === '_pod_azim')) {
+                changed = true;
+                db.accounts.push({ id: '_pod_azim', name: 'Азим Хожи (подотчёт)', number: '', bank: '', type: 'cash', openingBalance: 325500 });
+            }
+            if (!db.accounts.find(a => a.id === '_pod_zhusupbekov')) {
+                changed = true;
+                db.accounts.push({ id: '_pod_zhusupbekov', name: 'Жусупбеков Максатбек (подотчёт)', number: '', bank: '', type: 'cash', openingBalance: 4875096 });
+            }
+
             populateSelects();
             if (changed) saveData();
         }
@@ -881,7 +909,8 @@
             const byDay = {};
             cashDocs.forEach(d => { (byDay[d.date] = byDay[d.date] || []).push(d); });
             const days = Object.keys(byDay).sort();
-            let balance = 0, pageNo = 0;
+            let balance = (db.accounts || []).filter(a => a.type === 'cash').reduce((s, a) => s + Number(a.openingBalance || 0), 0);
+            let pageNo = 0;
             if (!days.length) return '<div class="empty-state">Кассовых ордеров нет — кассовая книга пуста</div>';
             return `
                 <div class="tcmd"><span style="color:var(--text-secondary);font-size:13px">Кассовая книга (форма КО-4): по одному листу на каждый день с приходными и расходными ордерами</span><span style="flex:1"></span>
@@ -1013,6 +1042,7 @@
                         <div class="form-group"><label>Номер счёта</label><input id="accNumber" class="form-control" placeholder="40702810..."></div>
                         <div class="form-group"><label>Банк</label><input id="accBank" class="form-control" placeholder="АБ Кыргызстан"></div>
                         <div class="form-group"><label>Тип</label><select id="accType" class="form-control"><option value="bank">Банковский</option><option value="cash">Касса</option></select></div>
+                        <div class="form-group"><label>Начальный остаток</label><input id="accOpeningBalance" type="number" class="form-control" placeholder="0"></div>
                     </div>
                     <div style="margin-top:10px;display:flex;gap:8px">
                         <button class="btn primary" onclick="saveAccount()">Сохранить</button>
@@ -1026,6 +1056,7 @@
                             <th>Номер счета</th>
                             <th>Банк</th>
                             <th>Тип</th>
+                            <th style="text-align:right">Нач. остаток</th>
                             <th style="width:100px">Действия</th>
                         </tr>
                     </thead>
@@ -1036,6 +1067,7 @@
                                 <td>${esc(a.number || '-')}</td>
                                 <td>${esc(a.bank || '-')}</td>
                                 <td><span class="badge ${a.type === 'bank' ? 'posted' : 'draft'}">${a.type === 'bank' ? 'Банк' : 'Касса'}</span></td>
+                                <td class="num">${a.openingBalance ? formatAmount(a.openingBalance) : '-'}</td>
                                 <td>
                                     <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editAccount('${esc(a.id)}')">✏️</button>
                                     <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deleteAccount('${esc(a.id)}')">🗑</button>
@@ -1055,6 +1087,7 @@
             document.getElementById('accNumber').value = '';
             document.getElementById('accBank').value = '';
             document.getElementById('accType').value = 'bank';
+            document.getElementById('accOpeningBalance').value = '';
         }
         function editAccount(id) {
             const a = db.accounts.find(x => x.id === id);
@@ -1066,16 +1099,18 @@
             document.getElementById('accNumber').value = a.number || '';
             document.getElementById('accBank').value = a.bank || '';
             document.getElementById('accType').value = a.type || 'bank';
+            document.getElementById('accOpeningBalance').value = a.openingBalance || '';
         }
         function saveAccount() {
             const name = document.getElementById('accName').value.trim();
             if (!name) { alert('Укажите название'); return; }
             const editId = document.getElementById('accEditId').value;
+            const openBal = Number(document.getElementById('accOpeningBalance').value) || 0;
             if (editId) {
                 const a = db.accounts.find(x => x.id === editId);
-                if (a) { a.name = name; a.number = document.getElementById('accNumber').value.trim(); a.bank = document.getElementById('accBank').value.trim(); a.type = document.getElementById('accType').value; }
+                if (a) { a.name = name; a.number = document.getElementById('accNumber').value.trim(); a.bank = document.getElementById('accBank').value.trim(); a.type = document.getElementById('accType').value; a.openingBalance = openBal; }
             } else {
-                db.accounts.push({ id: uid(), name, number: document.getElementById('accNumber').value.trim(), bank: document.getElementById('accBank').value.trim(), type: document.getElementById('accType').value });
+                db.accounts.push({ id: uid(), name, number: document.getElementById('accNumber').value.trim(), bank: document.getElementById('accBank').value.trim(), type: document.getElementById('accType').value, openingBalance: openBal });
             }
             saveData(); populateSelects(); renderPage();
         }
@@ -1387,7 +1422,7 @@
 
             // Calculate account balances from documents (only posted)
             const accBalances = {};
-            (db.accounts || []).forEach(a => { accBalances[a.id] = 0; });
+            (db.accounts || []).forEach(a => { accBalances[a.id] = Number(a.openingBalance || 0); });
             const allFinDocs = [...(db.bankDocuments || []), ...(db.cashDocuments || [])].filter(d => d.status === 'posted');
             allFinDocs.forEach(d => {
                 if (!d.account || accBalances[d.account] === undefined) return;
