@@ -195,6 +195,7 @@
                                 <option value="payment_out">Платежное поручение (исходящее)</option>
                                 <option value="payment_in">Платежное поручение (входящее)</option>
                                 <option value="payment_order">Платежный ордер</option>
+                                <option value="internal_transfer">Перевод между счетами</option>
                                 <option value="conversion">Конвертация</option>
                                 <option value="statement">Выписка банка</option>
                                 <option value="directbank">Выписка ДиректБанк</option>
@@ -725,7 +726,7 @@
         // ==================== RENDER FUNCTIONS ====================
         let _finFilter = { from: '', to: '', search: '' };
         function renderBankDocuments() {
-            let docs = db.bankDocuments.filter(d => ['payment_out', 'payment_in', 'payment_order', 'conversion', 'statement', 'directbank'].includes(d.type));
+            let docs = db.bankDocuments.filter(d => BANK_TYPES.includes(d.type));
             if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
             if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
             if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '') + ' ' + (d.note || '') + ' ' + d.sum).toLowerCase().includes(q)); }
@@ -770,7 +771,7 @@
                                 <td><strong>${esc(d.number)}</strong></td>
                                 <td>${formatDate(d.date)}</td>
                                 <td>${getDocTypeLabel(d.type)}</td>
-                                <td>${getAccountName(d.account)}${d.type === 'conversion' && d.accountTo ? '<br><span style="font-size:11px;color:#888">\u2192 ' + getAccountName(d.accountTo) + '</span>' : ''}</td>
+                                <td>${getAccountName(d.account)}${(d.type === 'conversion' || d.type === 'internal_transfer') && d.accountTo ? '<br><span style="font-size:11px;color:#888">\u2192 ' + getAccountName(d.accountTo) + '</span>' : ''}</td>
                                 <td>${esc(d.contractor || '-')}</td>
                                 <td class="num amount">${formatAmountCur(d.sum, d.currency, d.rate)}</td>
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
@@ -834,7 +835,7 @@
                                 <td><strong>${esc(d.number)}</strong></td>
                                 <td>${formatDate(d.date)}</td>
                                 <td>${getDocTypeLabel(d.type)}</td>
-                                <td>${getAccountName(d.account)}${d.type === 'conversion' && d.accountTo ? '<br><span style="font-size:11px;color:#888">\u2192 ' + getAccountName(d.accountTo) + '</span>' : ''}</td>
+                                <td>${getAccountName(d.account)}${(d.type === 'conversion' || d.type === 'internal_transfer') && d.accountTo ? '<br><span style="font-size:11px;color:#888">\u2192 ' + getAccountName(d.accountTo) + '</span>' : ''}</td>
                                 <td>${esc(d.contractor || '-')}</td>
                                 <td class="num amount">${formatAmountCur(d.sum, d.currency, d.rate)}</td>
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
@@ -1434,12 +1435,17 @@
                 const isOut = ['payment_out', 'rko', 'payment_order', 'statement', 'directbank'].includes(d.type);
                 if (isIn) accBalances[d.account] += sum;
                 else if (isOut) accBalances[d.account] -= sum;
+                // internal_transfer: простой перевод между счетами (1:1)
+                else if (d.type === 'internal_transfer') {
+                    accBalances[d.account] -= sum;
+                    if (d.accountTo && accBalances[d.accountTo] !== undefined) {
+                        accBalances[d.accountTo] += sum;
+                    }
+                }
                 // conversion: списание с исходного счёта, зачисление на целевой
                 else if (d.type === 'conversion') {
                     accBalances[d.account] -= sum;
                     if (d.accountTo && accBalances[d.accountTo] !== undefined) {
-                        // Если валюты счетов совпадают — зачисляем ту же сумму
-                        // Если разные — пересчитываем по курсу
                         const accFrom = (db.accounts || []).find(a => a.id === d.account);
                         const accTo = (db.accounts || []).find(a => a.id === d.accountTo);
                         const curFrom = accFrom ? accFrom.currency || '' : '';
@@ -2101,7 +2107,7 @@
         }
 
         // ==================== MODAL FUNCTIONS ====================
-        const BANK_TYPES = ['payment_out', 'payment_in', 'payment_order', 'conversion', 'statement', 'directbank'];
+        const BANK_TYPES = ['payment_out', 'payment_in', 'payment_order', 'internal_transfer', 'conversion', 'statement', 'directbank'];
         const CASH_TYPES = ['pko', 'rko', 'advance'];
 
         // Показывает в списке типов только банковские или только кассовые документы
@@ -2177,7 +2183,7 @@
             if (rateVal <= 0) { alert('Курс должен быть положительным числом'); return; }
 
             const docType = document.getElementById('docType').value;
-            if (docType === 'conversion') {
+            if (docType === 'conversion' || docType === 'internal_transfer') {
                 const accTo = document.getElementById('docAccountTo').value;
                 const accFrom = document.getElementById('docAccount').value;
                 if (!accFrom) { alert('Выберите счёт списания'); return; }
@@ -2192,7 +2198,7 @@
                 date: document.getElementById('docDate').value,
                 status: document.getElementById('docStatus').value,
                 account: document.getElementById('docAccount').value,
-                accountTo: docType === 'conversion' ? document.getElementById('docAccountTo').value : '',
+                accountTo: (docType === 'conversion' || docType === 'internal_transfer') ? document.getElementById('docAccountTo').value : '',
                 contractor: document.getElementById('docContractor').value,
                 article: document.getElementById('docArticle').value,
                 currency: document.getElementById('docCurrency').value,
@@ -2242,24 +2248,28 @@
             const type = document.getElementById('docType').value;
             const isCash = CASH_TYPES.includes(type);
             const isConversion = type === 'conversion';
+            const isTransfer = type === 'internal_transfer';
             const accountSelect = document.getElementById('docAccount');
             const filtered = db.accounts.filter(a => isCash ? a.type === 'cash' : a.type !== 'cash');
+            // Для внутреннего перевода показываем все счета (банк + касса)
+            const accList = isTransfer ? (db.accounts || []) : filtered;
             const current = accountSelect.value;
             accountSelect.innerHTML = '<option value="">Выбрать...</option>' +
-                filtered.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
-            if (filtered.find(a => a.id === current)) accountSelect.value = current;
-            // Счёт назначения — только для конвертации
+                accList.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
+            if (accList.find(a => a.id === current)) accountSelect.value = current;
+            // Счёт назначения — для конвертации и перевода между счетами
             const accToGroup = document.getElementById('docAccountToGroup');
             const accToSelect = document.getElementById('docAccountTo');
             const contractorGroup = document.getElementById('docContractorGroup');
-            if (isConversion) {
+            if (isConversion || isTransfer) {
                 accToGroup.style.display = '';
                 contractorGroup.style.display = 'none';
                 document.getElementById('docAccountLabel').textContent = 'Счёт списания (откуда)';
+                const toList = isTransfer ? (db.accounts || []) : filtered;
                 const currentTo = accToSelect.value;
                 accToSelect.innerHTML = '<option value="">Выбрать...</option>' +
-                    filtered.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
-                if (filtered.find(a => a.id === currentTo)) accToSelect.value = currentTo;
+                    toList.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
+                if (toList.find(a => a.id === currentTo)) accToSelect.value = currentTo;
             } else {
                 accToGroup.style.display = 'none';
                 contractorGroup.style.display = '';
@@ -2475,7 +2485,7 @@
         // downloadFile, exportExcel -> js/utils.js
 
         function exportBankExcel() {
-            let docs = db.bankDocuments.filter(d => ['payment_out', 'payment_in', 'payment_order', 'conversion', 'statement', 'directbank'].includes(d.type));
+            let docs = db.bankDocuments.filter(d => BANK_TYPES.includes(d.type));
             if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
             if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
             if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
@@ -2521,6 +2531,7 @@
                 payment_out: 'Платежное поручение (исход.)',
                 payment_in: 'Платежное поручение (вход.)',
                 payment_order: 'Платежный ордер',
+                internal_transfer: 'Перевод между счетами',
                 conversion: 'Конвертация',
                 statement: 'Выписка банка',
                 directbank: 'Выписка ДиректБанк',
@@ -5641,9 +5652,15 @@
                 else if (d.type === 'rko') { postings.push({ dt: '71', kt: '50', sum, date: d.date }); }
                 else if (d.type === 'pko') { postings.push({ dt: '50', kt: '71', sum, date: d.date }); }
                 else if (d.type === 'payment_order') { postings.push({ dt: '60.02', kt: '51', sum, date: d.date }); }
+                else if (d.type === 'internal_transfer') {
+                    const accFrom = (db.accounts || []).find(a => a.id === d.account);
+                    const accTo = (db.accounts || []).find(a => a.id === d.accountTo);
+                    const dtAcc = accTo ? (accTo.type === 'cash' ? '50' : '51') : '51';
+                    const ktAcc = accFrom ? (accFrom.type === 'cash' ? '50' : '51') : '51';
+                    postings.push({ dt: dtAcc, kt: ktAcc, sum, date: d.date });
+                }
                 else if (d.type === 'conversion') {
                     const sumKGS = (d.sum || 0) * (Number(d.rate) || 1);
-                    // Определяем счета по типу (валютный=52, расчётный=51, касса=50)
                     const accFrom = (db.accounts || []).find(a => a.id === d.account);
                     const accTo = (db.accounts || []).find(a => a.id === d.accountTo);
                     const dtAcc = accTo ? (accTo.currency && accTo.currency !== '' ? '52' : accTo.type === 'cash' ? '50' : '51') : '51';
