@@ -401,9 +401,12 @@
                     if (ghUsers && ghUsers.length) {
                         const serverUser = ghUsers.find(u => u.name === s.name);
                         if (serverUser) {
-                            s.role = serverUser.role || 'user';
-                            s.sig = DbSync.createSession(s.name, s.role).sig;
-                            localStorage.setItem('auth_session', JSON.stringify(s));
+                            const newRole = serverUser.role || 'user';
+                            if (newRole !== s.role) {
+                                const updated = DbSync.createSession(s.name, newRole);
+                                Object.assign(s, updated);
+                                localStorage.setItem('auth_session', JSON.stringify(s));
+                            }
                         }
                     }
                 } catch(e) {}
