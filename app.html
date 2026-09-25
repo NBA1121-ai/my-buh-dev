@@ -354,8 +354,8 @@
         </div>
     </div>
 
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt" crossorigin="anonymous"></script>
     <script src="js/db-sync.js"></script>
     <script src="js/utils.js"></script>
     <script>
@@ -375,14 +375,14 @@
         let _hasUnsavedEdits = false;
 
         // ==================== INITIALIZATION ====================
-        DbSync.init();
-        // Token is loaded from localStorage (set during login on index.html)
-        if (!DbSync.getToken()) {
-            window.location.href = 'index.html';
-        }
         DbSync.onSave((success) => { if (success) _hasUnsavedEdits = false; });
 
         async function init() {
+            await DbSync.init();
+            if (!DbSync.getToken()) {
+                window.location.href = 'index.html';
+                return;
+            }
             // Check login session
             try {
                 const session = localStorage.getItem('auth_session');

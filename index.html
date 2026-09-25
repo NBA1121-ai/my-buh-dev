@@ -208,10 +208,9 @@
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        DbSync.init();
-
         // Check if already logged in, then load users from GitHub
         (async function() {
+            await DbSync.init();
             const session = localStorage.getItem('auth_session');
             if (session) {
                 try {
@@ -268,7 +267,7 @@
                 btn.disabled = false; btn.textContent = 'Подключить';
                 return;
             }
-            DbSync.setToken(token);
+            await DbSync.setToken(token);
             // Now load users and show login form
             try {
                 const ghUsers = await DbSync.loadUsers();

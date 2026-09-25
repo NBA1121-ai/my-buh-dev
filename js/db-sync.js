@@ -66,26 +66,32 @@ const DbSync = (function() {
         return null;
     }
 
-    function _loadToken() {
+    async function _loadToken() {
         const stored = localStorage.getItem('gh_token');
         if (!stored) return null;
-        // Try deobfuscate first; if it fails, assume it's a legacy plain token and migrate
-        const decoded = _deobfuscate(stored);
+        // v2: AES-GCM encrypted
+        if (stored.startsWith('v2:')) {
+            const token = await _decryptToken(stored.slice(3));
+            return token;
+        }
+        // Legacy XOR obfuscated — migrate to AES-GCM
+        const decoded = _deobfuscateLegacy(stored);
         if (decoded && decoded.startsWith('ghp_')) {
+            await setToken(decoded);
             return decoded;
         }
-        // Legacy plain text token — migrate to obfuscated
+        // Legacy plain text — migrate
         if (stored.startsWith('ghp_')) {
-            localStorage.setItem('gh_token', _obfuscate(stored));
+            await setToken(stored);
             return stored;
         }
         return decoded || stored;
     }
 
-    function init() {
-        if (_inited) { _token = _loadToken(); return; }
+    async function init() {
+        if (_inited) { _token = await _loadToken(); return; }
         _inited = true;
-        _token = _loadToken();
+        _token = await _loadToken();
         // Force clear cache (one-time reset)
         if (localStorage.getItem('db_reset') !== 'r4') {
             localStorage.removeItem('db_cache');
@@ -116,16 +122,46 @@ const DbSync = (function() {
 
     function getToken() { return _token; }
 
-    // Simple obfuscation key — not true encryption, but prevents casual token theft
-    const _OBF_KEY = 'EsEp0nL1n3_s4Lt_k3y';
-    function _obfuscate(str) {
-        let result = '';
-        for (let i = 0; i < str.length; i++) {
-            result += String.fromCharCode(str.charCodeAt(i) ^ _OBF_KEY.charCodeAt(i % _OBF_KEY.length));
+    // --- AES-GCM encryption for token storage ---
+    async function _getEncryptionKey() {
+        let rawKey = localStorage.getItem('_ek');
+        if (!rawKey) {
+            const arr = new Uint8Array(32);
+            crypto.getRandomValues(arr);
+            rawKey = btoa(String.fromCharCode(...arr));
+            localStorage.setItem('_ek', rawKey);
         }
-        return btoa(result);
+        const keyBytes = Uint8Array.from(atob(rawKey), c => c.charCodeAt(0));
+        return crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['encrypt', 'decrypt']);
     }
-    function _deobfuscate(encoded) {
+
+    async function _encryptToken(token) {
+        try {
+            const key = await _getEncryptionKey();
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encoded = new TextEncoder().encode(token);
+            const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+            const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+            combined.set(iv);
+            combined.set(new Uint8Array(ciphertext), iv.length);
+            return btoa(String.fromCharCode(...combined));
+        } catch(e) { return null; }
+    }
+
+    async function _decryptToken(stored) {
+        try {
+            const key = await _getEncryptionKey();
+            const combined = Uint8Array.from(atob(stored), c => c.charCodeAt(0));
+            const iv = combined.slice(0, 12);
+            const ciphertext = combined.slice(12);
+            const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+            return new TextDecoder().decode(decrypted);
+        } catch(e) { return null; }
+    }
+
+    // Legacy XOR deobfuscation for migration
+    const _OBF_KEY = 'EsEp0nL1n3_s4Lt_k3y';
+    function _deobfuscateLegacy(encoded) {
         try {
             const str = atob(encoded);
             let result = '';
@@ -136,14 +172,18 @@ const DbSync = (function() {
         } catch(e) { return null; }
     }
 
-    function setToken(token) {
+    async function setToken(token) {
         _token = token;
-        localStorage.setItem('gh_token', _obfuscate(token));
+        const encrypted = await _encryptToken(token);
+        if (encrypted) {
+            localStorage.setItem('gh_token', 'v2:' + encrypted);
+        }
     }
 
     function clearToken() {
         _token = null;
         localStorage.removeItem('gh_token');
+        localStorage.removeItem('_ek');
     }
 
     async function validateToken(token) {
@@ -525,6 +565,8 @@ const DbSync = (function() {
         localStorage.removeItem('db_cache');
         localStorage.removeItem('db_cache_sha');
         localStorage.removeItem('gh_token');
+        localStorage.removeItem('_ek');
+        localStorage.removeItem('_ss');
         _token = null;
         window.location.href = 'index.html';
     }
@@ -584,10 +626,19 @@ const DbSync = (function() {
         }
     }
 
-    // Session signing — prevents forgery via console
-    const _SESSION_SECRET = 'EsEp_s3ss10n_2026';
+    // Session signing — per-installation random secret
+    function _getSessionSecret() {
+        let secret = localStorage.getItem('_ss');
+        if (!secret) {
+            const arr = new Uint8Array(32);
+            crypto.getRandomValues(arr);
+            secret = btoa(String.fromCharCode(...arr));
+            localStorage.setItem('_ss', secret);
+        }
+        return secret;
+    }
     function signSession(sessionObj) {
-        const payload = sessionObj.name + '|' + sessionObj.role + '|' + sessionObj.expires + '|' + _SESSION_SECRET;
+        const payload = sessionObj.name + '|' + sessionObj.role + '|' + sessionObj.expires + '|' + _getSessionSecret();
         let h = 0x811c9dc5;
         for (let i = 0; i < payload.length; i++) {
             h = Math.imul(h ^ payload.charCodeAt(i), 0x01000193);
