@@ -489,6 +489,15 @@
             }
         }
 
+        function _countDbRecords(obj) {
+            let t = 0;
+            for (const k in obj) {
+                if (Array.isArray(obj[k])) t += obj[k].length;
+                else if (obj[k] && typeof obj[k] === 'object' && Array.isArray(obj[k].docs)) t += obj[k].docs.length;
+            }
+            return t;
+        }
+
         function saveData() {
             _hasUnsavedEdits = true;
             // Schedule GitHub save (debounced)
@@ -510,6 +519,13 @@
             if (e.key === 'db_cache' && e.newValue) {
                 try {
                     const newData = JSON.parse(e.newValue);
+                    // Protect against syncing empty data from another tab
+                    const currentCount = _countDbRecords(db);
+                    const newCount = _countDbRecords(newData);
+                    if (currentCount > 20 && newCount < currentCount * 0.5) {
+                        console.error('Tab sync BLOCKED: data too small (' + currentCount + ' → ' + newCount + ')');
+                        return;
+                    }
                     Object.keys(db).forEach(k => delete db[k]);
                     Object.assign(db, DB_DEFAULTS, newData);
                     renderPage();

@@ -110,31 +110,40 @@ const DbSync = (function() {
         if (_inited) { _token = await _loadToken(); return; }
         _inited = true;
         _token = await _loadToken();
-        // Force clear cache (one-time reset)
+        // Force clear cache (one-time reset) — only when online
         if (localStorage.getItem('db_reset') !== 'r7') {
-            localStorage.removeItem('db_cache');
-            localStorage.removeItem('db_cache_sha');
-            localStorage.removeItem('offline_pending');
-            localStorage.setItem('db_reset', 'r7');
+            if (navigator.onLine) {
+                localStorage.removeItem('db_cache');
+                localStorage.removeItem('db_cache_sha');
+                localStorage.removeItem('offline_pending');
+                localStorage.setItem('db_reset', 'r7');
+            }
         }
         // When browser comes back online, send queued offline data
         window.addEventListener('online', () => {
             const pending = _offlinePending || _loadOfflinePending();
-            if (pending) {
+            if (pending && countRecords(pending) > 5) {
                 _offlinePending = null;
                 localStorage.removeItem('offline_pending');
                 showSyncStatus('saving');
                 _lastHash = ''; // force save
                 setTimeout(() => saveData(pending), 1000);
+            } else if (pending) {
+                console.warn('Offline pending BLOCKED: too few records (' + countRecords(pending) + ')');
+                localStorage.removeItem('offline_pending');
+                _offlinePending = null;
             }
         });
         // On startup: if online and have pending offline data, sync immediately
         if (navigator.onLine) {
             const pending = _loadOfflinePending();
-            if (pending) {
+            if (pending && countRecords(pending) > 5) {
                 localStorage.removeItem('offline_pending');
                 _lastHash = '';
                 setTimeout(() => saveData(pending), 2000);
+            } else if (pending) {
+                console.warn('Startup offline pending BLOCKED: too few records');
+                localStorage.removeItem('offline_pending');
             }
         }
     }
@@ -551,7 +560,20 @@ const DbSync = (function() {
                     const newHash = hashData(parsed);
 
                     if (newHash !== _lastHash) {
+                        // Protect against syncing empty/corrupted data from GitHub
+                        const incomingSize = countRecords(parsed);
+                        const incomingKeys = countDataKeys(parsed);
+                        if (_lastSavedSize > 20 && incomingSize < _lastSavedSize * 0.5) {
+                            console.error('Polling BLOCKED: incoming data too small (' + _lastSavedSize + ' → ' + incomingSize + ')');
+                            return;
+                        }
+                        if (_lastSavedKeys > 3 && incomingKeys < _lastSavedKeys * 0.5) {
+                            console.error('Polling BLOCKED: incoming data missing sections (' + _lastSavedKeys + ' → ' + incomingKeys + ')');
+                            return;
+                        }
                         _lastHash = newHash;
+                        _lastSavedSize = incomingSize;
+                        _lastSavedKeys = incomingKeys;
                         // Update cache with new data
                         try {
                             localStorage.setItem('db_cache', JSON.stringify(parsed));
@@ -601,7 +623,14 @@ const DbSync = (function() {
             if (!res.ok) return null;
             const fileData = await res.json();
             const decoded = b64DecodeUTF8(fileData.content);
-            return JSON.parse(decoded);
+            const parsed = JSON.parse(decoded);
+            // Validate restored data has meaningful content
+            const restoredCount = countRecords(parsed);
+            if (restoredCount < 5) {
+                console.warn('Restore BLOCKED: commit contains too few records (' + restoredCount + ')');
+                return null;
+            }
+            return parsed;
         } catch(e) { return null; }
     }
 
