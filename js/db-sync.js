@@ -24,14 +24,32 @@ const DbSync = (function() {
     let _inited = false;
     let _onSaveCallback = null;
     let _lastSavedSize = 0; // record count at last successful load/save
+    let _lastSavedKeys = 0; // data section count at last successful load/save
     let _awaitingConfirm = false;
 
     function countRecords(obj) {
         let total = 0;
         for (const key in obj) {
-            if (Array.isArray(obj[key])) total += obj[key].length;
+            if (Array.isArray(obj[key])) {
+                total += obj[key].length;
+            } else if (obj[key] && typeof obj[key] === 'object' && Array.isArray(obj[key].docs)) {
+                // Count nested arrays like trade.docs
+                total += obj[key].docs.length;
+            }
         }
         return total;
+    }
+
+    function countDataKeys(obj) {
+        // Count keys that hold actual data (arrays or objects with docs)
+        let count = 0;
+        for (const key in obj) {
+            if (key.startsWith('_')) continue;
+            const val = obj[key];
+            if (Array.isArray(val) && val.length > 0) count++;
+            else if (val && typeof val === 'object' && Array.isArray(val.docs) && val.docs.length > 0) count++;
+        }
+        return count;
     }
 
     function showDataLossConfirm(oldCount, newCount) {
@@ -239,6 +257,7 @@ const DbSync = (function() {
                     const parsed = JSON.parse(cached);
                     _lastHash = hashData(parsed);
                     _lastSavedSize = countRecords(parsed);
+                    _lastSavedKeys = countDataKeys(parsed);
                     _dataLoaded = true;
                     showSyncStatus('offline');
                     return parsed;
@@ -275,6 +294,7 @@ const DbSync = (function() {
                         const parsed = JSON.parse(cached);
                         _lastHash = hashData(parsed);
                         _lastSavedSize = countRecords(parsed);
+                        _lastSavedKeys = countDataKeys(parsed);
                         _dataLoaded = true;
                         return parsed;
                     }
@@ -297,6 +317,7 @@ const DbSync = (function() {
 
             _lastHash = hashData(parsed);
             _lastSavedSize = countRecords(parsed);
+            _lastSavedKeys = countDataKeys(parsed);
             _dataLoaded = true;
 
             // Cache locally with SHA for offline fallback
@@ -348,9 +369,27 @@ const DbSync = (function() {
         const currentHash = hashData(dbObject);
         if (currentHash === _lastHash) return;
 
-        // Data loss protection: if records decreased by ≥20%, ask for confirmation
+        // Data loss protection
         if (_lastSavedSize > 0 && retryCount === 0) {
             const newSize = countRecords(dbObject);
+            const newKeys = countDataKeys(dbObject);
+            const oldKeys = _lastSavedKeys || 0;
+
+            // Block 1: if records dropped by ≥50%, block entirely (no confirmation)
+            if (newSize < _lastSavedSize * 0.5) {
+                console.error('BLOCKED: data loss >50% (' + _lastSavedSize + ' → ' + newSize + ')');
+                showSyncStatus('error');
+                return;
+            }
+
+            // Block 2: if data sections disappeared (e.g. trade, cashDocuments gone)
+            if (oldKeys > 3 && newKeys < oldKeys * 0.5) {
+                console.error('BLOCKED: data sections lost (' + oldKeys + ' → ' + newKeys + ')');
+                showSyncStatus('error');
+                return;
+            }
+
+            // Block 3: if records dropped by ≥20%, ask for confirmation
             if (newSize < _lastSavedSize * 0.8) {
                 if (_awaitingConfirm) return;
                 const confirmed = await showDataLossConfirm(_lastSavedSize, newSize);
@@ -430,6 +469,7 @@ const DbSync = (function() {
             _fileSha = result.content.sha;
             _lastHash = currentHash;
             _lastSavedSize = countRecords(dbObject);
+            _lastSavedKeys = countDataKeys(dbObject);
             // Update cache SHA so next load won't re-download
             try { localStorage.setItem('db_cache_sha', _fileSha); } catch(e) {}
             showSyncStatus('saved');
@@ -451,6 +491,11 @@ const DbSync = (function() {
     }
 
     async function forceSave(dbObject) {
+        if (!_dataLoaded) {
+            console.warn('forceSave blocked: data not loaded from GitHub yet');
+            showSyncStatus('error');
+            return;
+        }
         if (_saveTimer) clearTimeout(_saveTimer);
         await saveData(dbObject);
     }
