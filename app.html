@@ -31,9 +31,17 @@
 
             <div class="nav-item active" onclick="selectPage('dashboard')">📋 Главная (Дашборд)</div>
 
-            <div class="section-title" onclick="tToggleGroup(this)">Банк и касса</div>
-            <div class="nav-item" onclick="selectPage('bank')">🏦 Банковские документы</div>
-            <div class="nav-item" onclick="selectPage('cash')">💰 Кассовые документы</div>
+            <div class="section-title" onclick="tToggleGroup(this)">Банк</div>
+            <div class="nav-item" onclick="selectPage('bank')">🏦 Все банковские документы</div>
+            <div class="nav-item" onclick="selectPage('bank_in')">📥 Приходные платёжные поручения</div>
+            <div class="nav-item" onclick="selectPage('bank_out')">📤 Расходные платёжные поручения</div>
+
+            <div class="section-title" onclick="tToggleGroup(this)">Касса</div>
+            <div class="nav-item" onclick="selectPage('cash')">💰 Все кассовые документы</div>
+            <div class="nav-item" onclick="selectPage('cash_pko')">📥 Приходный кассовый ордер (ПКО)</div>
+            <div class="nav-item" onclick="selectPage('cash_rko')">📤 Расходный кассовый ордер (РКО)</div>
+
+            <div class="section-title" onclick="tToggleGroup(this)">Отчёты ДДС</div>
             <div class="nav-item" onclick="selectPage('reports')">📊 Отчеты по ДДС</div>
             <div class="nav-item" onclick="selectPage('cashbook')">📔 Кассовая книга</div>
 
@@ -656,7 +664,7 @@
             currentPage = page;
             tSelected = null;
             tFilters.search = '';
-            if (page === 'bank' || page === 'cash') _finFilter = { from: '', to: '', search: '' };
+            if (['bank','bank_in','bank_out','cash','cash_pko','cash_rko'].includes(page)) _finFilter = { from: '', to: '', search: '' };
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             const navItems = document.querySelectorAll('.nav-item');
             navItems.forEach(el => {
@@ -680,7 +688,11 @@
             const pages = {
                 dashboard: renderDashboard,
                 bank: renderBankDocuments,
+                bank_in: renderBankIn,
+                bank_out: renderBankOut,
                 cash: renderCashDocuments,
+                cash_pko: renderCashPko,
+                cash_rko: renderCashRko,
                 reports: renderReports,
                 cashbook: renderCashbook,
                 articles: renderArticles,
@@ -705,7 +717,11 @@
 
             const titles = {
                 bank: 'Банковские документы',
+                bank_in: 'Приходные платёжные поручения',
+                bank_out: 'Расходные платёжные поручения',
                 cash: 'Кассовые документы',
+                cash_pko: 'Приходный кассовый ордер (ПКО)',
+                cash_rko: 'Расходный кассовый ордер (РКО)',
                 reports: 'Отчеты по движению денежных средств',
                 cashbook: 'Кассовая книга',
                 articles: 'Статьи движения',
@@ -866,6 +882,109 @@
                         `).join('')}
                     </tbody>
                 </table></div>${paginationHtml('cash', pgCash)}`}
+            `;
+        }
+
+        // ---- Подстраницы: фильтрованные журналы ----
+        function renderBankIn() { return _renderBankFiltered(['payment_in'], 'bank_in', 'Приходные платёжные поручения', 'Нет приходных банковских документов'); }
+        function renderBankOut() { return _renderBankFiltered(['payment_out', 'payment_order'], 'bank_out', 'Расходные платёжные поручения', 'Нет расходных банковских документов'); }
+        function renderCashPko() { return _renderCashFiltered('pko', 'cash_pko', 'Приходные кассовые ордера (ПКО)', 'Нет приходных кассовых ордеров'); }
+        function renderCashRko() { return _renderCashFiltered('rko', 'cash_rko', 'Расходные кассовые ордера (РКО)', 'Нет расходных кассовых ордеров'); }
+
+        function _renderBankFiltered(types, pageKey, title, emptyMsg) {
+            let docs = db.bankDocuments.filter(d => types.includes(d.type));
+            if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
+            if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
+            if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '') + ' ' + (d.note || '') + ' ' + d.sum).toLowerCase().includes(q)); }
+            docs.sort(docCmp);
+            const posted = docs.filter(d => d.status === 'posted');
+            const total = posted.reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
+            const pg = paginate(docs, pageKey);
+            const defType = types[0];
+
+            return `
+                <div class="filters" style="display:flex;gap:10px;align-items:end;margin-bottom:12px;flex-wrap:wrap">
+                    <div class="filter-group"><label>Период с</label><input type="date" value="${_finFilter.from}" onchange="_finFilter.from=this.value;renderPage()"></div>
+                    <div class="filter-group"><label>по</label><input type="date" value="${_finFilter.to}" onchange="_finFilter.to=this.value;renderPage()"></div>
+                    <div class="filter-group"><label>Поиск</label><input type="text" placeholder="Номер, контрагент..." value="${esc(_finFilter.search)}" oninput="_finFilter.search=this.value;renderPage()"></div>
+                    <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
+                    <span style="flex:1"></span>
+                    <button class="btn primary" onclick="selectPage('bank');setTimeout(()=>{openCreateModal();document.getElementById('docType').value='${defType}';updateFormByType()},100)">+ Создать</button>
+                    <span style="font-size:13px;color:var(--text-secondary)">Итого: <b>${formatAmount(total)}</b> (${posted.length} док.)</span>
+                </div>
+                ${bulkBarHtml()}
+                ${docs.length === 0 ? '<div class="empty-state">' + emptyMsg + '</div>' : `
+                <div class="table-container"><table>
+                    <thead><tr>
+                        <th style="width:30px"><input type="checkbox" onchange="toggleSelectAll(this, ${esc(JSON.stringify(pg.items.map(d=>d.id)))})" title="Выбрать все"></th>
+                        <th>Номер</th><th>Дата</th><th>Счет</th><th>Контрагент</th><th>Назначение</th><th style="text-align:right">Сумма</th><th>Статус</th><th>Действия</th>
+                    </tr></thead>
+                    <tbody>
+                        ${pg.items.map(d => `<tr>
+                            <td><input type="checkbox" class="bulk-chk" ${_selected.has(d.id)?'checked':''} onchange="toggleSelect('${esc(d.id)}',this)"></td>
+                            <td><strong>${esc(d.number)}</strong></td>
+                            <td>${formatDate(d.date)}</td>
+                            <td>${getAccountName(d.account)}</td>
+                            <td>${esc(d.contractor || '-')}</td>
+                            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.purpose || '')}">${esc(d.purpose || '-')}</td>
+                            <td class="num amount">${formatAmountCur(d.sum, d.currency, d.rate)}</td>
+                            <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
+                            <td><div class="action-buttons">
+                                <button class="action-btn" onclick="editDoc('${esc(d.id)}')" title="Редактировать">✏️</button>
+                                <button class="action-btn" onclick="deleteDoc('${esc(d.id)}')" title="Удалить">🗑️</button>
+                                <button class="action-btn" onclick="printDoc('${esc(d.id)}')" title="Печать">🖨️</button>
+                            </div></td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table></div>${paginationHtml(pageKey, pg)}`}
+            `;
+        }
+
+        function _renderCashFiltered(type, pageKey, title, emptyMsg) {
+            let docs = db.cashDocuments.filter(d => d.type === type);
+            if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
+            if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
+            if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '') + ' ' + (d.note || '') + ' ' + d.sum).toLowerCase().includes(q)); }
+            docs.sort(docCmp);
+            const posted = docs.filter(d => d.status === 'posted');
+            const total = posted.reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
+            const pg = paginate(docs, pageKey);
+
+            return `
+                <div class="filters" style="display:flex;gap:10px;align-items:end;margin-bottom:12px;flex-wrap:wrap">
+                    <div class="filter-group"><label>Период с</label><input type="date" value="${_finFilter.from}" onchange="_finFilter.from=this.value;renderPage()"></div>
+                    <div class="filter-group"><label>по</label><input type="date" value="${_finFilter.to}" onchange="_finFilter.to=this.value;renderPage()"></div>
+                    <div class="filter-group"><label>Поиск</label><input type="text" placeholder="Номер, контрагент..." value="${esc(_finFilter.search)}" oninput="_finFilter.search=this.value;renderPage()"></div>
+                    <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
+                    <span style="flex:1"></span>
+                    <button class="btn primary" onclick="selectPage('cash');setTimeout(()=>{openCreateModal();document.getElementById('docType').value='${type}';updateFormByType()},100)">+ Создать</button>
+                    <span style="font-size:13px;color:var(--text-secondary)">Итого: <b>${formatAmount(total)}</b> (${posted.length} док.)</span>
+                </div>
+                ${bulkBarHtml()}
+                ${docs.length === 0 ? '<div class="empty-state">' + emptyMsg + '</div>' : `
+                <div class="table-container"><table>
+                    <thead><tr>
+                        <th style="width:30px"><input type="checkbox" onchange="toggleSelectAll(this, ${esc(JSON.stringify(pg.items.map(d=>d.id)))})" title="Выбрать все"></th>
+                        <th>Номер</th><th>Дата</th><th>Касса</th><th>${type === 'pko' ? 'От кого' : 'Кому'}</th><th>Назначение</th><th style="text-align:right">Сумма</th><th>Статус</th><th>Действия</th>
+                    </tr></thead>
+                    <tbody>
+                        ${pg.items.map(d => `<tr>
+                            <td><input type="checkbox" class="bulk-chk" ${_selected.has(d.id)?'checked':''} onchange="toggleSelect('${esc(d.id)}',this)"></td>
+                            <td><strong>${esc(d.number)}</strong></td>
+                            <td>${formatDate(d.date)}</td>
+                            <td>${getAccountName(d.account)}</td>
+                            <td>${esc(d.contractor || '-')}</td>
+                            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.purpose || '')}">${esc(d.purpose || '-')}</td>
+                            <td class="num amount">${formatAmountCur(d.sum, d.currency, d.rate)}</td>
+                            <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
+                            <td><div class="action-buttons">
+                                <button class="action-btn" onclick="editDoc('${esc(d.id)}')" title="Редактировать">✏️</button>
+                                <button class="action-btn" onclick="deleteDoc('${esc(d.id)}')" title="Удалить">🗑️</button>
+                                <button class="action-btn" onclick="printDoc('${esc(d.id)}')" title="Печать">🖨️</button>
+                            </div></td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table></div>${paginationHtml(pageKey, pg)}`}
             `;
         }
 
@@ -2144,7 +2263,7 @@
         }
         function openCreateModal() {
             editingId = null;
-            const group = currentPage === 'cash' ? 'cash' : 'bank';
+            const group = ['cash','cash_pko','cash_rko'].includes(currentPage) ? 'cash' : 'bank';
             document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
             document.getElementById('documentForm').reset();
             setTypeOptions(group);
@@ -2236,7 +2355,7 @@
             }
             // Кассовые документы — в кассу, банковские — в банк
             // internal_transfer — по текущей странице
-            if (CASH_TYPES.includes(doc.type) || (doc.type === 'internal_transfer' && currentPage === 'cash')) {
+            if (CASH_TYPES.includes(doc.type) || (doc.type === 'internal_transfer' && ['cash','cash_pko','cash_rko'].includes(currentPage))) {
                 db.cashDocuments.push(doc);
             } else {
                 db.bankDocuments.push(doc);
