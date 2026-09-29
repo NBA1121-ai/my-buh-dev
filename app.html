@@ -905,6 +905,7 @@
             const total = posted.reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
             const pg = paginate(docs, pageKey);
             const defType = types[0];
+            const typeOpts = types.map(t => ALL_DOC_TYPES[t] ? `<option value="${t}">${ALL_DOC_TYPES[t]}</option>` : '').join('');
 
             return `
                 <div class="filters" style="display:flex;gap:10px;align-items:end;margin-bottom:12px;flex-wrap:wrap">
@@ -913,7 +914,7 @@
                     <div class="filter-group"><label>Поиск</label><input type="text" placeholder="Номер, контрагент..." value="${esc(_finFilter.search)}" oninput="_finFilter.search=this.value;renderPage()"></div>
                     <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
                     <span style="flex:1"></span>
-                    <button class="btn primary" onclick="openCreateModalForType('${defType}','bank')">+ Создать</button>
+                    <button class="btn primary" onclick="openCreateModalForType('${defType}','bank');document.getElementById('docType').innerHTML='${typeOpts}';document.getElementById('docType').value='${defType}'">+ Создать</button>
                     <span style="font-size:13px;color:var(--text-secondary)">Итого: <b>${formatAmount(total)}</b> (${posted.length} док.)</span>
                 </div>
                 ${bulkBarHtml()}
@@ -953,6 +954,7 @@
             const posted = docs.filter(d => d.status === 'posted');
             const total = posted.reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
             const pg = paginate(docs, pageKey);
+            const typeOpt = ALL_DOC_TYPES[type] ? `<option value="${type}">${ALL_DOC_TYPES[type]}</option>` : '';
 
             return `
                 <div class="filters" style="display:flex;gap:10px;align-items:end;margin-bottom:12px;flex-wrap:wrap">
@@ -961,7 +963,7 @@
                     <div class="filter-group"><label>Поиск</label><input type="text" placeholder="Номер, контрагент..." value="${esc(_finFilter.search)}" oninput="_finFilter.search=this.value;renderPage()"></div>
                     <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
                     <span style="flex:1"></span>
-                    <button class="btn primary" onclick="openCreateModalForType('${type}','cash')">+ Создать</button>
+                    <button class="btn primary" onclick="openCreateModalForType('${type}','cash');document.getElementById('docType').innerHTML='${typeOpt}';document.getElementById('docType').value='${type}'">+ Создать</button>
                     <span style="font-size:13px;color:var(--text-secondary)">Итого: <b>${formatAmount(total)}</b> (${posted.length} док.)</span>
                 </div>
                 ${bulkBarHtml()}
