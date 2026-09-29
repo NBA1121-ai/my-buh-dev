@@ -38,6 +38,13 @@ function formatDate(dateStr) {
     const d = new Date(dateStr + 'T00:00');
     return isNaN(d) ? '\u2014' : d.toLocaleDateString('ru-RU');
 }
+function formatDateTime(dateStr, timeStr) {
+    if (!dateStr) return '\u2014';
+    const d = new Date(dateStr + 'T00:00');
+    if (isNaN(d)) return '\u2014';
+    const datePart = d.toLocaleDateString('ru-RU');
+    return timeStr ? datePart + ' ' + timeStr : datePart;
+}
 
 // --- Форматирование суммы ---
 function formatAmount(num) {

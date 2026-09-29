@@ -224,6 +224,10 @@
                             <input type="date" id="docDate" value="" min="2000-01-01" max="2099-12-31" required>
                         </div>
                         <div class="form-group">
+                            <label>Время</label>
+                            <input type="time" id="docTime" value="">
+                        </div>
+                        <div class="form-group">
                             <label>Статус</label>
                             <select id="docStatus">
                                 <option value="draft">Черновик</option>
@@ -801,7 +805,7 @@
                             <tr>
                                 <td><input type="checkbox" class="bulk-chk" ${_selected.has(d.id)?'checked':''} onchange="toggleSelect('${esc(d.id)}',this)"></td>
                                 <td><strong>${esc(d.number)}</strong></td>
-                                <td>${formatDate(d.date)}</td>
+                                <td>${formatDateTime(d.date, d.time)}</td>
                                 <td>${getDocTypeLabel(d.type)}</td>
                                 <td>${getAccountName(d.account)}${(d.type === 'conversion' || d.type === 'internal_transfer') && d.accountTo ? '<br><span style="font-size:11px;color:#888">\u2192 ' + getAccountName(d.accountTo) + '</span>' : ''}</td>
                                 <td>${esc(d.contractor || '-')}</td>
@@ -865,7 +869,7 @@
                             <tr>
                                 <td><input type="checkbox" class="bulk-chk" ${_selected.has(d.id)?'checked':''} onchange="toggleSelect('${esc(d.id)}',this)"></td>
                                 <td><strong>${esc(d.number)}</strong></td>
-                                <td>${formatDate(d.date)}</td>
+                                <td>${formatDateTime(d.date, d.time)}</td>
                                 <td>${getDocTypeLabel(d.type)}</td>
                                 <td>${getAccountName(d.account)}${(d.type === 'conversion' || d.type === 'internal_transfer') && d.accountTo ? '<br><span style="font-size:11px;color:#888">\u2192 ' + getAccountName(d.accountTo) + '</span>' : ''}</td>
                                 <td>${esc(d.contractor || '-')}</td>
@@ -923,7 +927,7 @@
                         ${pg.items.map(d => `<tr>
                             <td><input type="checkbox" class="bulk-chk" ${_selected.has(d.id)?'checked':''} onchange="toggleSelect('${esc(d.id)}',this)"></td>
                             <td><strong>${esc(d.number)}</strong></td>
-                            <td>${formatDate(d.date)}</td>
+                            <td>${formatDateTime(d.date, d.time)}</td>
                             <td>${getAccountName(d.account)}</td>
                             <td>${esc(d.contractor || '-')}</td>
                             <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.purpose || '')}">${esc(d.purpose || '-')}</td>
@@ -971,7 +975,7 @@
                         ${pg.items.map(d => `<tr>
                             <td><input type="checkbox" class="bulk-chk" ${_selected.has(d.id)?'checked':''} onchange="toggleSelect('${esc(d.id)}',this)"></td>
                             <td><strong>${esc(d.number)}</strong></td>
-                            <td>${formatDate(d.date)}</td>
+                            <td>${formatDateTime(d.date, d.time)}</td>
                             <td>${getAccountName(d.account)}</td>
                             <td>${esc(d.contractor || '-')}</td>
                             <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.purpose || '')}">${esc(d.purpose || '-')}</td>
@@ -2269,8 +2273,9 @@
             setTypeOptions(group);
             const defType = group === 'cash' ? 'pko' : 'payment_out';
             document.getElementById('docType').value = defType;
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('docDate').value = today;
+            const now = new Date();
+            document.getElementById('docDate').value = now.toISOString().split('T')[0];
+            document.getElementById('docTime').value = now.toTimeString().slice(0, 5);
             const prefix = group === 'cash' ? (defType === 'pko' ? 'ПКО' : 'РКО') : 'ПП';
             const list = group === 'cash' ? db.cashDocuments : db.bankDocuments;
             document.getElementById('docNumber').value = nextDocNumber(prefix, list);
@@ -2294,6 +2299,7 @@
             updateFormByType();
             document.getElementById('docNumber').value = doc.number;
             document.getElementById('docDate').value = doc.date;
+            document.getElementById('docTime').value = doc.time || '';
             document.getElementById('docStatus').value = doc.status;
             document.getElementById('docAccount').value = doc.account || '';
             if (doc.accountTo) document.getElementById('docAccountTo').value = doc.accountTo;
@@ -2334,6 +2340,7 @@
                 type: docType,
                 number: document.getElementById('docNumber').value,
                 date: document.getElementById('docDate').value,
+                time: document.getElementById('docTime').value || '',
                 status: document.getElementById('docStatus').value,
                 account: document.getElementById('docAccount').value,
                 accountTo: (docType === 'conversion' || docType === 'internal_transfer') ? document.getElementById('docAccountTo').value : '',
@@ -2490,7 +2497,7 @@
                 html = `<table class="nob" style="margin-bottom:5px"><tr><td class="small">0401060</td></tr></table>
                     <table class="nob"><tr><td style="width:50%">Поступ. в банк плат.</td><td>Списано со сч. плат.</td></tr></table>
                     <p class="title">ПЛАТЁЖНОЕ ПОРУЧЕНИЕ № ${esc(doc.number)}</p>
-                    <table class="nob"><tr><td>Дата: <b>${formatDate(doc.date)}</b></td><td>Вид платежа: электронно</td></tr></table>
+                    <table class="nob"><tr><td>Дата: <b>${formatDateTime(doc.date, doc.time)}</b></td><td>Вид платежа: электронно</td></tr></table>
                     <table style="margin-top:10px">
                     <tr><td style="width:40%"><b>Плательщик</b></td><td>${isOut ? esc(org.name || '') : esc(doc.contractor || '—')}</td></tr>
                     <tr><td>ИНН</td><td>${isOut ? esc(org.inn || '') : ''}</td></tr>
@@ -2508,7 +2515,7 @@
                     <tr><td></td><td><span class="line" style="min-width:200px"></span></td><td></td></tr></table>`;
             } else {
                 html = `<p class="title">${getDocTypeLabel(doc.type)}</p>
-                    <p>Номер: <b>${esc(doc.number)}</b>. Дата: <b>${formatDate(doc.date)}</b></p>
+                    <p>Номер: <b>${esc(doc.number)}</b>. Дата: <b>${formatDateTime(doc.date, doc.time)}</b></p>
                     <p>Сумма: <b>${formatAmount(doc.sum)}</b></p>
                     <p>Контрагент: ${esc(doc.contractor || '—')}</p>
                     <p>Назначение: ${esc(doc.purpose || '—')}</p>
