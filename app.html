@@ -2251,10 +2251,10 @@
 
         // Показывает в списке типов только банковские или только кассовые документы
         // internal_transfer доступен в обоих группах
-        function setTypeOptions(group) {
-            const allowed = group === 'cash' ? CASH_TYPES : BANK_TYPES;
+        function setTypeOptions(group, restrictTypes) {
+            const allowed = restrictTypes || (group === 'cash' ? CASH_TYPES : BANK_TYPES);
             Array.from(document.getElementById('docType').options).forEach(opt => {
-                const show = allowed.includes(opt.value) || opt.value === 'internal_transfer';
+                const show = allowed.includes(opt.value) || (!restrictTypes && opt.value === 'internal_transfer');
                 opt.hidden = !show;
                 opt.disabled = !show;
             });
@@ -2265,12 +2265,20 @@
             docs.forEach(d => { const m = String(d.number).match(/(\d+)$/); if (m) max = Math.max(max, parseInt(m[1])); });
             return prefix + '-' + String(max + 1).padStart(4, '0');
         }
+        // Типы документов по подразделам
+        const PAGE_TYPES = {
+            bank_in: ['payment_in'],
+            bank_out: ['payment_out', 'payment_order', 'statement', 'directbank'],
+            cash_pko: ['pko'],
+            cash_rko: ['rko']
+        };
         function openCreateModal() {
             editingId = null;
             const group = ['cash','cash_pko','cash_rko'].includes(currentPage) ? 'cash' : 'bank';
             document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
             document.getElementById('documentForm').reset();
-            setTypeOptions(group);
+            const restrict = PAGE_TYPES[currentPage] || null;
+            setTypeOptions(group, restrict);
             const defType = currentPage === 'bank_in' ? 'payment_in' : currentPage === 'bank_out' ? 'payment_out' : currentPage === 'cash_pko' ? 'pko' : currentPage === 'cash_rko' ? 'rko' : group === 'cash' ? 'pko' : 'payment_out';
             document.getElementById('docType').value = defType;
             const now = new Date();
@@ -2286,7 +2294,8 @@
             editingId = null;
             document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
             document.getElementById('documentForm').reset();
-            setTypeOptions(group);
+            const restrict = PAGE_TYPES[currentPage] || null;
+            setTypeOptions(group, restrict);
             document.getElementById('docType').value = docType;
             const now = new Date();
             document.getElementById('docDate').value = now.toISOString().split('T')[0];
