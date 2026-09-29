@@ -2251,15 +2251,34 @@
 
         // Показывает в списке типов только банковские или только кассовые документы
         // internal_transfer доступен в обоих группах
+        const ALL_DOC_TYPES = {
+            payment_out: 'Платежное поручение (исходящее)',
+            payment_in: 'Платежное поручение (входящее)',
+            payment_order: 'Платежный ордер',
+            internal_transfer: 'Перевод между счетами',
+            conversion: 'Конвертация',
+            statement: 'Выписка банка',
+            directbank: 'Выписка ДиректБанк',
+            pko: 'Приходный кассовый ордер (ПКО)',
+            rko: 'Расходный кассовый ордер (РКО)',
+            advance: 'Авансовый отчет'
+        };
         function setTypeOptions(group, restrictTypes) {
             const allowed = restrictTypes || (group === 'cash' ? CASH_TYPES : BANK_TYPES);
             const sel = document.getElementById('docType');
-            Array.from(sel.options).forEach(opt => {
-                const show = allowed.includes(opt.value) || (!restrictTypes && opt.value === 'internal_transfer');
-                opt.hidden = !show;
-                opt.disabled = !show;
-                opt.style.display = show ? '' : 'none';
+            sel.innerHTML = '';
+            allowed.forEach(t => {
+                if (ALL_DOC_TYPES[t]) {
+                    const o = document.createElement('option');
+                    o.value = t; o.textContent = ALL_DOC_TYPES[t];
+                    sel.appendChild(o);
+                }
             });
+            if (!restrictTypes && ALL_DOC_TYPES['internal_transfer']) {
+                const o = document.createElement('option');
+                o.value = 'internal_transfer'; o.textContent = ALL_DOC_TYPES['internal_transfer'];
+                sel.appendChild(o);
+            }
         }
 
         function nextDocNumber(prefix, docs) {
@@ -2297,7 +2316,6 @@
             document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
             document.getElementById('documentForm').reset();
             const restrict = PAGE_TYPES[currentPage] || null;
-            console.log('openCreateModalForType', {docType, group, currentPage, restrict});
             setTypeOptions(group, restrict);
             document.getElementById('docType').value = docType;
             const now = new Date();
