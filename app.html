@@ -2297,6 +2297,7 @@
             document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
             document.getElementById('documentForm').reset();
             const restrict = PAGE_TYPES[currentPage] || null;
+            console.log('openCreateModalForType', {docType, group, currentPage, restrict});
             setTypeOptions(group, restrict);
             document.getElementById('docType').value = docType;
             const now = new Date();
