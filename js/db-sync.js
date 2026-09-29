@@ -32,22 +32,32 @@ const DbSync = (function() {
         for (const key in obj) {
             if (Array.isArray(obj[key])) {
                 total += obj[key].length;
-            } else if (obj[key] && typeof obj[key] === 'object' && Array.isArray(obj[key].docs)) {
-                // Count nested arrays like trade.docs
-                total += obj[key].docs.length;
+            } else if (obj[key] && typeof obj[key] === 'object') {
+                // Count all arrays inside nested objects (trade.docs, trade.contractors, trade.nomenclature, etc.)
+                for (const subKey in obj[key]) {
+                    if (Array.isArray(obj[key][subKey])) {
+                        total += obj[key][subKey].length;
+                    }
+                }
             }
         }
         return total;
     }
 
     function countDataKeys(obj) {
-        // Count keys that hold actual data (arrays or objects with docs)
+        // Count keys that hold actual data (arrays or objects with any non-empty arrays)
         let count = 0;
         for (const key in obj) {
             if (key.startsWith('_')) continue;
             const val = obj[key];
             if (Array.isArray(val) && val.length > 0) count++;
-            else if (val && typeof val === 'object' && Array.isArray(val.docs) && val.docs.length > 0) count++;
+            else if (val && typeof val === 'object' && !Array.isArray(val)) {
+                let hasData = false;
+                for (const subKey in val) {
+                    if (Array.isArray(val[subKey]) && val[subKey].length > 0) { hasData = true; break; }
+                }
+                if (hasData) count++;
+            }
         }
         return count;
     }
@@ -113,23 +123,30 @@ const DbSync = (function() {
         // Force clear cache (one-time reset) — only when online
         if (localStorage.getItem('db_reset') !== 'r7') {
             if (navigator.onLine) {
+                // Preserve offline_pending — sync it first if it has data
+                const pendingBeforeReset = _loadOfflinePending();
                 localStorage.removeItem('db_cache');
                 localStorage.removeItem('db_cache_sha');
-                localStorage.removeItem('offline_pending');
                 localStorage.setItem('db_reset', 'r7');
+                if (pendingBeforeReset && countRecords(pendingBeforeReset) > 0) {
+                    // Re-save so it gets synced on startup
+                    try { localStorage.setItem('offline_pending', JSON.stringify(pendingBeforeReset)); } catch(e) {}
+                } else {
+                    localStorage.removeItem('offline_pending');
+                }
             }
         }
         // When browser comes back online, send queued offline data
         window.addEventListener('online', () => {
             const pending = _offlinePending || _loadOfflinePending();
-            if (pending && countRecords(pending) > 5) {
+            if (pending && countRecords(pending) > 0) {
                 _offlinePending = null;
                 localStorage.removeItem('offline_pending');
                 showSyncStatus('saving');
                 _lastHash = ''; // force save
                 setTimeout(() => saveData(pending), 1000);
             } else if (pending) {
-                console.warn('Offline pending BLOCKED: too few records (' + countRecords(pending) + ')');
+                console.warn('Offline pending BLOCKED: empty data');
                 localStorage.removeItem('offline_pending');
                 _offlinePending = null;
             }
@@ -137,12 +154,12 @@ const DbSync = (function() {
         // On startup: if online and have pending offline data, sync immediately
         if (navigator.onLine) {
             const pending = _loadOfflinePending();
-            if (pending && countRecords(pending) > 5) {
+            if (pending && countRecords(pending) > 0) {
                 localStorage.removeItem('offline_pending');
                 _lastHash = '';
                 setTimeout(() => saveData(pending), 2000);
             } else if (pending) {
-                console.warn('Startup offline pending BLOCKED: too few records');
+                console.warn('Startup offline pending BLOCKED: empty data');
                 localStorage.removeItem('offline_pending');
             }
         }
@@ -449,11 +466,12 @@ const DbSync = (function() {
                 const errData = await res.json().catch(() => ({}));
                 // SHA conflict - reload and retry (with limit)
                 if ((res.status === 409 || (res.status === 422 && errData.message && errData.message.includes('sha'))) && retryCount < MAX_RETRIES) {
-                    console.warn('SHA conflict, retry', retryCount + 1);
-                    await reloadSha();
+                    console.warn('SHA conflict, merging with remote data, retry', retryCount + 1);
+                    // Load fresh data from GitHub and merge
+                    const merged = await _mergeWithRemote(dbObject);
                     _saving = false;
                     await new Promise(r => setTimeout(r, 500 * (retryCount + 1)));
-                    return await saveData(dbObject, retryCount + 1);
+                    return await saveData(merged, retryCount + 1);
                 }
                 // Rate limiting - wait and retry
                 if (res.status === 429 && retryCount < MAX_RETRIES) {
@@ -507,6 +525,53 @@ const DbSync = (function() {
         }
         if (_saveTimer) clearTimeout(_saveTimer);
         await saveData(dbObject);
+    }
+
+    async function _mergeWithRemote(localData) {
+        try {
+            const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;
+            const res = await fetchWithTimeout(url, {
+                headers: { 'Authorization': 'token ' + _token, 'Accept': 'application/vnd.github+json' },
+                cache: 'no-store'
+            });
+            if (!res.ok) return localData;
+            const fileData = await res.json();
+            _fileSha = fileData.sha;
+            let remote;
+            if (fileData.content) {
+                remote = JSON.parse(b64DecodeUTF8(fileData.content));
+            } else {
+                const rawRes = await fetchWithTimeout(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${DATA_BRANCH}/${DATA_FILE}?_t=${Date.now()}`, { cache: 'no-store' });
+                if (!rawRes.ok) return localData;
+                remote = await rawRes.json();
+            }
+            // Merge: for each array, combine by id (local wins on conflict)
+            const merged = JSON.parse(JSON.stringify(remote));
+            for (const key in localData) {
+                if (Array.isArray(localData[key]) && Array.isArray(merged[key])) {
+                    const ids = new Set(localData[key].map(item => item.id).filter(Boolean));
+                    const remoteOnly = merged[key].filter(item => !item.id || !ids.has(item.id));
+                    merged[key] = [...localData[key], ...remoteOnly];
+                } else if (localData[key] && typeof localData[key] === 'object' && !Array.isArray(localData[key])) {
+                    if (!merged[key]) merged[key] = {};
+                    for (const subKey in localData[key]) {
+                        if (Array.isArray(localData[key][subKey]) && Array.isArray((merged[key] || {})[subKey])) {
+                            const ids = new Set(localData[key][subKey].map(item => item.id).filter(Boolean));
+                            const remoteOnly = (merged[key][subKey] || []).filter(item => !item.id || !ids.has(item.id));
+                            merged[key][subKey] = [...localData[key][subKey], ...remoteOnly];
+                        } else {
+                            merged[key][subKey] = localData[key][subKey];
+                        }
+                    }
+                } else {
+                    merged[key] = localData[key];
+                }
+            }
+            return merged;
+        } catch(e) {
+            console.error('Merge failed, using local data');
+            return localData;
+        }
     }
 
     async function reloadSha() {
@@ -563,7 +628,7 @@ const DbSync = (function() {
                         // Protect against syncing empty/corrupted data from GitHub
                         const incomingSize = countRecords(parsed);
                         const incomingKeys = countDataKeys(parsed);
-                        if (_lastSavedSize > 20 && incomingSize < _lastSavedSize * 0.5) {
+                        if (_lastSavedSize > 5 && incomingSize < _lastSavedSize * 0.5) {
                             console.error('Polling BLOCKED: incoming data too small (' + _lastSavedSize + ' → ' + incomingSize + ')');
                             return;
                         }

@@ -534,7 +534,7 @@
                     // Protect against syncing empty data from another tab
                     const currentCount = _countDbRecords(db);
                     const newCount = _countDbRecords(newData);
-                    if (currentCount > 20 && newCount < currentCount * 0.5) {
+                    if (currentCount > 5 && newCount < currentCount * 0.5) {
                         console.error('Tab sync BLOCKED: data too small (' + currentCount + ' → ' + newCount + ')');
                         return;
                     }
@@ -2637,6 +2637,8 @@
                             (data.cashDocuments || []).forEach(d => { if (!db.cashDocuments.find(x => x.id === d.id)) db.cashDocuments.push(d); });
                             if (data.trade && data.trade.docs) data.trade.docs.forEach(d => { if (!db.trade.docs.find(x => x.id === d.id)) db.trade.docs.push(d); });
                         } else {
+                            // Auto-backup before full replace
+                            try { downloadBackup(); } catch(e3) {}
                             delete data.exportDate; delete data.format;
                             Object.keys(db).forEach(k => delete db[k]);
                             Object.assign(db, DB_DEFAULTS, data);
@@ -6225,9 +6227,13 @@
             navigator.serviceWorker.register('sw.js').catch(() => {});
             navigator.serviceWorker.addEventListener('message', (e) => {
                 if (e.data && e.data.type === 'CLEAR_CACHE') {
-                    localStorage.removeItem('db_cache');
+                    // Save current data before clearing cache
+                    try { localStorage.setItem('db_cache', JSON.stringify(db)); } catch(e2) {}
+                    if (typeof DbSync !== 'undefined' && DbSync.isDataLoaded && DbSync.isDataLoaded()) {
+                        DbSync.forceSave(JSON.parse(JSON.stringify(db)));
+                    }
                     localStorage.removeItem('db_cache_sha');
-                    location.reload();
+                    setTimeout(() => location.reload(), 1000);
                 }
             });
         }
