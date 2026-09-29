@@ -687,7 +687,7 @@
                 document.getElementById('content').innerHTML = renderTradePage(currentPage);
                 return;
             }
-            const toolbarPages = ['bank','cash'];
+            const toolbarPages = ['bank_in','bank_out','cash_pko','cash_rko'];
             document.querySelector('.header .toolbar').style.display = toolbarPages.includes(currentPage) ? '' : 'none';
             const pages = {
                 dashboard: renderDashboard,
@@ -913,7 +913,7 @@
                     <div class="filter-group"><label>Поиск</label><input type="text" placeholder="Номер, контрагент..." value="${esc(_finFilter.search)}" oninput="_finFilter.search=this.value;renderPage()"></div>
                     <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
                     <span style="flex:1"></span>
-                    <button class="btn primary" onclick="selectPage('bank');setTimeout(()=>{openCreateModal();document.getElementById('docType').value='${defType}';updateFormByType()},100)">+ Создать</button>
+                    <button class="btn primary" onclick="openCreateModalForType('${defType}','bank')">+ Создать</button>
                     <span style="font-size:13px;color:var(--text-secondary)">Итого: <b>${formatAmount(total)}</b> (${posted.length} док.)</span>
                 </div>
                 ${bulkBarHtml()}
@@ -961,7 +961,7 @@
                     <div class="filter-group"><label>Поиск</label><input type="text" placeholder="Номер, контрагент..." value="${esc(_finFilter.search)}" oninput="_finFilter.search=this.value;renderPage()"></div>
                     <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
                     <span style="flex:1"></span>
-                    <button class="btn primary" onclick="selectPage('cash');setTimeout(()=>{openCreateModal();document.getElementById('docType').value='${type}';updateFormByType()},100)">+ Создать</button>
+                    <button class="btn primary" onclick="openCreateModalForType('${type}','cash')">+ Создать</button>
                     <span style="font-size:13px;color:var(--text-secondary)">Итого: <b>${formatAmount(total)}</b> (${posted.length} док.)</span>
                 </div>
                 ${bulkBarHtml()}
@@ -1659,10 +1659,10 @@
             return '<div style="padding:20px">' +
                 balanceHtml +
                 '<div class="dash-section" style="margin-top:16px"><h3 style="margin-bottom:12px">Быстрые действия</h3><div style="display:flex;gap:8px;flex-wrap:wrap">' +
-                '<button class="btn primary" onclick="selectPage(\'bank\');setTimeout(()=>{openCreateModal();document.getElementById(\'docType\').value=\'payment_in\';updateFormByType()},100)" style="padding:8px 14px">Входящий платёж</button>' +
-                '<button class="btn primary" onclick="selectPage(\'bank\');setTimeout(()=>{openCreateModal();document.getElementById(\'docType\').value=\'payment_out\';updateFormByType()},100)" style="padding:8px 14px">Исходящий платёж</button>' +
-                '<button class="btn" onclick="selectPage(\'cash\');setTimeout(()=>{openCreateModal();document.getElementById(\'docType\').value=\'pko\';updateFormByType()},100)" style="padding:8px 14px">ПКО</button>' +
-                '<button class="btn" onclick="selectPage(\'cash\');setTimeout(()=>{openCreateModal();document.getElementById(\'docType\').value=\'rko\';updateFormByType()},100)" style="padding:8px 14px">РКО</button>' +
+                '<button class="btn primary" onclick="selectPage(\'bank_in\');setTimeout(()=>openCreateModalForType(\'payment_in\',\'bank\'),100)" style="padding:8px 14px">Входящий платёж</button>' +
+                '<button class="btn primary" onclick="selectPage(\'bank_out\');setTimeout(()=>openCreateModalForType(\'payment_out\',\'bank\'),100)" style="padding:8px 14px">Исходящий платёж</button>' +
+                '<button class="btn" onclick="selectPage(\'cash_pko\');setTimeout(()=>openCreateModalForType(\'pko\',\'cash\'),100)" style="padding:8px 14px">ПКО</button>' +
+                '<button class="btn" onclick="selectPage(\'cash_rko\');setTimeout(()=>openCreateModalForType(\'rko\',\'cash\'),100)" style="padding:8px 14px">РКО</button>' +
                 '<button class="btn" onclick="selectPage(\'p_purchase\');setTimeout(()=>tCreate(\'purchase\'),100)" style="padding:8px 14px">Поступление</button>' +
                 '<button class="btn" onclick="selectPage(\'p_sale\');setTimeout(()=>tCreate(\'sale\'),100)" style="padding:8px 14px">Реализация</button>' +
                 '</div></div>' +
@@ -2271,12 +2271,28 @@
             document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
             document.getElementById('documentForm').reset();
             setTypeOptions(group);
-            const defType = group === 'cash' ? 'pko' : 'payment_out';
+            const defType = currentPage === 'bank_in' ? 'payment_in' : currentPage === 'bank_out' ? 'payment_out' : currentPage === 'cash_pko' ? 'pko' : currentPage === 'cash_rko' ? 'rko' : group === 'cash' ? 'pko' : 'payment_out';
             document.getElementById('docType').value = defType;
             const now = new Date();
             document.getElementById('docDate').value = now.toISOString().split('T')[0];
             document.getElementById('docTime').value = now.toTimeString().slice(0, 5);
-            const prefix = group === 'cash' ? (defType === 'pko' ? 'ПКО' : 'РКО') : 'ПП';
+            const prefix = group === 'cash' ? (defType === 'pko' ? 'ПКО' : 'РКО') : (defType === 'payment_in' ? 'ПП-ВХ' : 'ПП');
+            const list = group === 'cash' ? db.cashDocuments : db.bankDocuments;
+            document.getElementById('docNumber').value = nextDocNumber(prefix, list);
+            document.getElementById('documentModal').classList.add('active');
+            updateFormByType();
+        }
+        function openCreateModalForType(docType, group) {
+            editingId = null;
+            document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
+            document.getElementById('documentForm').reset();
+            setTypeOptions(group);
+            document.getElementById('docType').value = docType;
+            const now = new Date();
+            document.getElementById('docDate').value = now.toISOString().split('T')[0];
+            document.getElementById('docTime').value = now.toTimeString().slice(0, 5);
+            const prefixes = { payment_in: 'ПП-ВХ', payment_out: 'ПП', payment_order: 'ПП', pko: 'ПКО', rko: 'РКО' };
+            const prefix = prefixes[docType] || 'ДОК';
             const list = group === 'cash' ? db.cashDocuments : db.bankDocuments;
             document.getElementById('docNumber').value = nextDocNumber(prefix, list);
             document.getElementById('documentModal').classList.add('active');
@@ -5347,7 +5363,7 @@
             }
 
             const isTrade = typeof tIsTradePage === 'function' && tIsTradePage(currentPage);
-            const isBankCash = currentPage === 'bank' || currentPage === 'cash';
+            const isBankCash = ['bank','bank_in','bank_out','cash','cash_pko','cash_rko'].includes(currentPage);
 
             if (e.key === 'F2' && isTrade && tSelected) {
                 e.preventDefault(); tOpen(tSelected);
@@ -5378,7 +5394,7 @@
                     else if (top.id === 'documentModal' && typeof closeModal === 'function') closeModal();
                     else top.classList.remove('active');
                 }
-            } else if (e.ctrlKey && e.shiftKey && e.key === 'n' && !isTrade && (currentPage === 'bank' || currentPage === 'cash')) {
+            } else if (e.ctrlKey && e.shiftKey && e.key === 'n' && !isTrade && isBankCash) {
                 e.preventDefault(); openCreateModal();
             }
         });
