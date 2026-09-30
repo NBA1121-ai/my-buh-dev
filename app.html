@@ -1890,7 +1890,7 @@
                 const payTypes = ['payment_in', 'pko'];
                 db.trade.contractors.forEach(c => {
                     const charged = db.trade.docs.filter(d => chargeTypes.includes(d.type) && d.contractor === c.id && d.status === 'posted').reduce((s,d) => s + (d.total||0), 0);
-                    const paid = [...(db.bankDocuments||[]), ...(db.cashDocuments||[])].filter(p => p.status === 'posted' && payTypes.includes(p.type) && p.contractor === c.name).reduce((s,p) => s + Number(p.sum||0) * (Number(p.rate)||1), 0);
+                    const paid = [...(db.bankDocuments||[]), ...(db.cashDocuments||[])].filter(p => p.status === 'posted' && payTypes.includes(p.type) && matchContractor(p.contractor, c.name)).reduce((s,p) => s + Number(p.sum||0) * (Number(p.rate)||1), 0);
                     const debt = charged - paid;
                     if (debt > 1000) {
                         notifs.push({ title: 'Задолженность: ' + esc(c.name), text: 'Долг: ' + fmt(debt) + ' сом', time: '', type: 'warning' });
@@ -4006,7 +4006,7 @@
                 const cDocs = tPosted(chargeTypes).filter(d => d.contractor === c.id);
                 const charged = cDocs.reduce((s, d) => s + d.total, 0);
                 const returned = tPosted(returnTypes).filter(d => d.contractor === c.id).reduce((s, d) => s + d.total, 0);
-                const paid = [...db.bankDocuments, ...db.cashDocuments].filter(p => p.status === 'posted' && payTypes.includes(p.type) && p.contractor === c.name && tInPeriod(p)).reduce((s, p) => s + Number(p.sum || 0) * (Number(p.rate) || 1), 0);
+                const paid = [...db.bankDocuments, ...db.cashDocuments].filter(p => p.status === 'posted' && payTypes.includes(p.type) && matchContractor(p.contractor, c.name) && tInPeriod(p)).reduce((s, p) => s + Number(p.sum || 0) * (Number(p.rate) || 1), 0);
                 const debt = charged - returned - paid;
                 const lastDate = cDocs.length ? cDocs.sort((a, b) => b.date.localeCompare(a.date))[0].date : '';
                 const overdue = lastDate && debt > 0 ? Math.max(0, Math.floor((new Date(today) - new Date(lastDate)) / 86400000)) : 0;
@@ -5527,8 +5527,8 @@
                         if (tt.group === 'sale' && !['sale_return','sale_correction'].includes(d.type)) sold += sum;
                         if (d.type === 'sale_return') sold -= sum;
                     });
-                    (db.bankDocuments || []).filter(d => d.contractor === c.name && d.type === 'payment_in' && d.date <= to).forEach(d => paid += toKGS(d));
-                    (db.cashDocuments || []).filter(d => d.contractor === c.name && d.type === 'pko' && d.date <= to).forEach(d => paid += toKGS(d));
+                    (db.bankDocuments || []).filter(d => matchContractor(d.contractor, c.name) && d.type === 'payment_in' && d.date <= to).forEach(d => paid += toKGS(d));
+                    (db.cashDocuments || []).filter(d => matchContractor(d.contractor, c.name) && d.type === 'pko' && d.date <= to).forEach(d => paid += toKGS(d));
                     const debt = sold - paid;
                     if (Math.abs(debt) > 0.01) receivables.push({ name: c.name, sold, paid, debt });
                 });
@@ -5544,8 +5544,8 @@
                         if (tt.group === 'purchase' && !['purchase_return','purchase_correction','power_of_attorney','gtd'].includes(d.type)) bought += sum;
                         if (d.type === 'purchase_return') bought -= sum;
                     });
-                    (db.bankDocuments || []).filter(d => d.contractor === c.name && d.type === 'payment_out' && d.date <= to).forEach(d => paid += toKGS(d));
-                    (db.cashDocuments || []).filter(d => d.contractor === c.name && d.type === 'rko' && d.date <= to).forEach(d => paid += toKGS(d));
+                    (db.bankDocuments || []).filter(d => matchContractor(d.contractor, c.name) && d.type === 'payment_out' && d.date <= to).forEach(d => paid += toKGS(d));
+                    (db.cashDocuments || []).filter(d => matchContractor(d.contractor, c.name) && d.type === 'rko' && d.date <= to).forEach(d => paid += toKGS(d));
                     const debt = bought - paid;
                     if (Math.abs(debt) > 0.01) payables.push({ name: c.name, bought, paid, debt });
                 });

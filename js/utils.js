@@ -16,6 +16,16 @@ function esc(s) {
         .replace(/'/g, '&#39;');
 }
 
+// --- Нормализация имени контрагента для нечёткого сравнения ---
+function normName(s) {
+    return String(s || '').trim().toLowerCase()
+        .replace(/[«»""„‟''‛‹›\u0022\u0027]/g, '')
+        .replace(/\s+/g, ' ');
+}
+function matchContractor(docContractor, tradeName) {
+    return normName(docContractor) === normName(tradeName);
+}
+
 // --- CSV-инъекция защита ---
 function csvSafe(v) {
     let s = String(v == null ? '' : v).replace(/"/g, '""');
