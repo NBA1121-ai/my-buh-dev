@@ -3187,8 +3187,8 @@
                 if (d.type === 'inventory') showToast('Инвентаризация проведена. Для оформления отклонений создайте документы «Оприходование» или «Списание» на основании.');
             } else if (d.type === 'dismissal') { const e = tEmp(d.employee); if (e) { e.status = 'Работает'; e.fireDate = ''; } }
             if (!d.history) d.history = [];
-            const user = (db.users && db.users.find(u => u.login === currentUser)) || {};
-            d.history.push({ ts: new Date().toISOString(), user: user.name || currentUser || 'система', action: status === 'posted' ? 'Проведение' : 'Отмена проведения' });
+            const userName = (db.trade && db.trade.org && db.trade.org.responsible) || 'система';
+            d.history.push({ ts: new Date().toISOString(), user: userName, action: status === 'posted' ? 'Проведение' : 'Отмена проведения' });
             d.status = status; saveData(); renderPage();
             showToast(status === 'posted' ? 'Документ проведен' : 'Проведение отменено');
         }
@@ -3774,8 +3774,7 @@
                 const isNew = idx < 0;
                 // История изменений
                 if (!copy.history) copy.history = [];
-                const user = (db.users && db.users.find(u => u.login === currentUser)) || {};
-                const userName = user.name || currentUser || 'система';
+                const userName = (db.trade && db.trade.org && db.trade.org.responsible) || 'система';
                 if (isNew) {
                     copy.history.push({ ts: new Date().toISOString(), user: userName, action: 'Создание' });
                 } else {
