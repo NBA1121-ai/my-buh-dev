@@ -1,4 +1,4 @@
-const CACHE_NAME = 'esep-offline-v24';
+const CACHE_NAME = 'esep-offline-v25';
 const BASE = '/my-buh-dev/';
 const ASSETS = [
     BASE,
