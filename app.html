@@ -636,7 +636,7 @@
             }
 
             populateSelects();
-            if (changed) saveData();
+            if (changed && DbSync.isDataLoaded()) saveData();
         }
 
         function populateSelects() {
