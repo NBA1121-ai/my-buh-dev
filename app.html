@@ -386,6 +386,17 @@
         // ==================== INITIALIZATION ====================
         DbSync.onSave((success) => { if (success) _hasUnsavedEdits = false; });
 
+        // When data loads after coming back online (was offline with empty cache)
+        DbSync.onDataLoaded(function(data) {
+            if (data && typeof data === 'object') {
+                Object.keys(db).forEach(k => delete db[k]);
+                Object.assign(db, DB_DEFAULTS, data);
+                initializeDefaults();
+                navigate(currentPage || 'dashboard');
+                showToast('Данные загружены с сервера');
+            }
+        });
+
         async function init() {
             await DbSync.init();
             if (!DbSync.getToken()) {

@@ -150,6 +150,15 @@ const DbSync = (function() {
                 localStorage.removeItem('offline_pending');
                 _offlinePending = null;
             }
+            // If data was never loaded (e.g. opened offline with empty cache), reload from GitHub
+            if (!_dataLoaded && _token) {
+                console.log('Online restored — loading data from GitHub...');
+                loadData().then(data => {
+                    if (data && typeof _onDataLoaded === 'function') {
+                        _onDataLoaded(data);
+                    }
+                }).catch(() => {});
+            }
         });
         // On startup: if online and have pending offline data, sync immediately
         if (navigator.onLine) {
@@ -271,6 +280,7 @@ const DbSync = (function() {
     }
 
     let _dataLoaded = false; // true after successful GitHub load
+    let _onDataLoaded = null; // callback for when data loads after coming online
 
     async function loadData() {
         if (!_token) return null;
@@ -847,6 +857,7 @@ const DbSync = (function() {
 
     return {
         onSave: function(cb) { _onSaveCallback = cb; },
+        onDataLoaded: function(cb) { _onDataLoaded = cb; },
         init, getToken, setToken, clearToken, validateToken,
         loadData, scheduleSave, forceSave, isDataLoaded,
         startPolling, stopPolling,
