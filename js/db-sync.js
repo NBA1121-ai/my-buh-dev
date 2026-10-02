@@ -373,8 +373,13 @@ const DbSync = (function() {
         // Don't save until data is loaded from GitHub (prevents overwriting with stale cache)
         if (!_dataLoaded) return;
         if (_saveTimer) clearTimeout(_saveTimer);
-        // Cache locally immediately (protection against browser close)
-        try { localStorage.setItem('db_cache', JSON.stringify(dbObject)); } catch(e) {}
+        // Cache locally — but protect against writing empty/corrupted data
+        const newSize = countRecords(dbObject);
+        if (_lastSavedSize > 0 && newSize < _lastSavedSize * 0.5) {
+            console.error('scheduleSave BLOCKED cache write: too few records (' + _lastSavedSize + ' → ' + newSize + ')');
+        } else {
+            try { localStorage.setItem('db_cache', JSON.stringify(dbObject)); } catch(e) {}
+        }
 
         if (_saving) {
             // Queue latest state — will be saved after current save finishes
