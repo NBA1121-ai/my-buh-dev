@@ -311,22 +311,7 @@ const DbSync = (function() {
             const fileData = await metaRes.json();
             _fileSha = fileData.sha;
 
-            // Check if cache is current (same SHA = same data, skip download)
-            const cachedSha = localStorage.getItem('db_cache_sha');
-            if (cachedSha === _fileSha) {
-                try {
-                    const cached = localStorage.getItem('db_cache');
-                    if (cached) {
-                        const parsed = JSON.parse(cached);
-                        _lastHash = hashData(parsed);
-                        _lastSavedSize = countRecords(parsed);
-                        _lastSavedKeys = countDataKeys(parsed);
-                        _dataLoaded = true;
-                        return parsed;
-                    }
-                } catch(e) {}
-            }
-
+            // Always load from GitHub when online (cache only for offline)
             let parsed;
 
             // Step 2: If file has content (< 1MB), decode directly; otherwise use raw download
