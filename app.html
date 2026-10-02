@@ -3331,18 +3331,36 @@
             if (target === 'sf_in' || target === 'sf_out') { tIssueSF(baseId); return; }
             if (['payment_in', 'payment_out', 'pko', 'rko'].includes(target)) {
                 const isBank = target.startsWith('payment');
+                const group = isBank ? 'bank' : 'cash';
                 const acc = db.accounts.find(a => a.type === (isBank ? 'bank' : 'cash')) || db.accounts[0];
                 const art = db.articles.find(a => a.name === (['payment_in', 'pko'].includes(target) ? 'Оплата от покупателя' : 'Оплата поставщику'));
                 const cur = db.currencies.find(c => c.code === 'KGS') || db.currencies[0];
                 const paid = tPayments(base.id).reduce((s, p) => s + (p.sum || 0) * (Number(p.rate) || 1), 0);
                 const rest = Math.max(0, Math.round((base.total - paid) * 100) / 100);
-                const sumStr = prompt('Сумма оплаты (остаток по документу ' + formatAmount(rest) + '):', rest || base.total); if (sumStr === null) return;
-                const payNum = nextDocNumber((isBank ? 'ПП' : (target === 'pko' ? 'ПКО' : 'РКО')), [...db.bankDocuments, ...db.cashDocuments]);
-                const doc = { id: uid(), type: target, number: payNum,
-                    date: tToday(), status: 'posted', account: acc ? acc.id : '', contractor: cname, contractorId: base.contractor, article: art ? art.id : '', currency: cur ? cur.id : '', sum: parseFloat(sumStr) || 0, rate: 1,
-                    purpose: 'Оплата по документу ' + tDocTitle(base) + (base.vatTotal ? ', в т.ч. НДС ' + formatAmount(base.vatTotal) : ''), note: 'Создано на основании', created: new Date().toISOString(), basis: base.id };
-                (isBank ? db.bankDocuments : db.cashDocuments).push(doc); saveData(); renderPage();
-                showToast('Создан документ: ' + getDocTypeLabel(target) + ' ' + doc.number); return;
+                // Open full form instead of prompt
+                editingId = null;
+                document.getElementById('modalTitle').textContent = 'Создать на основании: ' + getDocTypeLabel(target);
+                document.getElementById('documentForm').reset();
+                setTypeOptions(group);
+                document.getElementById('docType').value = target;
+                updateFormByType();
+                const prefixes = { payment_in: 'ПП-ВХ', payment_out: 'ПП', pko: 'ПКО', rko: 'РКО' };
+                document.getElementById('docNumber').value = nextDocNumber(prefixes[target] || 'ДОК', [...db.bankDocuments, ...db.cashDocuments]);
+                const now = new Date();
+                document.getElementById('docDate').value = now.toISOString().split('T')[0];
+                document.getElementById('docTime').value = now.toTimeString().slice(0, 5);
+                document.getElementById('docStatus').value = 'posted';
+                document.getElementById('docAccount').value = acc ? acc.id : '';
+                document.getElementById('docContractor').value = cname;
+                document.getElementById('docArticle').value = art ? art.id : '';
+                document.getElementById('docCurrency').value = cur ? cur.id : '';
+                document.getElementById('docSum').value = rest || base.total;
+                document.getElementById('docRate').value = 1;
+                calcSumKGS();
+                document.getElementById('docPurpose').value = 'Оплата по документу ' + tDocTitle(base) + (base.vatTotal ? ', в т.ч. НДС ' + formatAmount(base.vatTotal) : '');
+                document.getElementById('docNote').value = 'Создано на основании ' + tDocTitle(base);
+                document.getElementById('documentModal').classList.add('active');
+                return;
             }
             if (target === 'reconciliation') { tCreate('reconciliation', null, { contractor: base.contractor, contract: base.contract }); return; }
             const cfg = TT[target];
