@@ -550,6 +550,39 @@ tr:hover { background: var(--bg-table-hover); }
     box-shadow: var(--focus-ring);
 }
 
+/* === Autocomplete Dropdown === */
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.autocomplete-dropdown .ac-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+}
+.autocomplete-dropdown .ac-item:last-child {
+    border-bottom: none;
+}
+.autocomplete-dropdown .ac-item:hover,
+.autocomplete-dropdown .ac-item.ac-active {
+    background: var(--bg-hover);
+}
+.autocomplete-dropdown .ac-item .ac-match {
+    font-weight: bold;
+    color: var(--accent);
+}
+
 /* === Numbers & Amounts === */
 .num {
     text-align: right;

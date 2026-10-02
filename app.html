@@ -245,9 +245,10 @@
                                 <option value="">Выбрать...</option>
                             </select>
                         </div>
-                        <div class="form-group" id="docContractorGroup">
+                        <div class="form-group" id="docContractorGroup" style="position:relative">
                             <label>Контрагент</label>
-                            <input type="text" id="docContractor" placeholder="ООО Компания">
+                            <input type="text" id="docContractor" placeholder="Начните вводить..." autocomplete="off">
+                            <div id="contractorDropdown" class="autocomplete-dropdown" style="display:none"></div>
                         </div>
                     </div>
 
@@ -608,8 +609,19 @@
                     { id: '_6', name: 'Выдача под отчет', type: 'out' },
                     { id: '_7', name: 'Зарплата', type: 'out' },
                     { id: '_8', name: 'Налоги', type: 'out' },
-                    { id: '_9', name: 'Аренда', type: 'out' }
+                    { id: '_9', name: 'Аренда', type: 'out' },
+                    { id: '_10', name: 'Прочие', type: 'in' },
+                    { id: '_11', name: 'Прочие', type: 'out' }
                 ];
+            }
+            // Миграция: добавить статью "Прочие" если нет
+            if (!db.articles.find(a => a.name === 'Прочие' && a.type === 'in')) {
+                changed = true;
+                db.articles.push({ id: '_10', name: 'Прочие', type: 'in' });
+            }
+            if (!db.articles.find(a => a.name === 'Прочие' && a.type === 'out')) {
+                changed = true;
+                db.articles.push({ id: '_11', name: 'Прочие', type: 'out' });
             }
 
             // Миграция: добавить валютный счёт МБанк (USD)
@@ -646,6 +658,22 @@
                 db.accounts.push({ id: '_pod_zhusupbekov', name: 'Жусупбеков Максатбек (подотчёт)', number: '', bank: '', type: 'cash', openingBalance: 4875096 });
             }
 
+            // Миграция: добавить подотчётных лиц как контрагентов
+            if (db.trade && db.trade.contractors) {
+                const podContractors = [
+                    { name: 'Максатбек Жусупбеков', kind: 'Физическое лицо' },
+                    { name: 'Азим Хожи', kind: 'Физическое лицо' },
+                    { name: 'Тынчтык', kind: 'Физическое лицо' }
+                ];
+                podContractors.forEach(pc => {
+                    if (!db.trade.contractors.find(c => normName(c.name) === normName(pc.name))) {
+                        changed = true;
+                        const newId = 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+                        db.trade.contractors.push({ id: newId, name: pc.name, full: pc.name, inn: '', kind: pc.kind, address: '', phone: '', account: '', bank: '' });
+                    }
+                });
+            }
+
             populateSelects();
             if (changed && DbSync.isDataLoaded()) saveData();
         }
@@ -666,6 +694,85 @@
             currencySelect.innerHTML = '<option value="">Выбрать...</option>' +
                 db.currencies.map(c => `<option value="${esc(c.id)}">${esc(c.code)} - ${esc(c.name)}</option>`).join('');
         }
+
+        // ==================== CONTRACTOR AUTOCOMPLETE ====================
+        (function() {
+            const input = document.getElementById('docContractor');
+            const dropdown = document.getElementById('contractorDropdown');
+            let acIndex = -1;
+
+            function getContractors() {
+                return (db.trade && db.trade.contractors) ? db.trade.contractors : [];
+            }
+
+            function highlightMatch(name, query) {
+                if (!query) return esc(name);
+                const idx = name.toLowerCase().indexOf(query.toLowerCase());
+                if (idx === -1) return esc(name);
+                return esc(name.substring(0, idx)) + '<span class="ac-match">' + esc(name.substring(idx, idx + query.length)) + '</span>' + esc(name.substring(idx + query.length));
+            }
+
+            function showDropdown(list, query) {
+                if (!list.length) { dropdown.style.display = 'none'; return; }
+                acIndex = -1;
+                dropdown.innerHTML = list.map((c, i) =>
+                    '<div class="ac-item" data-index="' + i + '" data-name="' + esc(c.name) + '">' + highlightMatch(c.name, query) + '</div>'
+                ).join('');
+                dropdown.style.display = '';
+            }
+
+            function hideDropdown() {
+                setTimeout(() => { dropdown.style.display = 'none'; }, 200);
+            }
+
+            function selectItem(name) {
+                input.value = name;
+                dropdown.style.display = 'none';
+            }
+
+            input.addEventListener('focus', function() {
+                const q = this.value.trim().toLowerCase();
+                const all = getContractors();
+                const filtered = q ? all.filter(c => c.name.toLowerCase().includes(q)) : all;
+                showDropdown(filtered, q);
+            });
+
+            input.addEventListener('input', function() {
+                const q = this.value.trim().toLowerCase();
+                const all = getContractors();
+                const filtered = q ? all.filter(c => c.name.toLowerCase().includes(q)) : all;
+                showDropdown(filtered, q);
+            });
+
+            input.addEventListener('blur', hideDropdown);
+
+            input.addEventListener('keydown', function(e) {
+                const items = dropdown.querySelectorAll('.ac-item');
+                if (!items.length || dropdown.style.display === 'none') return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    acIndex = Math.min(acIndex + 1, items.length - 1);
+                    items.forEach((el, i) => el.classList.toggle('ac-active', i === acIndex));
+                    items[acIndex].scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    acIndex = Math.max(acIndex - 1, 0);
+                    items.forEach((el, i) => el.classList.toggle('ac-active', i === acIndex));
+                    items[acIndex].scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'Enter' && acIndex >= 0) {
+                    e.preventDefault();
+                    selectItem(items[acIndex].dataset.name);
+                }
+            });
+
+            dropdown.addEventListener('mousedown', function(e) {
+                const item = e.target.closest('.ac-item');
+                if (item) {
+                    e.preventDefault();
+                    selectItem(item.dataset.name);
+                }
+            });
+        })();
 
         // ==================== NAVIGATION ====================
         const _restrictedPages = ['admin', 'users', 'activity_log', 'r_payroll', 'r_payslip', 'r_debt70', 'p_payroll', 'p_payout_bank', 'p_payout_cash', 'p_vacation', 'ref_employees', 'ref_departments', 'ref_positions', 'ref_schedules', 'ref_accruals', 'ref_deductions'];
@@ -2476,9 +2583,10 @@
                 contractorGroup.style.display = '';
                 document.getElementById('docAccountLabel').textContent = 'Банковский счет / Касса';
             }
-            // Filter articles by type
+            // Filter articles by type (in/out)
             const artSelect = document.getElementById('docArticle');
-            const artFiltered = db.articles;
+            const isIncoming = ['payment_in', 'pko'].includes(docType);
+            const artFiltered = db.articles.filter(a => !a.type || a.type === (isIncoming ? 'in' : 'out'));
             const currentArt = artSelect.value;
             artSelect.innerHTML = '<option value="">Выбрать...</option>' +
                 artFiltered.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
