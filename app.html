@@ -282,6 +282,17 @@
                         </div>
                     </div>
 
+                    <div class="form-row" id="docBankFeeRow" style="display:none">
+                        <div class="form-group">
+                            <label>Комиссия банка</label>
+                            <input type="number" id="docBankFee" step="0.01" min="0" placeholder="0.00" value="0" oninput="calcSumKGS()">
+                        </div>
+                        <div class="form-group">
+                            <label>Итого с комиссией</label>
+                            <input type="text" id="docTotalWithFee" readonly style="background:#f5f5f5;color:#666">
+                        </div>
+                    </div>
+
                     <div class="form-row full">
                         <div class="form-group">
                             <label>Назначение платежа</label>
@@ -891,6 +902,7 @@
             const posted = docs.filter(d => d.status === 'posted');
             const totalIn = posted.filter(d => ['payment_in'].includes(d.type)).reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
             const totalOut = posted.filter(d => ['payment_out', 'payment_order', 'statement', 'directbank'].includes(d.type)).reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
+            const totalFee = posted.reduce((s, d) => s + Number(d.bankFee || 0) * (Number(d.rate) || 1), 0);
             const pg = paginate(docs, 'bank');
 
             return `
@@ -901,7 +913,7 @@
                     <button class="btn" onclick="_finFilter={from:'',to:'',search:''};renderPage()">Сбросить</button>
                     <span style="flex:1"></span>
                     <button class="btn" onclick="exportBankExcel()" title="Экспорт в Excel">📥 Excel</button>
-                    <span style="font-size:13px;color:var(--text-secondary)">Приход: <b style="color:var(--success)">${formatAmount(totalIn)}</b> | Расход: <b style="color:var(--danger)">${formatAmount(totalOut)}</b></span>
+                    <span style="font-size:13px;color:var(--text-secondary)">Приход: <b style="color:var(--success)">${formatAmount(totalIn)}</b> | Расход: <b style="color:var(--danger)">${formatAmount(totalOut)}</b>${totalFee ? ' | Комиссии: <b style="color:var(--danger)">' + formatAmount(totalFee) + '</b>' : ''}</span>
                 </div>
                 ${renderTemplatesPanel()}
                 ${bulkBarHtml()}
@@ -929,7 +941,7 @@
                                 <td>${getDocTypeLabel(d.type)}</td>
                                 <td>${getAccountName(d.account)}${(d.type === 'conversion' || d.type === 'internal_transfer') && d.accountTo ? '<br><span style="font-size:11px;color:#888">\u2192 ' + getAccountName(d.accountTo) + '</span>' : ''}</td>
                                 <td>${esc(d.contractor || '-')}</td>
-                                <td class="num amount">${formatAmountCur(d.sum, d.currency, d.rate)}</td>
+                                <td class="num amount">${formatAmountCur(d.sum, d.currency, d.rate)}${d.bankFee ? '<br><span style="font-size:11px;color:var(--danger)" title="Комиссия банка">комис: ' + formatAmount(d.bankFee) + '</span>' : ''}</td>
                                 <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
                                 <td>
                                     <div class="action-buttons">
@@ -1057,7 +1069,7 @@
                             <td>${getAccountName(d.account)}</td>
                             <td>${esc(d.contractor || '-')}</td>
                             <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.purpose || '')}">${esc(d.purpose || '-')}</td>
-                            <td class="num amount">${formatAmountCur(d.sum, d.currency, d.rate)}</td>
+                            <td class="num amount">${formatAmountCur(d.sum, d.currency, d.rate)}${d.bankFee ? '<br><span style="font-size:11px;color:var(--danger)" title="Комиссия банка">комис: ' + formatAmount(d.bankFee) + '</span>' : ''}</td>
                             <td><span class="badge ${d.status === 'posted' ? 'posted' : 'draft'}">${d.status === 'posted' ? 'Проведено' : 'Черновик'}</span></td>
                             <td><div class="action-buttons">
                                 <button class="action-btn" onclick="editDoc('${esc(d.id)}')" title="Редактировать">✏️</button>
@@ -2484,6 +2496,7 @@
             document.getElementById('docCurrency').value = doc.currency || '';
             document.getElementById('docSum').value = doc.sum;
             document.getElementById('docRate').value = doc.rate || 1;
+            document.getElementById('docBankFee').value = doc.bankFee || 0;
             calcSumKGS();
             document.getElementById('docPurpose').value = doc.purpose || '';
             document.getElementById('docNote').value = doc.note || '';
@@ -2525,6 +2538,7 @@
                 currency: document.getElementById('docCurrency').value,
                 sum: sumVal,
                 rate: rateVal,
+                bankFee: parseFloat(document.getElementById('docBankFee').value) || 0,
                 purpose: document.getElementById('docPurpose').value,
                 note: document.getElementById('docNote').value,
                 created: new Date().toISOString()
@@ -2597,6 +2611,10 @@
                 contractorGroup.style.display = '';
                 document.getElementById('docAccountLabel').textContent = 'Банковский счет / Касса';
             }
+            // Bank fee row — show for bank payment types
+            const feeRow = document.getElementById('docBankFeeRow');
+            const isBankPayment = ['payment_out', 'payment_in', 'payment_order', 'statement', 'directbank'].includes(type);
+            if (feeRow) feeRow.style.display = isBankPayment ? '' : 'none';
             // Filter articles by type (in/out)
             const artSelect = document.getElementById('docArticle');
             const isIncoming = ['payment_in', 'pko'].includes(docType);

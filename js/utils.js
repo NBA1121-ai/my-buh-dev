@@ -82,6 +82,9 @@ function calcSumKGS() {
     const rate = parseFloat(document.getElementById('docRate').value) || 1;
     const el = document.getElementById('docSumKGS');
     if (el) el.value = rate !== 1 ? formatAmount(sum * rate) + ' сом' : '';
+    const fee = parseFloat((document.getElementById('docBankFee') || {}).value) || 0;
+    const totalEl = document.getElementById('docTotalWithFee');
+    if (totalEl) totalEl.value = fee > 0 ? formatAmount((sum + fee) * rate) + (rate !== 1 ? ' сом' : '') : '';
 }
 
 // --- Компактный формат чисел (для дашборда) ---
