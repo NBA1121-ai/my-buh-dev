@@ -41,6 +41,10 @@
             <div class="nav-item" onclick="selectPage('cash_pko')">📥 Приходный кассовый ордер (ПКО)</div>
             <div class="nav-item" onclick="selectPage('cash_rko')">📤 Расходный кассовый ордер (РКО)</div>
 
+            <div class="section-title" onclick="tToggleGroup(this)">Подотчёт</div>
+            <div class="nav-item" onclick="selectPage('podotchet')">👤 Подотчётные лица</div>
+            <div class="nav-item" onclick="selectPage('podotchet_docs')">📋 Выдача / Возврат</div>
+
             <div class="section-title" onclick="tToggleGroup(this)">Отчёты ДДС</div>
             <div class="nav-item" onclick="selectPage('reports')">📊 Отчеты по ДДС</div>
             <div class="nav-item" onclick="selectPage('cashbook')">📔 Кассовая книга</div>
@@ -388,7 +392,9 @@
             banks: [],
             cashs: [],
             currencies: [],
-            articles: []
+            articles: [],
+            podotchetPersons: [],
+            podotchetDocs: []
         };
 
         let currentPage = 'dashboard';
@@ -510,7 +516,7 @@
             }, 300000);
         }
 
-        const DB_DEFAULTS = { bankDocuments: [], cashDocuments: [], accounts: [], banks: [], cashs: [], currencies: [], articles: [] };
+        const DB_DEFAULTS = { bankDocuments: [], cashDocuments: [], accounts: [], banks: [], cashs: [], currencies: [], articles: [], podotchetPersons: [], podotchetDocs: [] };
 
         async function loadData() {
             const cloudData = await DbSync.loadData();
@@ -685,6 +691,18 @@
                 });
             }
 
+            // Миграция: перенос подотчётных лиц из accounts в podotchetPersons
+            if (!db.podotchetPersons) db.podotchetPersons = [];
+            if (!db.podotchetDocs) db.podotchetDocs = [];
+            const podIds = ['_pod_tynchtyk', '_pod_azim', '_pod_zhusupbekov'];
+            podIds.forEach(pid => {
+                const acc = db.accounts.find(a => a.id === pid);
+                if (acc && !db.podotchetPersons.find(p => p.id === pid)) {
+                    changed = true;
+                    db.podotchetPersons.push({ id: pid, name: acc.name.replace(' (подотчёт)', ''), openingBalance: acc.openingBalance || 0 });
+                }
+            });
+
             populateSelects();
             if (changed && DbSync.isDataLoaded()) saveData();
         }
@@ -794,6 +812,7 @@
             tSelected = null;
             tFilters.search = '';
             if (['bank','bank_in','bank_out','cash','cash_pko','cash_rko'].includes(page)) _finFilter = { from: '', to: '', search: '' };
+            if (['podotchet','podotchet_docs'].includes(page)) _podFilter = { from: '', to: '', search: '' };
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             const navItems = document.querySelectorAll('.nav-item');
             navItems.forEach(el => {
@@ -841,7 +860,9 @@
                 r_settlements: renderSettlements,
                 r_osv_full: renderOSVFull,
                 r_dds_articles: renderDDSArticles,
-                r_balance: renderBalance
+                r_balance: renderBalance,
+                podotchet: renderPodotchet,
+                podotchet_docs: renderPodotchetDocs
             };
 
             const titles = {
@@ -871,13 +892,15 @@
                 r_osv_full: 'Оборотно-сальдовая ведомость',
                 r_dds_articles: 'Анализ ДДС по статьям',
                 r_balance: 'Бухгалтерский баланс',
-                dashboard: 'Главная'
+                dashboard: 'Главная',
+                podotchet: 'Подотчётные лица',
+                podotchet_docs: 'Выдача / Возврат подотчёта'
             };
 
             const title = titles[currentPage] || 'Документы';
             document.getElementById('pageTitle').textContent = title;
             // Breadcrumb
-            const sections = { bank: 'Банк и касса', cash: 'Банк и касса', reports: 'Банк и касса', cashbook: 'Банк и касса', articles: 'Справочники', accounts: 'Справочники', banks: 'Справочники', cashs: 'Справочники', currencies: 'Справочники', users: 'Администрирование', actlog: 'Администрирование', monthly_report: 'Сервис' };
+            const sections = { bank: 'Банк и касса', cash: 'Банк и касса', reports: 'Банк и касса', cashbook: 'Банк и касса', articles: 'Справочники', accounts: 'Справочники', banks: 'Справочники', cashs: 'Справочники', currencies: 'Справочники', users: 'Администрирование', actlog: 'Администрирование', monthly_report: 'Сервис', podotchet: 'Подотчёт', podotchet_docs: 'Подотчёт' };
             const bc = document.getElementById('breadcrumb');
             if (bc) bc.innerHTML = sections[currentPage] ? '<a href="#" onclick="selectPage(\'dashboard\');return false" style="color:var(--text-muted);text-decoration:none">Главная</a> / ' + sections[currentPage] + ' / ' + esc(title) : '';
             console.log('[renderPage] currentPage =', currentPage, '| fn =', pages[currentPage] ? pages[currentPage].name : 'UNDEFINED');
@@ -1410,6 +1433,254 @@
             if (!confirm('Удалить счёт «' + a.name + '»?')) return;
             db.accounts = db.accounts.filter(x => x.id !== id);
             saveData(); populateSelects(); renderPage();
+        }
+
+        // ==================== ПОДОТЧЁТ ====================
+        let _podFilter = { from: '', to: '', search: '' };
+
+        function renderPodotchet() {
+            if (!db.podotchetPersons) db.podotchetPersons = [];
+            if (!db.podotchetDocs) db.podotchetDocs = [];
+
+            const persons = db.podotchetPersons;
+            // Считаем баланс для каждого лица
+            const balances = {};
+            persons.forEach(p => { balances[p.id] = p.openingBalance || 0; });
+            (db.podotchetDocs || []).forEach(d => {
+                if (!balances[d.personId]) balances[d.personId] = 0;
+                if (d.docType === 'vydacha') balances[d.personId] += Number(d.sum || 0);
+                else if (d.docType === 'vozvrat') balances[d.personId] -= Number(d.sum || 0);
+            });
+
+            const totalBalance = Object.values(balances).reduce((s, v) => s + v, 0);
+
+            return `
+                <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <button class="btn primary" onclick="showAddPodotchetPerson()">+ Добавить подотчётное лицо</button>
+                    <span style="margin-left:auto;font-size:14px;color:var(--text-muted)">Итого задолженность: <strong style="color:var(--warning)">${formatAmount(totalBalance)} сом</strong></span>
+                </div>
+                <div id="podPersonFormWrap" style="display:none;background:var(--bg-card);padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <h4 id="podPersonFormTitle" style="margin-bottom:12px">Новое подотчётное лицо</h4>
+                    <input type="hidden" id="podPersonEditId">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                        <div class="form-group"><label>ФИО</label><input id="podPersonName" class="form-control" placeholder="Иванов Иван Иванович"></div>
+                        <div class="form-group"><label>Начальный остаток (сом)</label><input id="podPersonBalance" type="number" class="form-control" placeholder="0"></div>
+                    </div>
+                    <div style="margin-top:10px;display:flex;gap:8px">
+                        <button class="btn primary" onclick="savePodotchetPerson()">Сохранить</button>
+                        <button class="btn" onclick="document.getElementById('podPersonFormWrap').style.display='none'">Отмена</button>
+                    </div>
+                </div>
+                <div class="table-container"><table>
+                    <thead>
+                        <tr>
+                            <th>ФИО</th>
+                            <th style="text-align:right">Нач. остаток</th>
+                            <th style="text-align:right">Выдано</th>
+                            <th style="text-align:right">Возвращено</th>
+                            <th style="text-align:right">Текущий долг</th>
+                            <th style="width:100px">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${persons.map(p => {
+                            const docs = (db.podotchetDocs || []).filter(d => d.personId === p.id);
+                            const vydano = docs.filter(d => d.docType === 'vydacha').reduce((s, d) => s + Number(d.sum || 0), 0);
+                            const vozvrat = docs.filter(d => d.docType === 'vozvrat').reduce((s, d) => s + Number(d.sum || 0), 0);
+                            const balance = (p.openingBalance || 0) + vydano - vozvrat;
+                            return `<tr>
+                                <td><strong>${esc(p.name)}</strong></td>
+                                <td class="num">${formatAmount(p.openingBalance || 0)}</td>
+                                <td class="num" style="color:var(--danger)">${vydano ? formatAmount(vydano) : '-'}</td>
+                                <td class="num" style="color:var(--success)">${vozvrat ? formatAmount(vozvrat) : '-'}</td>
+                                <td class="num"><strong style="color:${balance > 0 ? 'var(--warning)' : 'var(--success)'}">${formatAmount(balance)}</strong></td>
+                                <td>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editPodotchetPerson('${esc(p.id)}')">✏️</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deletePodotchetPerson('${esc(p.id)}')">🗑</button>
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                        ${!persons.length ? '<tr><td colspan="6" class="empty-state">Нет подотчётных лиц</td></tr>' : ''}
+                    </tbody>
+                </table></div>
+            `;
+        }
+
+        function showAddPodotchetPerson() {
+            document.getElementById('podPersonFormWrap').style.display = 'block';
+            document.getElementById('podPersonFormTitle').textContent = 'Новое подотчётное лицо';
+            document.getElementById('podPersonEditId').value = '';
+            document.getElementById('podPersonName').value = '';
+            document.getElementById('podPersonBalance').value = '';
+        }
+        function editPodotchetPerson(id) {
+            const p = db.podotchetPersons.find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('podPersonFormWrap').style.display = 'block';
+            document.getElementById('podPersonFormTitle').textContent = 'Редактировать подотчётное лицо';
+            document.getElementById('podPersonEditId').value = id;
+            document.getElementById('podPersonName').value = p.name || '';
+            document.getElementById('podPersonBalance').value = p.openingBalance || '';
+        }
+        function savePodotchetPerson() {
+            const name = document.getElementById('podPersonName').value.trim();
+            if (!name) { alert('Укажите ФИО'); return; }
+            const editId = document.getElementById('podPersonEditId').value;
+            const openBal = Number(document.getElementById('podPersonBalance').value) || 0;
+            if (editId) {
+                const p = db.podotchetPersons.find(x => x.id === editId);
+                if (p) { p.name = name; p.openingBalance = openBal; }
+            } else {
+                db.podotchetPersons.push({ id: uid(), name, openingBalance: openBal });
+            }
+            saveData(); renderPage();
+        }
+        function deletePodotchetPerson(id) {
+            const p = db.podotchetPersons.find(x => x.id === id);
+            if (!p) return;
+            const docs = (db.podotchetDocs || []).filter(d => d.personId === id);
+            if (docs.length) { alert('Нельзя удалить «' + p.name + '» — есть ' + docs.length + ' документ(ов). Сначала удалите документы.'); return; }
+            if (!confirm('Удалить подотчётное лицо «' + p.name + '»?')) return;
+            db.podotchetPersons = db.podotchetPersons.filter(x => x.id !== id);
+            saveData(); renderPage();
+        }
+
+        function renderPodotchetDocs() {
+            if (!db.podotchetPersons) db.podotchetPersons = [];
+            if (!db.podotchetDocs) db.podotchetDocs = [];
+
+            let docs = (db.podotchetDocs || []).slice();
+            if (_podFilter.from) docs = docs.filter(d => d.date >= _podFilter.from);
+            if (_podFilter.to) docs = docs.filter(d => d.date <= _podFilter.to);
+            if (_podFilter.search) { const q = _podFilter.search.toLowerCase(); docs = docs.filter(d => ((d.personName || '') + ' ' + (d.note || '') + ' ' + d.sum).toLowerCase().includes(q)); }
+            docs.sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.id || '').localeCompare(a.id || ''));
+
+            const totalVydacha = docs.filter(d => d.docType === 'vydacha').reduce((s, d) => s + Number(d.sum || 0), 0);
+            const totalVozvrat = docs.filter(d => d.docType === 'vozvrat').reduce((s, d) => s + Number(d.sum || 0), 0);
+
+            return `
+                <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <button class="btn primary" onclick="showAddPodotchetDoc()">+ Создать документ</button>
+                    <input type="date" class="form-control" style="width:140px" value="${_podFilter.from}" onchange="_podFilter.from=this.value;renderPage()">
+                    <input type="date" class="form-control" style="width:140px" value="${_podFilter.to}" onchange="_podFilter.to=this.value;renderPage()">
+                    <input type="text" class="form-control" style="width:200px" placeholder="Поиск..." value="${esc(_podFilter.search)}" oninput="_podFilter.search=this.value;renderPage()">
+                    <span style="margin-left:auto;font-size:13px">Выдано: <strong style="color:var(--danger)">${formatAmount(totalVydacha)}</strong> | Возвращено: <strong style="color:var(--success)">${formatAmount(totalVozvrat)}</strong></span>
+                </div>
+                <div id="podDocFormWrap" style="display:none;background:var(--bg-card);padding:16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+                    <h4 id="podDocFormTitle" style="margin-bottom:12px">Новый документ</h4>
+                    <input type="hidden" id="podDocEditId">
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+                        <div class="form-group"><label>Тип</label>
+                            <select id="podDocType" class="form-control">
+                                <option value="vydacha">Выдача подотчёт</option>
+                                <option value="vozvrat">Возврат подотчёт</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Подотчётное лицо</label>
+                            <select id="podDocPerson" class="form-control">
+                                <option value="">Выбрать...</option>
+                                ${db.podotchetPersons.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Дата</label><input id="podDocDate" type="date" class="form-control" value="${new Date().toISOString().slice(0,10)}"></div>
+                        <div class="form-group"><label>Сумма (сом)</label><input id="podDocSum" type="number" class="form-control" placeholder="0"></div>
+                        <div class="form-group"><label>Номер документа</label><input id="podDocNumber" class="form-control" placeholder="ПО-001"></div>
+                        <div class="form-group"><label>Примечание</label><input id="podDocNote" class="form-control" placeholder="На закупку материалов"></div>
+                    </div>
+                    <div style="margin-top:10px;display:flex;gap:8px">
+                        <button class="btn primary" onclick="savePodotchetDoc()">Сохранить</button>
+                        <button class="btn" onclick="document.getElementById('podDocFormWrap').style.display='none'">Отмена</button>
+                    </div>
+                </div>
+                <div class="table-container"><table>
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Номер</th>
+                            <th>Тип</th>
+                            <th>Подотчётное лицо</th>
+                            <th style="text-align:right">Сумма</th>
+                            <th>Примечание</th>
+                            <th style="width:100px">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${docs.map(d => {
+                            const person = db.podotchetPersons.find(p => p.id === d.personId);
+                            return `<tr>
+                                <td>${esc(d.date || '-')}</td>
+                                <td>${esc(d.number || '-')}</td>
+                                <td><span class="badge ${d.docType === 'vydacha' ? 'draft' : 'posted'}">${d.docType === 'vydacha' ? 'Выдача' : 'Возврат'}</span></td>
+                                <td>${esc(person ? person.name : (d.personName || '-'))}</td>
+                                <td class="num" style="color:${d.docType === 'vydacha' ? 'var(--danger)' : 'var(--success)'}">${formatAmount(d.sum || 0)}</td>
+                                <td>${esc(d.note || '-')}</td>
+                                <td>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editPodotchetDoc('${esc(d.id)}')">✏️</button>
+                                    <button class="btn" style="padding:4px 8px;font-size:12px;color:var(--danger)" onclick="deletePodotchetDoc('${esc(d.id)}')">🗑</button>
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                        ${!docs.length ? '<tr><td colspan="7" class="empty-state">Нет документов</td></tr>' : ''}
+                    </tbody>
+                </table></div>
+            `;
+        }
+
+        function showAddPodotchetDoc() {
+            document.getElementById('podDocFormWrap').style.display = 'block';
+            document.getElementById('podDocFormTitle').textContent = 'Новый документ';
+            document.getElementById('podDocEditId').value = '';
+            document.getElementById('podDocType').value = 'vydacha';
+            document.getElementById('podDocPerson').value = '';
+            document.getElementById('podDocDate').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('podDocSum').value = '';
+            document.getElementById('podDocNumber').value = '';
+            document.getElementById('podDocNote').value = '';
+        }
+        function editPodotchetDoc(id) {
+            const d = db.podotchetDocs.find(x => x.id === id);
+            if (!d) return;
+            document.getElementById('podDocFormWrap').style.display = 'block';
+            document.getElementById('podDocFormTitle').textContent = 'Редактировать документ';
+            document.getElementById('podDocEditId').value = id;
+            document.getElementById('podDocType').value = d.docType || 'vydacha';
+            document.getElementById('podDocPerson').value = d.personId || '';
+            document.getElementById('podDocDate').value = d.date || '';
+            document.getElementById('podDocSum').value = d.sum || '';
+            document.getElementById('podDocNumber').value = d.number || '';
+            document.getElementById('podDocNote').value = d.note || '';
+        }
+        function savePodotchetDoc() {
+            const personId = document.getElementById('podDocPerson').value;
+            if (!personId) { alert('Выберите подотчётное лицо'); return; }
+            const sum = Number(document.getElementById('podDocSum').value);
+            if (!sum || sum <= 0) { alert('Укажите сумму'); return; }
+            const person = db.podotchetPersons.find(p => p.id === personId);
+            const editId = document.getElementById('podDocEditId').value;
+            const docData = {
+                docType: document.getElementById('podDocType').value,
+                personId: personId,
+                personName: person ? person.name : '',
+                date: document.getElementById('podDocDate').value,
+                sum: sum,
+                number: document.getElementById('podDocNumber').value.trim(),
+                note: document.getElementById('podDocNote').value.trim()
+            };
+            if (editId) {
+                const d = db.podotchetDocs.find(x => x.id === editId);
+                if (d) Object.assign(d, docData);
+            } else {
+                docData.id = uid();
+                db.podotchetDocs.push(docData);
+            }
+            saveData(); renderPage();
+        }
+        function deletePodotchetDoc(id) {
+            const d = db.podotchetDocs.find(x => x.id === id);
+            if (!d) return;
+            if (!confirm('Удалить документ?')) return;
+            db.podotchetDocs = db.podotchetDocs.filter(x => x.id !== id);
+            saveData(); renderPage();
         }
 
         function renderBanks() {
