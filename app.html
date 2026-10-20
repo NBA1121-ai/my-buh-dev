@@ -869,7 +869,13 @@
             const sections = { bank: 'Банк и касса', cash: 'Банк и касса', reports: 'Банк и касса', cashbook: 'Банк и касса', articles: 'Справочники', accounts: 'Справочники', banks: 'Справочники', cashs: 'Справочники', currencies: 'Справочники', users: 'Администрирование', actlog: 'Администрирование', monthly_report: 'Сервис' };
             const bc = document.getElementById('breadcrumb');
             if (bc) bc.innerHTML = sections[currentPage] ? '<a href="#" onclick="selectPage(\'dashboard\');return false" style="color:var(--text-muted);text-decoration:none">Главная</a> / ' + sections[currentPage] + ' / ' + esc(title) : '';
-            document.getElementById('content').innerHTML = pages[currentPage]();
+            console.log('[renderPage] currentPage =', currentPage, '| fn =', pages[currentPage] ? pages[currentPage].name : 'UNDEFINED');
+            try {
+                document.getElementById('content').innerHTML = pages[currentPage]();
+            } catch(e) {
+                console.error('[renderPage] ERROR rendering', currentPage, e);
+                document.getElementById('content').innerHTML = '<div class="empty-state">Ошибка отображения страницы: ' + esc(e.message) + '</div>';
+            }
             if (currentPage === 'dashboard') initDashCharts();
         }
 
@@ -1010,7 +1016,9 @@
         function renderCashRko() { return _renderCashFiltered('rko', 'cash_rko', 'Расходные кассовые ордера (РКО)', 'Нет расходных кассовых ордеров'); }
 
         function _renderBankFiltered(types, pageKey, title, emptyMsg) {
+            const allBankCount = db.bankDocuments.length;
             let docs = db.bankDocuments.filter(d => types.includes(d.type));
+            console.log('[BankFiltered]', title, '| types:', types, '| all:', allBankCount, '| filtered:', docs.length, '| doc types:', db.bankDocuments.map(d => d.type));
             if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
             if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
             if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '') + ' ' + (d.note || '') + ' ' + d.sum).toLowerCase().includes(q)); }
@@ -1020,8 +1028,12 @@
             const pg = paginate(docs, pageKey);
             const defType = types[0];
             const typeOpts = types.map(t => ALL_DOC_TYPES[t] ? `<option value="${t}">${ALL_DOC_TYPES[t]}</option>` : '').join('');
+            const filterInfo = docs.length < allBankCount
+                ? `<span style="font-size:12px;color:var(--primary);margin-left:8px">(показано ${docs.length} из ${allBankCount})</span>`
+                : allBankCount > 0 ? `<span style="font-size:12px;color:var(--warning);margin-left:8px">(все ${allBankCount} док. имеют тип: ${types.map(t => ALL_DOC_TYPES[t] || t).join(', ')})</span>` : '';
 
             return `
+                <div style="margin-bottom:8px"><h3 style="margin:0;display:inline">${esc(title)}</h3>${filterInfo}</div>
                 <div class="filters" style="display:flex;gap:10px;align-items:end;margin-bottom:12px;flex-wrap:wrap">
                     <div class="filter-group"><label>Период с</label><input type="date" value="${_finFilter.from}" onchange="_finFilter.from=this.value;renderPage()"></div>
                     <div class="filter-group"><label>по</label><input type="date" value="${_finFilter.to}" onchange="_finFilter.to=this.value;renderPage()"></div>
@@ -1060,7 +1072,9 @@
         }
 
         function _renderCashFiltered(type, pageKey, title, emptyMsg) {
+            const allCashCount = db.cashDocuments.length;
             let docs = db.cashDocuments.filter(d => d.type === type);
+            console.log('[CashFiltered]', title, '| type:', type, '| all:', allCashCount, '| filtered:', docs.length, '| doc types:', db.cashDocuments.map(d => d.type));
             if (_finFilter.from) docs = docs.filter(d => d.date >= _finFilter.from);
             if (_finFilter.to) docs = docs.filter(d => d.date <= _finFilter.to);
             if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '') + ' ' + (d.note || '') + ' ' + d.sum).toLowerCase().includes(q)); }
@@ -1069,8 +1083,12 @@
             const total = posted.reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
             const pg = paginate(docs, pageKey);
             const typeOpt = ALL_DOC_TYPES[type] ? `<option value="${type}">${ALL_DOC_TYPES[type]}</option>` : '';
+            const filterInfo = docs.length < allCashCount
+                ? `<span style="font-size:12px;color:var(--primary);margin-left:8px">(показано ${docs.length} из ${allCashCount})</span>`
+                : allCashCount > 0 ? `<span style="font-size:12px;color:var(--warning);margin-left:8px">(все ${allCashCount} док. имеют тип: ${ALL_DOC_TYPES[type] || type})</span>` : '';
 
             return `
+                <div style="margin-bottom:8px"><h3 style="margin:0;display:inline">${esc(title)}</h3>${filterInfo}</div>
                 <div class="filters" style="display:flex;gap:10px;align-items:end;margin-bottom:12px;flex-wrap:wrap">
                     <div class="filter-group"><label>Период с</label><input type="date" value="${_finFilter.from}" onchange="_finFilter.from=this.value;renderPage()"></div>
                     <div class="filter-group"><label>по</label><input type="date" value="${_finFilter.to}" onchange="_finFilter.to=this.value;renderPage()"></div>
@@ -3559,7 +3577,7 @@
                 <span style="flex:1"></span>
                 ${tMenu('Ещё', moreItems)}`;
 
-            const contractorOpts = '<option value="">Выбрать…</option>' + db.trade.contractors.map(c => `<option value="${esc(c.id)}" ${d.contractor === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+            const contractorName = d.contractor ? (db.trade.contractors.find(c => c.id === d.contractor) || {}).name || '' : '';
             const contractOpts = '<option value="">Выбрать…</option>' + db.trade.contracts.filter(c => !d.contractor || c.contractor === d.contractor).map(c => `<option value="${esc(c.id)}" ${d.contract === c.id ? 'selected' : ''}>${esc(c.name)} №${esc(c.number)}</option>`).join('');
             const whOpts = db.trade.warehouses.map(w => `<option value="${esc(w.id)}" ${d.warehouse === w.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('');
             const ptOpts = db.trade.priceTypes.map(p => `<option value="${esc(p.id)}" ${d.priceType === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
@@ -3574,9 +3592,10 @@
                     ${cfg.ops ? `<div class="fg wide"><label>Вид операции</label><select onchange="tDoc.opKind=this.value">${cfg.ops.map(o => `<option ${d.opKind === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>` : ''}
                     ${cfg.correction ? `<div class="fg wide"><label>Отражать корректировку</label><select onchange="tDoc.corrKind=this.value"><option ${d.corrKind === 'Во всех разделах учета' ? 'selected' : ''}>Во всех разделах учета</option><option ${d.corrKind === 'Только в учете НДС' ? 'selected' : ''}>Только в учете НДС</option><option ${d.corrKind === 'Только в печатной форме' ? 'selected' : ''}>Только в печатной форме</option></select></div>` : ''}
                     <div class="fg"><label>Организация</label><input value="${esc(db.trade.org.name)}" disabled></div>
-                    ${(cfg.retail || cfg.noContractor) ? '' : `<div class="fg wide"><label>${cfg.group === 'purchase' ? 'Контрагент (поставщик)' : cfg.recon ? 'Контрагент' : cfg.group === 'prod' ? 'Контрагент (переработчик)' : 'Контрагент (покупатель)'} *</label>
-                        <div style="display:flex;gap:6px"><select id="tContractor" onchange="tDoc.contractor=this.value;tDoc.contract='';tRenderForm(${isNew})" style="flex:1">${contractorOpts}</select>
-                        <button class="btn" title="Создать контрагента" onclick="tQuickRef('contractors')">+</button></div></div>
+                    ${(cfg.retail || cfg.noContractor) ? '' : `<div class="fg wide" style="position:relative"><label>${cfg.group === 'purchase' ? 'Контрагент (поставщик)' : cfg.recon ? 'Контрагент' : cfg.group === 'prod' ? 'Контрагент (переработчик)' : 'Контрагент (покупатель)'} *</label>
+                        <div style="display:flex;gap:6px"><input id="tContractor" type="text" value="${esc(contractorName)}" placeholder="Начните вводить имя..." autocomplete="off" style="flex:1">
+                        <button class="btn" title="Создать контрагента" onclick="tQuickRef('contractors')">+</button></div>
+                        <div id="tContractorDrop" class="autocomplete-dropdown" style="display:none"></div></div>
                     <div class="fg wide"><label>Договор</label><div style="display:flex;gap:6px"><select onchange="tDoc.contract=this.value" style="flex:1">${contractOpts}</select><button class="btn" title="Создать договор" onclick="tQuickRef('contracts')">+</button></div></div>`}
                     ${cfg.tabs.includes('goods') && !cfg.recon ? `<div class="fg"><label>${d.type === 'transfer' ? 'Склад-отправитель' : 'Склад'}</label><select onchange="tDoc.warehouse=this.value">${whOpts}</select></div>` : ''}
                     ${tHeadExtra(d)}
@@ -3609,6 +3628,7 @@
             document.getElementById('tTabs').innerHTML = cfg.tabs.map(t => `<button class="tab ${tTab === t ? 'active' : ''}" onclick="tTab='${t}';tRenderForm(${isNew})">${TAB_LABELS[t]}${['goods', 'services', 'agent', 'tara'].includes(t) && d[t] && d[t].length ? ' (' + d[t].length + ')' : ''}</button>`).join('');
             document.getElementById('tBody').innerHTML = tRenderTab(tTab);
             tRenderFooter();
+            tInitContractorAC();
         }
         function tToggleSettle() { const e = document.getElementById('tSettle'); e.style.display = e.style.display === 'none' ? 'block' : 'none'; }
         function tTogglePrices() { const e = document.getElementById('tPrices'); e.style.display = e.style.display === 'none' ? 'block' : 'none'; }
@@ -4237,7 +4257,13 @@
             const { key, id, cb } = refEdit, R = REFS[key];
             const item = id ? db.trade[key].find(x => x.id === id) : { id: tUid() };
             for (const f of R.fields) { let v = document.getElementById('rf_' + f.k).value; if (f.req && !v) { alert('Заполните поле «' + f.l.replace(' *', '') + '»'); return; } if (f.type === 'number') v = Number(v); if (['vatIncluded', 'stdDeduction', 'taxable', 'sf'].includes(f.k)) v = v === 'true'; if (['price', 'cost', 'markup'].includes(f.k)) v = Number(v) || 0; item[f.k] = v; }
-            if (item.name) { const dup = db.trade[key].find(x => x.id !== item.id && x.name && x.name.toLowerCase() === item.name.toLowerCase()); if (dup && !confirm('Элемент «' + item.name + '» уже существует в справочнике. Всё равно сохранить?')) return; }
+            if (item.name && key === 'contractors') {
+                const norm = s => String(s||'').trim().toLowerCase().replace(/[«»""„‟''‛‹›\u0022\u0027]/g,'').replace(/\s+/g,' ');
+                const dup = db.trade[key].find(x => x.id !== item.id && x.name && norm(x.name) === norm(item.name));
+                if (dup) { alert('Контрагент «' + dup.name + '» уже существует в справочнике (ID: ' + dup.id + '). Используйте существующего.'); return; }
+                const similar = db.trade[key].filter(x => x.id !== item.id && x.name && (norm(x.name).includes(norm(item.name)) || norm(item.name).includes(norm(x.name))) && norm(x.name) !== norm(item.name));
+                if (similar.length && !confirm('Найдены похожие контрагенты:\n' + similar.map(s => '• ' + s.name).join('\n') + '\n\nВсё равно создать нового?')) return;
+            } else if (item.name) { const dup = db.trade[key].find(x => x.id !== item.id && x.name && x.name.toLowerCase() === item.name.toLowerCase()); if (dup && !confirm('Элемент «' + item.name + '» уже существует в справочнике. Всё равно сохранить?')) return; }
             if (!id) db.trade[key].push(item);
             saveData(); document.getElementById('tRefModal').classList.remove('active'); showToast('Записано');
             if (cb) cb(item); else if (tIsTradePage(currentPage)) renderPage();
@@ -4263,6 +4289,62 @@
             });
             if (key === 'contracts' && tDoc.contractor) { const s = document.getElementById('rf_contractor'); if (s) s.value = tDoc.contractor; const k = document.getElementById('rf_kind'); if (k) k.value = TT[tDoc.type].group === 'purchase' ? 'С поставщиком' : 'С покупателем'; }
         }
+        // ---------- Автодополнение контрагента в торговых документах ----------
+        function tInitContractorAC() {
+            const inp = document.getElementById('tContractor');
+            const drop = document.getElementById('tContractorDrop');
+            if (!inp || !drop) return;
+            let acIdx = -1;
+
+            function hl(name, q) {
+                if (!q) return esc(name);
+                const i = name.toLowerCase().indexOf(q.toLowerCase());
+                if (i === -1) return esc(name);
+                return esc(name.substring(0, i)) + '<span class="ac-match">' + esc(name.substring(i, i + q.length)) + '</span>' + esc(name.substring(i + q.length));
+            }
+
+            function show(list, q) {
+                if (!list.length) { drop.innerHTML = '<div class="ac-item" style="color:var(--text-secondary);cursor:default">Не найдено. Нажмите + чтобы создать</div>'; drop.style.display = ''; return; }
+                acIdx = -1;
+                drop.innerHTML = list.map((c, i) =>
+                    `<div class="ac-item" data-index="${i}" data-id="${esc(c.id)}" data-name="${esc(c.name)}">${hl(c.name, q)}${c.inn ? ' <small style="color:var(--text-secondary)">ИНН: ' + esc(c.inn) + '</small>' : ''}</div>`
+                ).join('');
+                drop.style.display = '';
+            }
+
+            function pick(id, name) {
+                inp.value = name;
+                drop.style.display = 'none';
+                tDoc.contractor = id;
+                tDoc.contract = '';
+                tRenderForm(false);
+            }
+
+            function filter() {
+                const q = inp.value.trim().toLowerCase();
+                const all = db.trade.contractors;
+                return q ? all.filter(c => c.name.toLowerCase().includes(q) || (c.inn && c.inn.includes(q))) : all;
+            }
+
+            inp.addEventListener('focus', () => show(filter(), inp.value.trim()));
+            inp.addEventListener('input', () => {
+                show(filter(), inp.value.trim());
+                if (!inp.value.trim()) { tDoc.contractor = ''; tDoc.contract = ''; }
+            });
+            inp.addEventListener('blur', () => setTimeout(() => { drop.style.display = 'none'; }, 200));
+            inp.addEventListener('keydown', (e) => {
+                const items = drop.querySelectorAll('.ac-item[data-id]');
+                if (!items.length || drop.style.display === 'none') return;
+                if (e.key === 'ArrowDown') { e.preventDefault(); acIdx = Math.min(acIdx + 1, items.length - 1); items.forEach((el, i) => el.classList.toggle('ac-active', i === acIdx)); items[acIdx].scrollIntoView({ block: 'nearest' }); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); acIdx = Math.max(acIdx - 1, 0); items.forEach((el, i) => el.classList.toggle('ac-active', i === acIdx)); items[acIdx].scrollIntoView({ block: 'nearest' }); }
+                else if (e.key === 'Enter' && acIdx >= 0) { e.preventDefault(); pick(items[acIdx].dataset.id, items[acIdx].dataset.name); }
+            });
+            drop.addEventListener('mousedown', (e) => {
+                const item = e.target.closest('.ac-item[data-id]');
+                if (item) { e.preventDefault(); pick(item.dataset.id, item.dataset.name); }
+            });
+        }
+
         function renderOrg() {
             const o = db.trade.org;
             const f = (k, l, wide) => `<div class="fg ${wide ? 'wide' : ''}"><label>${l}</label><input value="${esc(o[k] || '')}" onchange="db.trade.org.${k}=this.value;saveData();showToast('Сохранено')"></div>`;
