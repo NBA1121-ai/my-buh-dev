@@ -1065,8 +1065,9 @@ body.dark .badge { opacity: 0.9; }
 .tab-bar-item .tb-title { overflow:hidden; text-overflow:ellipsis; max-width:200px; }
 .tab-bar-close { font-size:15px; padding:1px 3px; border:none; background:none; cursor:pointer; color:var(--text-secondary); border-radius:3px; line-height:1; }
 .tab-bar-close:hover { background:var(--danger,#e53e3e); color:#fff; }
-.modal.tab-inline { position:static !important; display:block !important; background:none !important; backdrop-filter:none !important; animation:none !important; z-index:auto !important; overflow-y:auto; }
-.modal.tab-inline > .modal-content, .modal.tab-inline > .tmodal-content { max-width:100%; width:100%; max-height:none; margin:0; box-shadow:none; border-radius:0; border:none; }
+.modal.tab-inline { position:static !important; display:flex !important; flex-direction:column; flex:1; background:none !important; backdrop-filter:none !important; animation:none !important; z-index:auto !important; overflow-y:auto; min-height:0; }
+.modal.tab-inline > .modal-content, .modal.tab-inline > .tmodal-content { max-width:100%; width:100%; max-height:none; margin:0; box-shadow:none; border-radius:0; border:none; flex:1; display:flex; flex-direction:column; }
+.modal.tab-inline .modal-body { flex:1; overflow-y:auto; }
 .modal.tab-inline .modal-header .modal-close { display:none; }
 
 /* === Print Styles === */

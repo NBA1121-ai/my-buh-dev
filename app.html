@@ -185,14 +185,12 @@
             <div class="content" id="content">
                 <!-- Content will be loaded here -->
             </div>
-        </main>
-    </div>
 
-    <!-- Create/Edit Modal -->
-    <div class="modal" id="documentModal" onclick="if(event.target===this)closeModal()" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Создать документ</h2>
+            <!-- Create/Edit Modal (inside main for tab-inline) -->
+            <div class="modal" id="documentModal" onclick="if(event.target===this&&!this.classList.contains('tab-inline'))closeModal()" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 id="modalTitle">Создать документ</h2>
                 <button class="modal-close" onclick="closeModal()">×</button>
             </div>
             <div class="modal-body">
@@ -320,9 +318,8 @@
         </div>
     </div>
 
-
-    <!-- ===== Форма документа Покупки/Продажи ===== -->
-    <div class="modal" id="tModal" onclick="if(event.target===this)tCloseForm()" role="dialog" aria-modal="true" aria-labelledby="tModalTitle">
+    <!-- ===== Форма документа Покупки/Продажи (inside main for tab-inline) ===== -->
+    <div class="modal" id="tModal" onclick="if(event.target===this&&!this.classList.contains('tab-inline'))tCloseForm()" role="dialog" aria-modal="true" aria-labelledby="tModalTitle">
         <div class="modal-content tmodal-content">
             <div class="modal-header">
                 <h2 id="tModalTitle">Документ</h2>
@@ -336,6 +333,9 @@
             </div>
             <div id="tFoot"></div>
         </div>
+    </div>
+
+        </main>
     </div>
 
     <!-- Подбор номенклатуры -->
@@ -6130,13 +6130,18 @@
                 if (isTrade && tSelected) { const _d = tDocById(tSelected); if (_d && TT[_d.type] && TT[_d.type].prints && TT[_d.type].prints[0]) tPrint(tSelected, TT[_d.type].prints[0]); }
             } else if (e.key === 'Escape') {
                 // Close only the topmost modal using proper close functions
-                const modals = [...document.querySelectorAll('.modal.active')];
+                const modals = [...document.querySelectorAll('.modal.active:not(.tab-inline)')];
+                const inlineTabs = [...document.querySelectorAll('.modal.active.tab-inline')];
                 if (modals.length) {
                     const top = modals.reduce((a, b) => (parseInt(getComputedStyle(a).zIndex)||0) >= (parseInt(getComputedStyle(b).zIndex)||0) ? a : b);
                     if (top.id === 'tPickModal') tClosePick();
                     else if (top.id === 'tModal') tCloseForm();
                     else if (top.id === 'documentModal' && typeof closeModal === 'function') closeModal();
                     else top.classList.remove('active');
+                } else if (inlineTabs.length) {
+                    // ESC closes active tab-inline document
+                    if (inlineTabs.some(m => m.id === 'tModal')) tCloseForm();
+                    else if (inlineTabs.some(m => m.id === 'documentModal')) closeModal();
                 }
             } else if (e.ctrlKey && e.shiftKey && e.key === 'n' && !isTrade && isBankCash) {
                 e.preventDefault(); openCreateModal();
