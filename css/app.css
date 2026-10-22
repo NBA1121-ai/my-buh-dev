@@ -1056,9 +1056,22 @@ body.dark .content::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255
 
 body.dark .badge { opacity: 0.9; }
 
+/* === Tab Bar (1C-style) === */
+.tab-bar { display:flex; gap:0; background:var(--bg-header,#f0f0f0); border-bottom:2px solid var(--border); padding:0 12px; overflow-x:auto; align-items:flex-end; flex-shrink:0; }
+.tab-bar::-webkit-scrollbar { height:3px; }
+.tab-bar-item { display:flex; align-items:center; gap:6px; padding:7px 14px; cursor:pointer; font-size:13px; border:1px solid transparent; border-bottom:none; border-radius:6px 6px 0 0; background:transparent; color:var(--text-secondary); white-space:nowrap; max-width:260px; position:relative; bottom:-2px; transition:background .15s,color .15s; user-select:none; }
+.tab-bar-item:hover { background:var(--bg-card,#fff); color:var(--text); }
+.tab-bar-item.active { background:var(--bg-card,#fff); color:var(--primary); border-color:var(--border); font-weight:600; }
+.tab-bar-item .tb-title { overflow:hidden; text-overflow:ellipsis; max-width:200px; }
+.tab-bar-close { font-size:15px; padding:1px 3px; border:none; background:none; cursor:pointer; color:var(--text-secondary); border-radius:3px; line-height:1; }
+.tab-bar-close:hover { background:var(--danger,#e53e3e); color:#fff; }
+.modal.tab-inline { position:static !important; display:block !important; background:none !important; backdrop-filter:none !important; animation:none !important; z-index:auto !important; overflow-y:auto; }
+.modal.tab-inline > .modal-content, .modal.tab-inline > .tmodal-content { max-width:100%; width:100%; max-height:none; margin:0; box-shadow:none; border-radius:0; border:none; }
+.modal.tab-inline .modal-header .modal-close { display:none; }
+
 /* === Print Styles === */
 @media print {
-    .sidebar, .header, .filters, .toolbar, .tcmd, .tabs, .print-hide {
+    .sidebar, .header, .filters, .toolbar, .tcmd, .tabs, .tab-bar, .print-hide {
         display: none !important;
     }
     .content { padding: 0; }
