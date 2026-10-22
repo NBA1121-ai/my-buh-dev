@@ -187,7 +187,7 @@
             </div>
 
             <!-- Create/Edit Modal (inside main for tab-inline) -->
-            <div class="modal" id="documentModal" onclick="if(event.target===this)closeModal()" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <div class="modal" id="documentModal" onclick="if(event.target===this)bankMinimize()" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h2 id="modalTitle">Создать документ</h2>
@@ -319,7 +319,7 @@
     </div>
 
     <!-- ===== Форма документа Покупки/Продажи (inside main for tab-inline) ===== -->
-    <div class="modal" id="tModal" onclick="if(event.target===this)tCloseForm()" role="dialog" aria-modal="true" aria-labelledby="tModalTitle">
+    <div class="modal" id="tModal" onclick="if(event.target===this)tMinimize()" role="dialog" aria-modal="true" aria-labelledby="tModalTitle">
         <div class="modal-content tmodal-content">
             <div class="modal-header">
                 <h2 id="tModalTitle">Документ</h2>
@@ -2721,6 +2721,7 @@
             cash_rko: ['rko']
         };
         function openCreateModal() {
+            _tabMinimizeActive();
             editingId = null;
             const group = ['cash','cash_pko','cash_rko'].includes(currentPage) ? 'cash' : 'bank';
             document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
@@ -2739,9 +2740,7 @@
         }
         function openCreateModalForType(docType, group) {
             editingId = null;
-            const newId = uid();
-            const typeLabels = { payment_in:'Новый ПП вх.', payment_out:'Новый ПП исх.', payment_order:'Новый Плат.поруч.', pko:'Новый ПКО', rko:'Новый РКО' };
-            _tabOpenBank(newId, typeLabels[docType] || 'Новый документ');
+            _tabMinimizeActive();
 
             document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
             document.getElementById('documentForm').reset();
@@ -2773,6 +2772,7 @@
             // Если свёрнут — восстановить из tab
             const tabIdx = _openTabs.findIndex(function(t) { return t.id === 'b_' + id; });
             if (tabIdx >= 0) { _tabSwitch('b_' + id); return; }
+            _tabMinimizeActive();
             editingId = id;
             const doc = [...db.bankDocuments, ...db.cashDocuments].find(d => d.id === id);
             if (!doc) return;
@@ -3774,6 +3774,7 @@
         // ---------- Создать на основании ----------
         function tCreateOnBasis(baseId, target) {
             const base = tDocById(baseId); if (!base) return;
+            _tabMinimizeActive();
             if (tBasisExtra(base, target)) return;
             const cname = tContractorName(base.contractor);
             if (target === 'sf_in' || target === 'sf_out') { tIssueSF(baseId); return; }
@@ -3824,6 +3825,7 @@
 
         // ---------- Форма документа ----------
         function tCreate(type, opKind, init) {
+            _tabMinimizeActive();
             const cfg = TT[type];
             tDoc = Object.assign({
                 id: tUid(), type, number: tNextNumber(type), date: tToday(), status: 'draft', opKind: opKind || (cfg.ops ? cfg.ops[0] : ''),
@@ -3854,7 +3856,7 @@
             bar.style.display = 'flex';
             let html = '';
             _openTabs.forEach(function(tab) {
-                html += '<div class="tab-bar-item" onclick="_tabSwitch(\'' + tab.id + '\')">' +
+                html += '<div class="tab-bar-item' + (tab.id === _activeTabId ? ' active' : '') + '" onclick="_tabSwitch(\'' + tab.id + '\')">' +
                     '<span class="tb-title">' + esc(tab.title) + '</span>' +
                     '<span class="tab-bar-close" onclick="event.stopPropagation();_tabClose(\'' + tab.id + '\')" title="Закрыть">&times;</span></div>';
             });
@@ -3900,7 +3902,13 @@
         }
 
         // -- Свернуть торговый документ --
-        function tMinimize() {
+        // Свернуть все открытые основные документы (перед открытием другого)
+        function _tabMinimizeActive() {
+            if (document.getElementById('tModal').classList.contains('active') && tDoc) tMinimize(true);
+            if (document.getElementById('documentModal').classList.contains('active')) bankMinimize(true);
+        }
+
+        function tMinimize(silent) {
             if (!tDoc) return;
             const cfg = TT[tDoc.type];
             const title = (cfg.short || cfg.label) + ' ' + (tDoc.number || '') + ' от ' + formatDate(tDoc.date);
@@ -3916,11 +3924,11 @@
             tDoc = null; _tDocSnapshot = '';
             _activeTabId = null;
             _tabRender();
-            showToast('Документ свёрнут');
+            if (!silent) showToast('Документ свёрнут');
         }
 
         // -- Свернуть банковский/кассовый документ --
-        function bankMinimize() {
+        function bankMinimize(silent) {
             const fv = _tabSaveBankForm();
             const modalTitle = document.getElementById('modalTitle').textContent;
             const typeLabels = { payment_in:'ПП вх.', payment_out:'ПП исх.', payment_order:'Плат.поруч.', pko:'ПКО', rko:'РКО', statement:'Выписка', directbank:'Директ-банк', conversion:'Конвертация', internal_transfer:'Перевод' };
@@ -3936,13 +3944,14 @@
             document.getElementById('documentModal').classList.remove('active');
             _activeTabId = null;
             _tabRender();
-            showToast('Документ свёрнут');
+            if (!silent) showToast('Документ свёрнут');
         }
 
         // -- Клик по вкладке — восстановить документ --
         function _tabSwitch(id) {
             const tab = _openTabs.find(function(t) { return t.id === id; });
             if (!tab || !tab.state) return;
+            _tabMinimizeActive();
             _activeTabId = id;
             if (tab.type === 'trade') {
                 tDoc = JSON.parse(JSON.stringify(tab.state.tDoc));
@@ -3973,6 +3982,7 @@
             // Если документ свёрнут в tab — восстановить из tab
             const tabIdx = _openTabs.findIndex(function(t) { return t.id === 't_' + id; });
             if (tabIdx >= 0) { _tabSwitch('t_' + id); return; }
+            _tabMinimizeActive();
             tDoc = JSON.parse(JSON.stringify(d)); tTab = TT[d.type].tabs[0]; tCalcDoc(tDoc);
             _tDocSnapshot = JSON.stringify(tDoc);
             tRenderForm(false);
@@ -6087,8 +6097,8 @@
                 if (modals.length) {
                     const top = modals.reduce((a, b) => (parseInt(getComputedStyle(a).zIndex)||0) >= (parseInt(getComputedStyle(b).zIndex)||0) ? a : b);
                     if (top.id === 'tPickModal') tClosePick();
-                    else if (top.id === 'tModal') tCloseForm();
-                    else if (top.id === 'documentModal' && typeof closeModal === 'function') closeModal();
+                    else if (top.id === 'tModal') tMinimize();
+                    else if (top.id === 'documentModal') bankMinimize();
                     else top.classList.remove('active');
                 }
             } else if (e.ctrlKey && e.shiftKey && e.key === 'n' && !isTrade && isBankCash) {
