@@ -251,7 +251,7 @@
                         </div>
                         <div class="form-group" id="docContractorGroup" style="position:relative">
                             <label>Контрагент</label>
-                            <input type="text" id="docContractor" placeholder="Начните вводить..." autocomplete="off">
+                            <input type="text" id="docContractor" placeholder="Выберите из списка..." autocomplete="off">
                             <div id="contractorDropdown" class="autocomplete-dropdown" style="display:none"></div>
                         </div>
                     </div>
@@ -742,7 +742,7 @@
             }
 
             function showDropdown(list, query) {
-                if (!list.length) { dropdown.style.display = 'none'; return; }
+                if (!list.length) { dropdown.innerHTML = '<div class="ac-item" style="color:var(--text-secondary);cursor:default">Не найдено</div>'; dropdown.style.display = ''; return; }
                 acIndex = -1;
                 dropdown.innerHTML = list.map((c, i) =>
                     '<div class="ac-item" data-index="' + i + '" data-name="' + esc(c.name) + '">' + highlightMatch(c.name, query) + '</div>'
@@ -773,7 +773,17 @@
                 showDropdown(filtered, q);
             });
 
-            input.addEventListener('blur', hideDropdown);
+            input.addEventListener('blur', function() {
+                setTimeout(() => {
+                    dropdown.style.display = 'none';
+                    const v = input.value.trim();
+                    if (!v) return;
+                    const all = getContractors();
+                    const match = all.find(c => c.name.toLowerCase() === v.toLowerCase());
+                    if (match) { input.value = match.name; }
+                    else { input.value = ''; }
+                }, 200);
+            });
 
             input.addEventListener('keydown', function(e) {
                 const items = dropdown.querySelectorAll('.ac-item');
@@ -3878,7 +3888,7 @@
                     ${cfg.correction ? `<div class="fg wide"><label>Отражать корректировку</label><select onchange="tDoc.corrKind=this.value"><option ${d.corrKind === 'Во всех разделах учета' ? 'selected' : ''}>Во всех разделах учета</option><option ${d.corrKind === 'Только в учете НДС' ? 'selected' : ''}>Только в учете НДС</option><option ${d.corrKind === 'Только в печатной форме' ? 'selected' : ''}>Только в печатной форме</option></select></div>` : ''}
                     <div class="fg"><label>Организация</label><input value="${esc(db.trade.org.name)}" disabled></div>
                     ${(cfg.retail || cfg.noContractor) ? '' : `<div class="fg wide" style="position:relative"><label>${cfg.group === 'purchase' ? 'Контрагент (поставщик)' : cfg.recon ? 'Контрагент' : cfg.group === 'prod' ? 'Контрагент (переработчик)' : 'Контрагент (покупатель)'} *</label>
-                        <div style="display:flex;gap:6px"><input id="tContractor" type="text" value="${esc(contractorName)}" placeholder="Начните вводить имя..." autocomplete="off" style="flex:1">
+                        <div style="display:flex;gap:6px"><input id="tContractor" type="text" value="${esc(contractorName)}" placeholder="Выберите из списка..." autocomplete="off" style="flex:1">
                         <button class="btn" title="Создать контрагента" onclick="tQuickRef('contractors')">+</button></div>
                         <div id="tContractorDrop" class="autocomplete-dropdown" style="display:none"></div></div>
                     <div class="fg wide"><label>Договор</label><div style="display:flex;gap:6px"><select onchange="tDoc.contract=this.value" style="flex:1">${contractOpts}</select><button class="btn" title="Создать договор" onclick="tQuickRef('contracts')">+</button></div></div>`}
@@ -4616,7 +4626,14 @@
                 show(filter(), inp.value.trim());
                 if (!inp.value.trim()) { tDoc.contractor = ''; tDoc.contract = ''; }
             });
-            inp.addEventListener('blur', () => setTimeout(() => { drop.style.display = 'none'; }, 200));
+            inp.addEventListener('blur', () => setTimeout(() => {
+                drop.style.display = 'none';
+                const v = inp.value.trim();
+                if (!v) { tDoc.contractor = ''; tDoc.contract = ''; return; }
+                const match = db.trade.contractors.find(c => c.name.toLowerCase() === v.toLowerCase());
+                if (match) { if (tDoc.contractor !== match.id) { tDoc.contractor = match.id; tDoc.contract = ''; tRenderForm(false); } }
+                else { const prev = db.trade.contractors.find(c => c.id === tDoc.contractor); inp.value = prev ? prev.name : ''; if (!prev) { tDoc.contractor = ''; tDoc.contract = ''; } }
+            }, 200));
             inp.addEventListener('keydown', (e) => {
                 const items = drop.querySelectorAll('.ac-item[data-id]');
                 if (!items.length || drop.style.display === 'none') return;
