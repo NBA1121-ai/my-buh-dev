@@ -187,11 +187,11 @@
             </div>
 
             <!-- Create/Edit Modal (inside main for tab-inline) -->
-            <div class="modal" id="documentModal" onclick="if(event.target===this&&!this.classList.contains('tab-inline'))closeModal()" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <div class="modal" id="documentModal" onclick="if(event.target===this)closeModal()" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h2 id="modalTitle">Создать документ</h2>
-                <button class="modal-close" onclick="closeModal()">×</button>
+                <div style="display:flex;gap:4px;align-items:center"><button class="modal-close" onclick="bankMinimize()" title="Свернуть">─</button><button class="modal-close" onclick="closeModal()" title="Закрыть">×</button></div>
             </div>
             <div class="modal-body">
                 <form id="documentForm">
@@ -319,11 +319,11 @@
     </div>
 
     <!-- ===== Форма документа Покупки/Продажи (inside main for tab-inline) ===== -->
-    <div class="modal" id="tModal" onclick="if(event.target===this&&!this.classList.contains('tab-inline'))tCloseForm()" role="dialog" aria-modal="true" aria-labelledby="tModalTitle">
+    <div class="modal" id="tModal" onclick="if(event.target===this)tCloseForm()" role="dialog" aria-modal="true" aria-labelledby="tModalTitle">
         <div class="modal-content tmodal-content">
             <div class="modal-header">
                 <h2 id="tModalTitle">Документ</h2>
-                <button class="modal-close" onclick="tCloseForm()">×</button>
+                <div style="display:flex;gap:4px;align-items:center"><button class="modal-close" onclick="tMinimize()" title="Свернуть">─</button><button class="modal-close" onclick="tCloseForm()" title="Закрыть">×</button></div>
             </div>
             <div id="tCmd"></div>
             <div class="modal-body">
@@ -830,8 +830,6 @@
                 if (el.getAttribute('onclick') && el.getAttribute('onclick').includes("'" + page + "'")) el.classList.add('active');
             });
             closeSidebar();
-            // При навигации — переключаемся на список
-            if (_activeTabId) { _tabSaveState(); _tabHideAll(); _activeTabId = null; }
             renderPage();
             renderFavorites();
             _tabRender();
@@ -2725,10 +2723,6 @@
         function openCreateModal() {
             editingId = null;
             const group = ['cash','cash_pko','cash_rko'].includes(currentPage) ? 'cash' : 'bank';
-            const newId = uid();
-            const tabTitle = group === 'cash' ? 'Новый кассовый' : 'Новый банковский';
-            _tabOpenBank(newId, tabTitle);
-
             document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
             document.getElementById('documentForm').reset();
             setTypeOptions(group);
@@ -2740,10 +2734,8 @@
             const prefix = group === 'cash' ? (defType === 'pko' ? 'ПКО' : 'РКО') : (defType === 'payment_in' ? 'ПП-ВХ' : 'ПП');
             const list = group === 'cash' ? db.cashDocuments : db.bankDocuments;
             document.getElementById('docNumber').value = nextDocNumber(prefix, list);
-            document.getElementById('content').style.display = 'none';
-            document.getElementById('documentModal').classList.add('active', 'tab-inline');
+            document.getElementById('documentModal').classList.add('active');
             updateFormByType();
-            _tabRender();
         }
         function openCreateModalForType(docType, group) {
             editingId = null;
@@ -2762,16 +2754,13 @@
             const prefix = prefixes[docType] || 'ДОК';
             const list = group === 'cash' ? db.cashDocuments : db.bankDocuments;
             document.getElementById('docNumber').value = nextDocNumber(prefix, list);
-            document.getElementById('content').style.display = 'none';
-            document.getElementById('documentModal').classList.add('active', 'tab-inline');
+            document.getElementById('documentModal').classList.add('active');
             updateFormByType();
-            _tabRender();
         }
 
         function closeModal() {
-            document.getElementById('documentModal').classList.remove('active', 'tab-inline');
-            document.getElementById('content').style.display = '';
-            // Remove bank tab
+            document.getElementById('documentModal').classList.remove('active');
+            // Remove bank tab if was minimized
             if (_activeTabId && _activeTabId.startsWith('b_')) {
                 const idx = _openTabs.findIndex(function(t) { return t.id === _activeTabId; });
                 if (idx >= 0) _openTabs.splice(idx, 1);
@@ -2781,13 +2770,12 @@
         }
 
         function editDoc(id) {
+            // Если свёрнут — восстановить из tab
+            const tabIdx = _openTabs.findIndex(function(t) { return t.id === 'b_' + id; });
+            if (tabIdx >= 0) { _tabSwitch('b_' + id); return; }
             editingId = id;
             const doc = [...db.bankDocuments, ...db.cashDocuments].find(d => d.id === id);
             if (!doc) return;
-
-            const typeLabels = { payment_in:'ПП вх.', payment_out:'ПП исх.', payment_order:'Плат.поруч.', pko:'ПКО', rko:'РКО', statement:'Выписка', directbank:'Директ-банк', conversion:'Конвертация', internal_transfer:'Перевод' };
-            const tabTitle = (typeLabels[doc.type] || doc.type) + ' ' + doc.number + ' от ' + formatDate(doc.date);
-            _tabOpenBank(id, tabTitle);
 
             document.getElementById('modalTitle').textContent = 'Редактировать документ';
             const isCashDoc = CASH_TYPES.includes(doc.type) || (doc.type === 'internal_transfer' && db.cashDocuments.some(d => d.id === id));
@@ -2809,9 +2797,7 @@
             calcSumKGS();
             document.getElementById('docPurpose').value = doc.purpose || '';
             document.getElementById('docNote').value = doc.note || '';
-            document.getElementById('content').style.display = 'none';
-            document.getElementById('documentModal').classList.add('active', 'tab-inline');
-            _tabRender();
+            document.getElementById('documentModal').classList.add('active');
         }
 
         function saveDocument() {
@@ -3822,11 +3808,7 @@
                 document.getElementById('docPurpose').value = 'Оплата по документу ' + tDocTitle(base) + (base.vatTotal ? ', в т.ч. НДС ' + formatAmount(base.vatTotal) : '');
                 document.getElementById('docNote').value = 'Создано на основании ' + tDocTitle(base);
                 const _basisId = uid();
-                const _basisLabels = { payment_in:'ПП вх.', payment_out:'ПП исх.', pko:'ПКО', rko:'РКО' };
-                _tabOpenBank(_basisId, 'Новый ' + (_basisLabels[target] || target));
-                document.getElementById('content').style.display = 'none';
-                document.getElementById('documentModal').classList.add('active', 'tab-inline');
-                _tabRender();
+                document.getElementById('documentModal').classList.add('active');
                 return;
             }
             if (target === 'reconciliation') { tCreate('reconciliation', null, { contractor: base.contractor, contract: base.contract }); return; }
@@ -3860,10 +3842,7 @@
             if (cfg.hr && tDoc.employee) tOnEmployeeChange();
             if (cfg.recon) { const d0 = new Date(); tDoc.recon.from = d0.getFullYear() + '-01-01'; tDoc.recon.to = tToday(); }
             if (tDoc.contractor && !tDoc.contract) { const c = db.trade.contracts.find(x => x.contractor === tDoc.contractor); if (c) tDoc.contract = c.id; }
-            tTab = cfg.tabs[0]; tCalcDoc(tDoc); _tDocSnapshot = JSON.stringify(tDoc);
-            _tabOpenTrade(tDoc.id, cfg.label + ' (создание)');
-            tRenderForm(true);
-            _tabRender();
+            tTab = cfg.tabs[0]; tCalcDoc(tDoc); _tDocSnapshot = JSON.stringify(tDoc); tRenderForm(true);
         }
         // ========== СИСТЕМА ВКЛАДОК (1С-стиль) ==========
         const _openTabs = []; // { id, title, type:'trade'|'bank', docId, state }
@@ -3873,27 +3852,13 @@
             const bar = document.getElementById('tabBar');
             if (!_openTabs.length) { bar.style.display = 'none'; return; }
             bar.style.display = 'flex';
-            const listActive = !_activeTabId;
-            const pageTitle = document.getElementById('pageTitle').textContent;
-            let html = '<div class="tab-bar-item ' + (listActive ? 'active' : '') + '" onclick="_tabToList()"><span class="tb-title">' + esc(pageTitle) + '</span></div>';
+            let html = '';
             _openTabs.forEach(function(tab) {
-                html += '<div class="tab-bar-item ' + (_activeTabId === tab.id ? 'active' : '') + '" onclick="_tabSwitch(\'' + tab.id + '\')">' +
+                html += '<div class="tab-bar-item" onclick="_tabSwitch(\'' + tab.id + '\')">' +
                     '<span class="tb-title">' + esc(tab.title) + '</span>' +
                     '<span class="tab-bar-close" onclick="event.stopPropagation();_tabClose(\'' + tab.id + '\')" title="Закрыть">&times;</span></div>';
             });
             bar.innerHTML = html;
-        }
-
-        function _tabSaveState() {
-            if (!_activeTabId) return;
-            const tab = _openTabs.find(function(t) { return t.id === _activeTabId; });
-            if (!tab) return;
-            if (tab.type === 'trade' && tDoc) {
-                tab.state = { tDoc: JSON.parse(JSON.stringify(tDoc)), tTab: tTab, snap: _tDocSnapshot };
-                tab.title = (TT[tDoc.type] ? TT[tDoc.type].short || TT[tDoc.type].label : '') + ' ' + (tDoc.number || '') + ' от ' + formatDate(tDoc.date);
-            } else if (tab.type === 'bank') {
-                tab.state = { editingId: editingId, fv: _tabSaveBankForm(), modalTitle: document.getElementById('modalTitle').textContent };
-            }
         }
 
         function _tabSaveBankForm() {
@@ -3934,89 +3899,83 @@
             document.getElementById('docNote').value = fv.note || '';
         }
 
-        function _tabHideAll() {
-            document.getElementById('tModal').classList.remove('active', 'tab-inline');
-            document.getElementById('documentModal').classList.remove('active', 'tab-inline');
-            document.getElementById('content').style.display = '';
-        }
-
-        function _tabToList() {
-            if (!_activeTabId) return;
-            _tabSaveState();
-            _tabHideAll();
+        // -- Свернуть торговый документ --
+        function tMinimize() {
+            if (!tDoc) return;
+            const cfg = TT[tDoc.type];
+            const title = (cfg.short || cfg.label) + ' ' + (tDoc.number || '') + ' от ' + formatDate(tDoc.date);
+            const tabId = 't_' + tDoc.id;
+            const existing = _openTabs.find(function(t) { return t.id === tabId; });
+            if (existing) {
+                existing.state = { tDoc: JSON.parse(JSON.stringify(tDoc)), tTab: tTab, snap: _tDocSnapshot };
+                existing.title = title;
+            } else {
+                _openTabs.push({ id: tabId, title: title, type: 'trade', state: { tDoc: JSON.parse(JSON.stringify(tDoc)), tTab: tTab, snap: _tDocSnapshot } });
+            }
+            document.getElementById('tModal').classList.remove('active');
+            tDoc = null; _tDocSnapshot = '';
             _activeTabId = null;
             _tabRender();
+            showToast('Документ свёрнут');
         }
 
+        // -- Свернуть банковский/кассовый документ --
+        function bankMinimize() {
+            const fv = _tabSaveBankForm();
+            const modalTitle = document.getElementById('modalTitle').textContent;
+            const typeLabels = { payment_in:'ПП вх.', payment_out:'ПП исх.', payment_order:'Плат.поруч.', pko:'ПКО', rko:'РКО', statement:'Выписка', directbank:'Директ-банк', conversion:'Конвертация', internal_transfer:'Перевод' };
+            const title = (typeLabels[fv.type] || fv.type) + ' ' + (fv.number || '') + ' от ' + formatDate(fv.date);
+            const tabId = 'b_' + (editingId || fv.number || Date.now());
+            const existing = _openTabs.find(function(t) { return t.id === tabId; });
+            if (existing) {
+                existing.state = { editingId: editingId, fv: fv, modalTitle: modalTitle };
+                existing.title = title;
+            } else {
+                _openTabs.push({ id: tabId, title: title, type: 'bank', state: { editingId: editingId, fv: fv, modalTitle: modalTitle } });
+            }
+            document.getElementById('documentModal').classList.remove('active');
+            _activeTabId = null;
+            _tabRender();
+            showToast('Документ свёрнут');
+        }
+
+        // -- Клик по вкладке — восстановить документ --
         function _tabSwitch(id) {
-            if (_activeTabId === id) return;
-            _tabSaveState();
-            _tabHideAll();
             const tab = _openTabs.find(function(t) { return t.id === id; });
-            if (!tab) return;
+            if (!tab || !tab.state) return;
             _activeTabId = id;
-            if (tab.type === 'trade' && tab.state) {
+            if (tab.type === 'trade') {
                 tDoc = JSON.parse(JSON.stringify(tab.state.tDoc));
                 tTab = tab.state.tTab;
                 _tDocSnapshot = tab.state.snap;
                 tRenderForm(false);
-            } else if (tab.type === 'bank' && tab.state) {
+            } else if (tab.type === 'bank') {
                 editingId = tab.state.editingId;
                 document.getElementById('modalTitle').textContent = tab.state.modalTitle;
                 _tabRestoreBankForm(tab.state.fv);
-                document.getElementById('content').style.display = 'none';
-                document.getElementById('documentModal').classList.add('active', 'tab-inline');
+                document.getElementById('documentModal').classList.add('active');
             }
             _tabRender();
         }
 
+        // -- Закрыть вкладку (без открытия документа) --
         function _tabClose(id) {
-            const tab = _openTabs.find(function(t) { return t.id === id; });
-            if (!tab) return;
-            if (_activeTabId === id) {
-                if (tab.type === 'trade') {
-                    if (tDoc && tIsDirty() && !confirm('Документ изменён, но не сохранён. Закрыть?')) return;
-                    tDoc = null; _tDocSnapshot = '';
-                }
-                _tabHideAll();
-                _activeTabId = null;
-            }
-            _openTabs.splice(_openTabs.indexOf(tab), 1);
+            const idx = _openTabs.findIndex(function(t) { return t.id === id; });
+            if (idx >= 0) _openTabs.splice(idx, 1);
+            if (_activeTabId === id) _activeTabId = null;
             _tabRender();
-        }
-
-        function _tabOpenTrade(id, title) {
-            const existing = _openTabs.find(function(t) { return t.id === 't_' + id; });
-            if (_activeTabId) _tabSaveState();
-            if (existing) {
-                _activeTabId = existing.id;
-            } else {
-                _openTabs.push({ id: 't_' + id, title: title, type: 'trade', docId: id, state: null });
-                _activeTabId = 't_' + id;
-            }
-        }
-
-        function _tabOpenBank(id, title) {
-            const existing = _openTabs.find(function(t) { return t.id === 'b_' + id; });
-            if (_activeTabId) _tabSaveState();
-            if (existing) {
-                _activeTabId = existing.id;
-            } else {
-                _openTabs.push({ id: 'b_' + id, title: title, type: 'bank', docId: id, state: null });
-                _activeTabId = 'b_' + id;
-            }
         }
         // ========== /ВКЛАДКИ ==========
 
         let _tDocSnapshot = '';
         function tOpen(id) {
             const d = tDocById(id); if (!d) return;
+            // Если документ свёрнут в tab — восстановить из tab
+            const tabIdx = _openTabs.findIndex(function(t) { return t.id === 't_' + id; });
+            if (tabIdx >= 0) { _tabSwitch('t_' + id); return; }
             tDoc = JSON.parse(JSON.stringify(d)); tTab = TT[d.type].tabs[0]; tCalcDoc(tDoc);
             _tDocSnapshot = JSON.stringify(tDoc);
-            const cfg = TT[d.type];
-            _tabOpenTrade(d.id, (cfg.short || cfg.label) + ' ' + d.number + ' от ' + formatDate(d.date));
             tRenderForm(false);
-            _tabRender();
         }
         function tIsDirty() {
             if (!tDoc) return false;
@@ -4025,14 +3984,9 @@
         }
         function tCloseForm() {
             if (tDoc && tIsDirty() && !confirm('Документ изменён, но не сохранён. Закрыть без сохранения?')) return;
-            const tabId = tDoc ? 't_' + tDoc.id : null;
-            document.getElementById('tModal').classList.remove('active', 'tab-inline');
-            document.getElementById('content').style.display = '';
+            if (tDoc) { const ti = _openTabs.findIndex(function(t) { return t.id === 't_' + tDoc.id; }); if (ti >= 0) _openTabs.splice(ti, 1); }
+            document.getElementById('tModal').classList.remove('active');
             tDoc = null; _tDocSnapshot = '';
-            if (tabId) {
-                const idx = _openTabs.findIndex(function(t) { return t.id === tabId; });
-                if (idx >= 0) _openTabs.splice(idx, 1);
-            }
             _activeTabId = null;
             _tabRender();
         }
@@ -4040,8 +3994,7 @@
         function tRenderForm(isNew) {
             const d = tDoc, cfg = TT[d.type];
             document.getElementById('tModalTitle').textContent = (isNew ? cfg.label + ' (создание)' : cfg.label + ' ' + d.number + ' от ' + formatDate(d.date)) + (d.status === 'posted' ? '  ✔ проведен' : '');
-            document.getElementById('content').style.display = 'none';
-            document.getElementById('tModal').classList.add('active', 'tab-inline');
+            document.getElementById('tModal').classList.add('active');
 
             const printItems = cfg.prints.map(p => ({ label: p, action: `tFormPrint('${esc(p)}')` }));
             const basisItems = (cfg.basis || []).map(b => ({ label: tBasisLabel(b), action: `tFormBasis('${b}')` }));
@@ -4427,7 +4380,7 @@
                 if (idx >= 0) db.trade.docs[idx] = copy; else db.trade.docs.push(copy);
                 logActivity(isNew ? 'Создание документа' : 'Изменение документа', (d.type||'') + ' ' + (d.number||''));
                 saveData(); tSelected = d.id; _tDocSnapshot = JSON.stringify(d); renderPage(); showToast('Документ записан');
-                if (close) { const _tid = 't_' + d.id; const _ti = _openTabs.findIndex(function(t){return t.id===_tid;}); if (_ti>=0) _openTabs.splice(_ti,1); document.getElementById('tModal').classList.remove('active','tab-inline'); document.getElementById('content').style.display=''; tDoc = null; _tDocSnapshot = ''; _activeTabId=null; _tabRender(); } else tRenderForm(false);
+                if (close) { const _ti = _openTabs.findIndex(function(t){return t.id==='t_'+d.id;}); if (_ti>=0) _openTabs.splice(_ti,1); document.getElementById('tModal').classList.remove('active'); tDoc = null; _tDocSnapshot = ''; _activeTabId=null; _tabRender(); } else tRenderForm(false);
             } finally { _tSaving = false; }
         }
         function tFormPost(close) {
@@ -6130,18 +6083,13 @@
                 if (isTrade && tSelected) { const _d = tDocById(tSelected); if (_d && TT[_d.type] && TT[_d.type].prints && TT[_d.type].prints[0]) tPrint(tSelected, TT[_d.type].prints[0]); }
             } else if (e.key === 'Escape') {
                 // Close only the topmost modal using proper close functions
-                const modals = [...document.querySelectorAll('.modal.active:not(.tab-inline)')];
-                const inlineTabs = [...document.querySelectorAll('.modal.active.tab-inline')];
+                const modals = [...document.querySelectorAll('.modal.active')];
                 if (modals.length) {
                     const top = modals.reduce((a, b) => (parseInt(getComputedStyle(a).zIndex)||0) >= (parseInt(getComputedStyle(b).zIndex)||0) ? a : b);
                     if (top.id === 'tPickModal') tClosePick();
                     else if (top.id === 'tModal') tCloseForm();
                     else if (top.id === 'documentModal' && typeof closeModal === 'function') closeModal();
                     else top.classList.remove('active');
-                } else if (inlineTabs.length) {
-                    // ESC closes active tab-inline document
-                    if (inlineTabs.some(m => m.id === 'tModal')) tCloseForm();
-                    else if (inlineTabs.some(m => m.id === 'documentModal')) closeModal();
                 }
             } else if (e.ctrlKey && e.shiftKey && e.key === 'n' && !isTrade && isBankCash) {
                 e.preventDefault(); openCreateModal();
