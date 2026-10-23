@@ -309,7 +309,7 @@ function saveAsTemplate(docId) {
 function createFromTemplate(tmplId) {
     const tmpl = (db.templates || []).find(t => t.id === tmplId);
     if (!tmpl) return;
-    const doc = { ...tmpl, id: uid(), date: new Date().toISOString().split('T')[0], status: 'draft', created: new Date().toISOString() };
+    const doc = { ...tmpl, id: uid(), date: localISODate(new Date()), status: 'draft', created: new Date().toISOString() };
     delete doc.templateName; delete doc.isTemplate;
     const isCash = ['pko', 'rko', 'advance'].includes(doc.type);
     if (isCash) {

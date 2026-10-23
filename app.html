@@ -385,6 +385,8 @@
     <script src="js/db-sync.js"></script>
     <script src="js/utils.js"></script>
     <script>
+        // Дата в формате ГГГГ-ММ-ДД по локальному времени (toISOString даёт UTC и сдвигает дату до 06:00 в Бишкеке)
+        function localISODate(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
         // ==================== DATA ====================
         const db = {
             bankDocuments: [],
@@ -459,7 +461,7 @@
                 return;
             }
 
-            const today = new Date().toISOString().split('T')[0];
+            const today = localISODate(new Date());
             document.getElementById('docDate').value = today;
 
             try {
@@ -1594,7 +1596,7 @@
                                 ${db.podotchetPersons.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}
                             </select>
                         </div>
-                        <div class="form-group"><label>Дата</label><input id="podDocDate" type="date" class="form-control" value="${new Date().toISOString().slice(0,10)}"></div>
+                        <div class="form-group"><label>Дата</label><input id="podDocDate" type="date" class="form-control" value="${localISODate(new Date())}"></div>
                         <div class="form-group"><label>Сумма (сом)</label><input id="podDocSum" type="number" class="form-control" placeholder="0"></div>
                         <div class="form-group"><label>Номер документа</label><input id="podDocNumber" class="form-control" placeholder="ПО-001"></div>
                         <div class="form-group"><label>Примечание</label><input id="podDocNote" class="form-control" placeholder="На закупку материалов"></div>
@@ -1644,7 +1646,7 @@
             document.getElementById('podDocEditId').value = '';
             document.getElementById('podDocType').value = 'vydacha';
             document.getElementById('podDocPerson').value = '';
-            document.getElementById('podDocDate').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('podDocDate').value = localISODate(new Date());
             document.getElementById('podDocSum').value = '';
             document.getElementById('podDocNumber').value = '';
             document.getElementById('podDocNote').value = '';
@@ -1940,7 +1942,7 @@
                 if (c) {
                     if (c.rate !== rate) {
                         if (!db.currencyHistory) db.currencyHistory = [];
-                        db.currencyHistory.push({ currencyId: editId, code: c.code, oldRate: c.rate, newRate: rate, date: new Date().toISOString().split('T')[0], time: new Date().toLocaleTimeString('ru-RU') });
+                        db.currencyHistory.push({ currencyId: editId, code: c.code, oldRate: c.rate, newRate: rate, date: localISODate(new Date()), time: new Date().toLocaleTimeString('ru-RU') });
                     }
                     c.code = code; c.name = name; c.rate = rate;
                 }
@@ -2110,7 +2112,7 @@
 
         function buildTopContractors() {
             if (!db.trade || !db.trade.docs || !db.trade.contractors) return '';
-            const now = new Date(), curMonth = now.toISOString().slice(0, 7);
+            const now = new Date(), curMonth = localISODate(now).slice(0, 7);
             const from = curMonth + '-01', lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
             const to = curMonth + '-' + String(lastDay).padStart(2, '0');
             const posted = db.trade.docs.filter(d => d.status === 'posted' && d.date >= from && d.date <= to);
@@ -2298,7 +2300,7 @@
         // ==================== NOTIFICATIONS ====================
         function getNotifications() {
             const notifs = [];
-            const today = new Date().toISOString().split('T')[0];
+            const today = localISODate(new Date());
             // Unpaid invoices (supplier invoices not matched by payments)
             if (db.trade && db.trade.docs) {
                 const unpaidInvoices = db.trade.docs.filter(d => d.type === 'supplier_invoice' && d.status !== 'paid' && d.status !== 'posted');
@@ -2326,7 +2328,7 @@
             }
             // Expiring contracts (within 30 days)
             if (db.trade && db.trade.contracts) {
-                const in30 = new Date(Date.now() + 30*86400000).toISOString().split('T')[0];
+                const in30 = localISODate(new Date(Date.now() + 30*86400000));
                 db.trade.contracts.forEach(c => {
                     if (c.endDate && c.endDate <= in30 && c.endDate >= today) {
                         notifs.push({ title: 'Истекает договор: ' + esc(c.name || c.number || ''), text: 'До: ' + c.endDate, time: c.endDate });
@@ -2392,7 +2394,7 @@
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = 'backup_' + new Date().toISOString().split('T')[0] + '.json';
+            a.download = 'backup_' + localISODate(new Date()) + '.json';
             a.click();
             URL.revokeObjectURL(a.href);
             showToast('Резервная копия скачана');
@@ -2733,7 +2735,7 @@
             const defType = currentPage === 'bank_in' ? 'payment_in' : currentPage === 'bank_out' ? 'payment_out' : currentPage === 'cash_pko' ? 'pko' : currentPage === 'cash_rko' ? 'rko' : group === 'cash' ? 'pko' : 'payment_out';
             document.getElementById('docType').value = defType;
             const now = new Date();
-            document.getElementById('docDate').value = now.toISOString().split('T')[0];
+            document.getElementById('docDate').value = localISODate(now);
             document.getElementById('docTime').value = now.toTimeString().slice(0, 5);
             const prefix = group === 'cash' ? (defType === 'pko' ? 'ПКО' : 'РКО') : (defType === 'payment_in' ? 'ПП-ВХ' : 'ПП');
             const list = group === 'cash' ? db.cashDocuments : db.bankDocuments;
@@ -2751,7 +2753,7 @@
             setTypeOptions(group);
             document.getElementById('docType').value = docType;
             const now = new Date();
-            document.getElementById('docDate').value = now.toISOString().split('T')[0];
+            document.getElementById('docDate').value = localISODate(now);
             document.getElementById('docTime').value = now.toTimeString().slice(0, 5);
             const prefixes = { payment_in: 'ПП-ВХ', payment_out: 'ПП', payment_order: 'ПП', pko: 'ПКО', rko: 'РКО' };
             const prefix = prefixes[docType] || 'ДОК';
@@ -3057,7 +3059,7 @@
 
         function exportToJSON() {
             const data = Object.assign({}, db, { exportDate: new Date().toISOString(), format: 'bankCashData-full' });
-            downloadFile(JSON.stringify(data, null, 2), 'backup_' + new Date().toISOString().slice(0, 10) + '.json', 'application/json');
+            downloadFile(JSON.stringify(data, null, 2), 'backup_' + localISODate(new Date()) + '.json', 'application/json');
             showToast('Экспортировано в JSON');
         }
 
@@ -3372,7 +3374,7 @@
             });
             return TT[type].prefix + '-' + String(max + 1).padStart(6, '0');
         }
-        function tToday() { return new Date().toISOString().split('T')[0]; }
+        function tToday() { return localISODate(new Date()); }
         // esc, uid -> js/utils.js
         function tContractor(id) { return (db.trade && db.trade.contractors || []).find(c => c.id === id); }
         function tContractorName(id) { const c = tContractor(id); return c ? c.name : '—'; }
@@ -3817,7 +3819,7 @@
                 const prefixes = { payment_in: 'ПП-ВХ', payment_out: 'ПП', pko: 'ПКО', rko: 'РКО' };
                 document.getElementById('docNumber').value = nextDocNumber(prefixes[target] || 'ДОК', [...db.bankDocuments, ...db.cashDocuments]);
                 const now = new Date();
-                document.getElementById('docDate').value = now.toISOString().split('T')[0];
+                document.getElementById('docDate').value = localISODate(now);
                 document.getElementById('docTime').value = now.toTimeString().slice(0, 5);
                 document.getElementById('docStatus').value = 'posted';
                 document.getElementById('docAccount').value = acc ? acc.id : '';
@@ -4644,7 +4646,7 @@
             const chargeTypes = isSale ? ['sale', 'production_services', 'commission_report', 'sale_correction', 'customer_invoice'] : ['purchase', 'add_expenses', 'purchase_correction'];
             const returnTypes = isSale ? ['sale_return'] : ['purchase_return'];
             const payTypes = isSale ? ['payment_in', 'pko'] : ['payment_out', 'rko'];
-            const today = new Date().toISOString().slice(0, 10);
+            const today = localISODate(new Date());
             const rows = db.trade.contractors.map(c => {
                 const cDocs = tPosted(chargeTypes).filter(d => d.contractor === c.id);
                 const charged = cDocs.reduce((s, d) => s + d.total, 0);
@@ -6151,7 +6153,7 @@
         });
 
         // ==================== ЕДИНЫЙ ОТЧЁТ ЗА МЕСЯЦ ====================
-        let _reportMonth = new Date().toISOString().slice(0, 7);
+        let _reportMonth = localISODate(new Date()).slice(0, 7);
 
         function renderMonthlyReport() {
             return `
@@ -6342,8 +6344,8 @@
         // ==================== ABC-АНАЛИЗ ====================
         function renderABC() {
             const now = new Date();
-            const defFrom = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().slice(0, 10);
-            const defTo = now.toISOString().slice(0, 10);
+            const defFrom = localISODate(new Date(now.getFullYear(), now.getMonth() - 5, 1));
+            const defTo = localISODate(now);
             return `<div style="background:var(--bg-card,#fff);padding:20px;border-radius:8px;border:1px solid var(--border,#eee)">
                 <h2 style="margin-bottom:10px">ABC-анализ</h2>
                 <p style="color:var(--text-muted);margin-bottom:15px">Классификация товаров и контрагентов по доле в выручке: A (80%), B (15%), C (5%)</p>
@@ -6396,8 +6398,8 @@
         // ==================== ПРИБЫЛИ И УБЫТКИ ====================
         function renderPnL() {
             const now = new Date();
-            const defFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-            const defTo = now.toISOString().slice(0, 10);
+            const defFrom = localISODate(new Date(now.getFullYear(), now.getMonth(), 1));
+            const defTo = localISODate(now);
             return `<div style="background:var(--bg-card,#fff);padding:20px;border-radius:8px;border:1px solid var(--border,#eee)">
                 <h2 style="margin-bottom:10px">Отчёт о прибылях и убытках</h2>
                 <p style="color:var(--text-muted);margin-bottom:15px">Доходы минус расходы по статьям за выбранный период</p>
@@ -6471,7 +6473,7 @@
                 <h2 style="margin-bottom:10px">Взаиморасчёты с контрагентами</h2>
                 <p style="color:var(--text-muted);margin-bottom:15px">Сводная таблица дебиторской и кредиторской задолженности</p>
                 <div style="display:flex;gap:10px;align-items:end;margin-bottom:15px">
-                    <div><label style="font-size:12px;display:block;margin-bottom:4px">На дату</label><input type="date" id="settDate" value="${new Date().toISOString().slice(0, 10)}"></div>
+                    <div><label style="font-size:12px;display:block;margin-bottom:4px">На дату</label><input type="date" id="settDate" value="${localISODate(new Date())}"></div>
                     <button class="btn primary" onclick="buildSettlements()">Сформировать</button>
                 </div>
                 <div id="settResult"></div>
@@ -6528,8 +6530,8 @@
         // ==================== ОСВ ПО ВСЕМ СЧЕТАМ ====================
         function renderOSVFull() {
             const now = new Date();
-            const defFrom = new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
-            const defTo = now.toISOString().slice(0, 10);
+            const defFrom = localISODate(new Date(now.getFullYear(), 0, 1));
+            const defTo = localISODate(now);
             return `<div style="background:var(--bg-card,#fff);padding:20px;border-radius:8px;border:1px solid var(--border,#eee)">
                 <h2 style="margin-bottom:10px">Оборотно-сальдовая ведомость</h2>
                 <p style="color:var(--text-muted);margin-bottom:15px">По всем бухгалтерским счетам на основании проводок проведённых документов</p>
@@ -6656,8 +6658,8 @@
         // ==================== АНАЛИЗ ДДС ПО СТАТЬЯМ ====================
         function renderDDSArticles() {
             const now = new Date();
-            const defFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-            const defTo = now.toISOString().slice(0, 10);
+            const defFrom = localISODate(new Date(now.getFullYear(), now.getMonth(), 1));
+            const defTo = localISODate(now);
             return `<div style="background:var(--bg-card,#fff);padding:20px;border-radius:8px;border:1px solid var(--border,#eee)">
                 <h2 style="margin-bottom:10px">Анализ движения денежных средств по статьям</h2>
                 <p style="color:var(--text-muted);margin-bottom:15px">Приход и расход денежных средств в разрезе статей ДДС</p>
@@ -6734,7 +6736,7 @@
 
         // ==================== БУХГАЛТЕРСКИЙ БАЛАНС ====================
         function renderBalance() {
-            const defDate = new Date().toISOString().slice(0, 10);
+            const defDate = localISODate(new Date());
             return `<div style="background:var(--bg-card,#fff);padding:20px;border-radius:8px;border:1px solid var(--border,#eee)">
                 <h2 style="margin-bottom:10px">Бухгалтерский баланс</h2>
                 <p style="color:var(--text-muted);margin-bottom:15px">Форма 1 — упрощённый баланс на дату. Строится на основании проводок всех проведённых документов.</p>
