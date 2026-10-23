@@ -26,6 +26,96 @@ const DbSync = (function() {
     let _lastSavedSize = 0; // record count at last successful load/save
     let _lastSavedKeys = 0; // data section count at last successful load/save
     let _awaitingConfirm = false;
+    let _base = undefined;          // последний снимок, совпадающий с GitHub (база для трёхстороннего слияния)
+    let _lastScheduledHash = '';    // хеш последнего локального состояния, переданного в scheduleSave
+    let _onRemoteCallback = null;   // app: применить данные с сервера (remote, base)
+    let _loadRetryTimer = null;
+    let _loadRetryDelay = 30000;
+    let _needsSave = false;         // после загрузки локальные изменения ещё не отправлены
+
+    // ---- Трёхстороннее слияние: base (общий предок), local, remote ----
+    function _isObj(x) { return x !== null && typeof x === 'object' && !Array.isArray(x); }
+    function _eq(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+    function _clone(x) { return x === undefined ? undefined : JSON.parse(JSON.stringify(x)); }
+    function _isIdArray(a) { return a.every(x => _isObj(x) && x.id != null); }
+    function _mergeById(base, local, remote, hasBase) {
+        const B = new Map((base || []).filter(x => _isObj(x) && x.id != null).map(x => [x.id, x]));
+        const R = new Map(remote.map(x => [x.id, x]));
+        const L = new Map(local.map(x => [x.id, x]));
+        const out = [];
+        for (const x of local) {
+            if (R.has(x.id)) out.push(merge3(B.get(x.id), x, R.get(x.id)));
+            else if (hasBase && B.has(x.id) && _eq(x, B.get(x.id))) continue; // удалено на другом устройстве, здесь не менялось
+            else out.push(_clone(x));
+        }
+        for (const x of remote) {
+            if (L.has(x.id)) continue;
+            if (hasBase && B.has(x.id) && _eq(x, B.get(x.id))) continue; // удалено здесь, там не менялось
+            out.push(_clone(x));
+        }
+        return out;
+    }
+    function merge3(base, local, remote) {
+        if (_eq(local, remote)) return _clone(local);
+        if (base !== undefined && _eq(local, base)) return _clone(remote);
+        if (base !== undefined && _eq(remote, base)) return _clone(local);
+        if (Array.isArray(local) && Array.isArray(remote)) {
+            if ((local.length || remote.length) && _isIdArray(local) && _isIdArray(remote)) {
+                return _mergeById(Array.isArray(base) ? base : [], local, remote, Array.isArray(base));
+            }
+            return _clone(local);
+        }
+        if (_isObj(local) && _isObj(remote)) {
+            const b = _isObj(base) ? base : undefined;
+            const out = {};
+            const keys = new Set([...Object.keys(local), ...Object.keys(remote)]);
+            for (const k of keys) {
+                const inL = k in local, inR = k in remote, inB = !!b && k in b;
+                if (inL && inR) out[k] = merge3(inB ? b[k] : undefined, local[k], remote[k]);
+                else if (inL) { if (!(inB && _eq(local[k], b[k]))) out[k] = _clone(local[k]); }
+                else { if (!(inB && _eq(remote[k], b[k]))) out[k] = _clone(remote[k]); }
+            }
+            return out;
+        }
+        return _clone(local); // конфликт простых значений — побеждает локальное
+    }
+
+    function _safeSet(key, val) {
+        try { localStorage.setItem(key, val); return true; }
+        catch (e) { console.warn('localStorage full:', key); return false; }
+    }
+    function _setBase(data) {
+        _base = _clone(data);
+        if (!_safeSet('db_base', JSON.stringify(data))) localStorage.removeItem('db_base');
+    }
+    function _loadStoredBase() {
+        try { const s = localStorage.getItem('db_base'); return s ? JSON.parse(s) : undefined; } catch (e) { return undefined; }
+    }
+    function _isDirty() { return localStorage.getItem('db_dirty') === '1'; }
+    function _setDirty(v) { if (v) _safeSet('db_dirty', '1'); else localStorage.removeItem('db_dirty'); }
+
+    // Чтение db.json (или другого файла) с поддержкой файлов > 1 МБ
+    async function _fetchFile(ref, file) {
+        const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${file || DATA_FILE}?ref=${ref || DATA_BRANCH}&_t=${Date.now()}`;
+        const res = await fetchWithTimeout(url, {
+            headers: { 'Authorization': 'token ' + _token, 'Accept': 'application/vnd.github+json' },
+            cache: 'no-store'
+        });
+        if (!res.ok) { const e = new Error('GitHub API error: ' + res.status); e.status = res.status; throw e; }
+        const meta = await res.json();
+        let data;
+        if (meta.content && meta.encoding !== 'none') {
+            data = JSON.parse(b64DecodeUTF8(meta.content));
+        } else {
+            const raw = await fetchWithTimeout(url, {
+                headers: { 'Authorization': 'token ' + _token, 'Accept': 'application/vnd.github.raw+json' },
+                cache: 'no-store'
+            });
+            if (!raw.ok) { const e = new Error('GitHub raw error: ' + raw.status); e.status = raw.status; throw e; }
+            data = JSON.parse(await raw.text());
+        }
+        return { sha: meta.sha, data };
+    }
 
     function countRecords(obj) {
         let total = 0;
@@ -62,7 +152,7 @@ const DbSync = (function() {
         return count;
     }
 
-    function showDataLossConfirm(oldCount, newCount) {
+    function showDataLossConfirm(oldCount, newCount, severe) {
         return new Promise((resolve) => {
             _awaitingConfirm = true;
             const pct = Math.round((1 - newCount / oldCount) * 100);
@@ -74,7 +164,7 @@ const DbSync = (function() {
                     <h3 style="color:#d32f2f;margin-bottom:10px;">Внимание! Потеря данных</h3>
                     <p style="margin-bottom:15px;color:#333;">Количество записей уменьшилось на <b>${pct}%</b></p>
                     <p style="margin-bottom:20px;color:#666;font-size:14px;">Было: <b>${oldCount}</b> записей &rarr; Стало: <b>${newCount}</b> записей</p>
-                    <p style="margin-bottom:20px;color:#d32f2f;font-size:13px;">Вы уверены, что хотите сохранить эти изменения?</p>
+                    <p style="margin-bottom:20px;color:#d32f2f;font-size:13px;">${severe ? 'Удалено больше половины данных! Сохраняйте, только если удаляли их намеренно (например, очистка демо-данных).' : 'Вы уверены, что хотите сохранить эти изменения?'}</p>
                     <div style="display:flex;gap:10px;justify-content:center;">
                         <button id="_dlc_cancel" style="padding:10px 24px;border:1px solid #ccc;border-radius:8px;background:#f5f5f5;cursor:pointer;font-size:15px;">Отменить</button>
                         <button id="_dlc_confirm" style="padding:10px 24px;border:none;border-radius:8px;background:#d32f2f;color:#fff;cursor:pointer;font-size:15px;">Сохранить</button>
@@ -122,7 +212,7 @@ const DbSync = (function() {
         _token = await _loadToken();
         // Force clear cache (one-time reset) — only when online
         if (localStorage.getItem('db_reset') !== 'r7') {
-            if (navigator.onLine) {
+            if (navigator.onLine && !_isDirty()) {
                 // Preserve offline_pending — sync it first if it has data
                 const pendingBeforeReset = _loadOfflinePending();
                 localStorage.removeItem('db_cache');
@@ -136,43 +226,37 @@ const DbSync = (function() {
                 }
             }
         }
-        // When browser comes back online, send queued offline data
+        // Старая офлайн-очередь (до этой версии) — переносим в кэш с пометкой «не сохранено»
+        const legacyPending = _loadOfflinePending();
+        if (legacyPending && countRecords(legacyPending) > 0) {
+            if (_safeSet('db_cache', JSON.stringify(legacyPending))) { _setDirty(true); localStorage.removeItem('offline_pending'); }
+        } else if (legacyPending) {
+            localStorage.removeItem('offline_pending');
+        }
+        // Когда сеть вернулась: загрузить данные с сервера, слить с локальными изменениями и отправить
         window.addEventListener('online', () => {
-            const pending = _offlinePending || _loadOfflinePending();
-            if (pending && countRecords(pending) > 0) {
-                _offlinePending = null;
-                localStorage.removeItem('offline_pending');
-                showSyncStatus('saving');
-                _lastHash = ''; // force save
-                setTimeout(() => saveData(pending), 1000);
-            } else if (pending) {
-                console.warn('Offline pending BLOCKED: empty data');
-                localStorage.removeItem('offline_pending');
-                _offlinePending = null;
-            }
-            // If data was never loaded (e.g. opened offline with empty cache), reload from GitHub
-            if (!_dataLoaded && _token) {
-                console.log('Online restored — loading data from GitHub...');
-                loadData().then(data => {
-                    if (data && typeof _onDataLoaded === 'function') {
-                        _onDataLoaded(data);
-                    }
-                }).catch(() => {});
-            }
+            if (!_dataLoaded && _token) _retryLoad();
+            else if (_isDirty() && _lastFailedData) { const d = _lastFailedData; _lastFailedData = null; saveData(d); }
+            else if (_isDirty()) { try { const c = JSON.parse(localStorage.getItem('db_cache')); if (c) saveData(c); } catch (e) {} }
         });
-        // On startup: if online and have pending offline data, sync immediately
-        if (navigator.onLine) {
-            const pending = _loadOfflinePending();
-            if (pending && countRecords(pending) > 0) {
-                localStorage.removeItem('offline_pending');
-                _lastHash = '';
-                setTimeout(() => saveData(pending), 2000);
-            } else if (pending) {
-                console.warn('Startup offline pending BLOCKED: empty data');
-                localStorage.removeItem('offline_pending');
-            }
+    }
+
+    // Повторная загрузка после ошибки/офлайна: результат отдаётся приложению через onDataLoaded
+    async function _retryLoad() {
+        if (_loadRetryTimer) { clearTimeout(_loadRetryTimer); _loadRetryTimer = null; }
+        if (_dataLoaded || !_token) return;
+        const data = await loadData();
+        if (_dataLoaded) {
+            _loadRetryDelay = 30000;
+            if (data && typeof _onDataLoaded === 'function') _onDataLoaded(data);
         }
     }
+    function _scheduleLoadRetry() {
+        if (_loadRetryTimer || _dataLoaded) return;
+        _loadRetryTimer = setTimeout(() => { _loadRetryTimer = null; _retryLoad(); }, _loadRetryDelay);
+        _loadRetryDelay = Math.min(_loadRetryDelay * 2, 300000);
+    }
+    function needsSave() { const v = _needsSave; _needsSave = false; return v; }
 
     function getToken() { return _token; }
 
@@ -284,116 +368,93 @@ const DbSync = (function() {
 
     async function loadData() {
         if (!_token) return null;
+        let cached = null;
+        try { const s = localStorage.getItem('db_cache'); if (s) cached = JSON.parse(s); } catch (e) {}
 
-        // Offline — immediately return cached data, no waiting for timeout
+        // Офлайн — работаем с локальным кэшем; сохранение в GitHub включится, когда появится сеть
         if (!navigator.onLine) {
-            try {
-                const cached = localStorage.getItem('db_cache');
-                if (cached) {
-                    const parsed = JSON.parse(cached);
-                    _lastHash = hashData(parsed);
-                    _lastSavedSize = countRecords(parsed);
-                    _lastSavedKeys = countDataKeys(parsed);
-                    _dataLoaded = true;
-                    showSyncStatus('offline');
-                    return parsed;
-                }
-            } catch(e) {}
-            return null;
+            if (cached) { _lastHash = hashData(cached); showSyncStatus('offline'); }
+            return cached;
         }
 
         try {
-            // Step 1: Get file metadata (sha, size)
-            const metaUrl = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;
-            const metaRes = await fetchWithTimeout(metaUrl, {
-                headers: {
-                    'Authorization': 'token ' + _token,
-                    'Accept': 'application/vnd.github+json'
-                },
-                cache: 'no-store'
-            });
-
-            if (!metaRes.ok) {
-                if (metaRes.status === 404) return null;
-                throw new Error('GitHub API error: ' + metaRes.status);
-            }
-
-            const fileData = await metaRes.json();
-            _fileSha = fileData.sha;
-
-            // Always load from GitHub when online (cache only for offline)
-            let parsed;
-
-            // Step 2: If file has content (< 1MB), decode directly; otherwise use raw download
-            if (fileData.content) {
-                const decoded = b64DecodeUTF8(fileData.content);
-                parsed = JSON.parse(decoded);
-            } else {
-                // Large file — download via raw URL
-                const rawUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${DATA_BRANCH}/${DATA_FILE}?_t=${Date.now()}`;
-                const rawRes = await fetchWithTimeout(rawUrl, { cache: 'no-store' });
-                if (!rawRes.ok) throw new Error('Raw download error: ' + rawRes.status);
-                parsed = await rawRes.json();
-            }
-
-            _lastHash = hashData(parsed);
-            _lastSavedSize = countRecords(parsed);
-            _lastSavedKeys = countDataKeys(parsed);
-            _dataLoaded = true;
-
-            // Cache locally with SHA for offline fallback
+            let file;
             try {
-                localStorage.setItem('db_cache', JSON.stringify(parsed));
-                localStorage.setItem('db_cache_sha', _fileSha);
-            } catch(e) {}
-
-            return parsed;
-        } catch(err) {
-            console.error('Load error');
-            // Fallback to local cache ONLY if GitHub is unreachable
-            try {
-                const cached = localStorage.getItem('db_cache');
-                if (cached) {
-                    showSyncStatus('offline');
-                    return JSON.parse(cached);
+                file = await _fetchFile();
+            } catch (e) {
+                if (e.status === 404) {
+                    // Файла ещё нет — первое сохранение создаст его
+                    _fileSha = null; _dataLoaded = true; _base = undefined;
+                    if (cached && _isDirty()) { _needsSave = true; return cached; }
+                    return null;
                 }
-            } catch(e) {}
-            return null;
+                throw e;
+            }
+            const remote = file.data;
+            _fileSha = file.sha;
+            _lastHash = hashData(remote);
+            _lastSavedSize = countRecords(remote);
+            _lastSavedKeys = countDataKeys(remote);
+            _dataLoaded = true;
+            if (_loadRetryTimer) { clearTimeout(_loadRetryTimer); _loadRetryTimer = null; }
+
+            let result = remote;
+            if (cached && _isDirty()) {
+                // Есть несохранённые локальные изменения — сливаем их с версией с сервера
+                const base = _loadStoredBase();
+                result = merge3(base, cached, remote);
+                if (!_eq(result, remote)) _needsSave = true;
+            }
+            _setBase(remote);
+            _safeSet('db_cache', JSON.stringify(result));
+            _safeSet('db_cache_sha', _fileSha);
+            if (!_needsSave) _setDirty(false);
+            return result;
+        } catch (err) {
+            console.error('Load error', err && err.message);
+            showSyncStatus('loadError');
+            _scheduleLoadRetry();
+            // Работаем с локальным кэшем; изменения сохраняются локально и уйдут на сервер после загрузки
+            return cached;
         }
     }
 
     function isDataLoaded() { return _dataLoaded; }
 
     function scheduleSave(dbObject) {
-        // Don't save until data is loaded from GitHub (prevents overwriting with stale cache)
-        if (!_dataLoaded) return;
         if (_saveTimer) clearTimeout(_saveTimer);
-        // Cache locally — but protect against writing empty/corrupted data
-        const newSize = countRecords(dbObject);
-        if (_lastSavedSize > 0 && newSize < _lastSavedSize * 0.5) {
-            console.error('scheduleSave BLOCKED cache write: too few records (' + _lastSavedSize + ' → ' + newSize + ')');
-        } else {
-            try { localStorage.setItem('db_cache', JSON.stringify(dbObject)); } catch(e) {}
+        // Локальная копия пишется всегда — даже если GitHub недоступен
+        if (!_safeSet('db_cache', JSON.stringify(dbObject))) showSyncStatus('quota');
+        const h = hashData(dbObject);
+        _lastScheduledHash = h;
+        if (h !== _lastHash) _setDirty(true);
+        if (!_dataLoaded) {
+            // Данные с сервера ещё не загружены: отправим после загрузки (слияние сохранит изменения)
+            showSyncStatus(navigator.onLine ? 'loadError' : 'offline');
+            if (navigator.onLine) _scheduleLoadRetry();
+            return;
         }
-
-        if (_saving) {
-            // Queue latest state — will be saved after current save finishes
+        if (_saving || _awaitingConfirm) {
             _pendingSave = dbObject;
             return;
         }
-        _saveTimer = setTimeout(() => saveData(dbObject), SAVE_DELAY);
+        _saveTimer = setTimeout(() => { _saveTimer = null; saveData(dbObject); }, SAVE_DELAY);
     }
 
     async function saveData(dbObject, retryCount) {
-        if (!_token || _saving) {
-            if (_saving) _pendingSave = dbObject;
+        if (!_token || _saving || _awaitingConfirm) {
+            if (_saving || _awaitingConfirm) _pendingSave = dbObject;
             return;
         }
+        if (!_dataLoaded) { _scheduleLoadRetry(); return; }
 
         retryCount = retryCount ?? 0;
 
         const currentHash = hashData(dbObject);
-        if (currentHash === _lastHash) return;
+        if (currentHash === _lastHash) {
+            if (currentHash === _lastScheduledHash && !_pendingSave) _setDirty(false);
+            return;
+        }
 
         // Data loss protection
         if (_lastSavedSize > 0 && retryCount === 0) {
@@ -401,25 +462,13 @@ const DbSync = (function() {
             const newKeys = countDataKeys(dbObject);
             const oldKeys = _lastSavedKeys || 0;
 
-            // Block 1: if records dropped by ≥50%, block entirely (no confirmation)
-            if (newSize < _lastSavedSize * 0.5) {
-                console.error('BLOCKED: data loss >50% (' + _lastSavedSize + ' → ' + newSize + ')');
-                showSyncStatus('error');
-                return;
-            }
-
-            // Block 2: if data sections disappeared (e.g. trade, cashDocuments gone)
-            if (oldKeys > 3 && newKeys < oldKeys * 0.5) {
-                console.error('BLOCKED: data sections lost (' + oldKeys + ' → ' + newKeys + ')');
-                showSyncStatus('error');
-                return;
-            }
-
-            // Block 3: if records dropped by ≥20%, ask for confirmation
-            if (newSize < _lastSavedSize * 0.8) {
-                if (_awaitingConfirm) return;
-                const confirmed = await showDataLossConfirm(_lastSavedSize, newSize);
+            const severe = newSize < _lastSavedSize * 0.5 || (oldKeys > 3 && newKeys < oldKeys * 0.5);
+            // Заметное уменьшение данных — спрашиваем подтверждение (при >50% — с усиленным предупреждением)
+            if (severe || newSize < _lastSavedSize * 0.8) {
+                const confirmed = await showDataLossConfirm(_lastSavedSize, newSize, severe);
+                if (_pendingSave) { dbObject = _pendingSave; _pendingSave = null; } // берём самое свежее состояние
                 if (!confirmed) {
+                    _lastFailedData = dbObject;
                     showSyncStatus('error');
                     return;
                 }
@@ -431,14 +480,13 @@ const DbSync = (function() {
 
         try {
             if (!navigator.onLine) {
+                // Данные уже в локальном кэше с пометкой «не сохранено» — отправим, когда появится сеть
                 showSyncStatus('offline');
                 _saving = false;
-                _offlinePending = dbObject;
-                try { localStorage.setItem('offline_pending', JSON.stringify(dbObject)); } catch(e) {}
                 return;
             }
 
-            const jsonStr = JSON.stringify(dbObject, null, 2);
+            const jsonStr = JSON.stringify(dbObject);
             const base64 = b64EncodeUTF8(jsonStr);
 
             const body = {
@@ -467,10 +515,12 @@ const DbSync = (function() {
                 // SHA conflict - reload and retry (with limit)
                 if ((res.status === 409 || (res.status === 422 && errData.message && errData.message.includes('sha'))) && retryCount < MAX_RETRIES) {
                     console.warn('SHA conflict, merging with remote data, retry', retryCount + 1);
-                    // Load fresh data from GitHub and merge
+                    // Загружаем свежую версию и делаем трёхстороннее слияние
                     const merged = await _mergeWithRemote(dbObject);
                     _saving = false;
-                    await new Promise(r => setTimeout(r, 500 * (retryCount + 1)));
+                    if (!merged) throw new Error('Merge failed');
+                    await new Promise(r => setTimeout(r, 300 * (retryCount + 1)));
+                    _mergedFrom = _mergedFrom || dbObject; // локальный снимок, от которого пошло слияние
                     return await saveData(merged, retryCount + 1);
                 }
                 // Rate limiting - wait and retry
@@ -497,15 +547,32 @@ const DbSync = (function() {
             _lastHash = currentHash;
             _lastSavedSize = countRecords(dbObject);
             _lastSavedKeys = countDataKeys(dbObject);
-            // Update cache SHA so next load won't re-download
-            try { localStorage.setItem('db_cache_sha', _fileSha); } catch(e) {}
+            _setBase(dbObject);
+            _safeSet('db_cache_sha', _fileSha);
+            if (_mergedFrom) {
+                // Сохранена слитая версия: отдаём её приложению (оно доливает свои свежие правки)
+                const from = _mergedFrom; _mergedFrom = null;
+                if (typeof _onRemoteCallback === 'function') {
+                    if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+                    _pendingSave = null;
+                    _safeSet('db_cache', JSON.stringify(dbObject));
+                    _setDirty(false);
+                    _saving = false;
+                    _onRemoteCallback(_clone(dbObject), from);
+                }
+            } else if (currentHash === _lastScheduledHash && !_pendingSave) {
+                _setDirty(false);
+            }
             showSyncStatus('saved');
-            if (_onSaveCallback) _onSaveCallback(true);
+            if (_onSaveCallback) _onSaveCallback(!_isDirty());
         } catch(err) {
-            console.error('Save error');
+            console.error('Save error', err && err.message);
+            _mergedFrom = null;
             _lastFailedData = dbObject;
             showSyncStatus('error');
             if (_onSaveCallback) _onSaveCallback(false);
+            // Автоповтор через минуту
+            setTimeout(() => { if (_lastFailedData === dbObject && navigator.onLine) { _lastFailedData = null; saveData(dbObject); } }, 60000);
         } finally {
             _saving = false;
             // Process queued save if any
@@ -518,59 +585,32 @@ const DbSync = (function() {
     }
 
     async function forceSave(dbObject) {
+        if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+        _safeSet('db_cache', JSON.stringify(dbObject));
+        const h = hashData(dbObject);
+        _lastScheduledHash = h;
+        if (h !== _lastHash) _setDirty(true);
         if (!_dataLoaded) {
-            console.warn('forceSave blocked: data not loaded from GitHub yet');
-            showSyncStatus('error');
+            console.warn('forceSave: data not loaded from GitHub yet — saved locally');
+            showSyncStatus(navigator.onLine ? 'loadError' : 'offline');
+            _scheduleLoadRetry();
             return;
         }
-        if (_saveTimer) clearTimeout(_saveTimer);
         await saveData(dbObject);
     }
 
     async function _mergeWithRemote(localData) {
         try {
-            const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;
-            const res = await fetchWithTimeout(url, {
-                headers: { 'Authorization': 'token ' + _token, 'Accept': 'application/vnd.github+json' },
-                cache: 'no-store'
-            });
-            if (!res.ok) return localData;
-            const fileData = await res.json();
-            _fileSha = fileData.sha;
-            let remote;
-            if (fileData.content) {
-                remote = JSON.parse(b64DecodeUTF8(fileData.content));
-            } else {
-                const rawRes = await fetchWithTimeout(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${DATA_BRANCH}/${DATA_FILE}?_t=${Date.now()}`, { cache: 'no-store' });
-                if (!rawRes.ok) return localData;
-                remote = await rawRes.json();
-            }
-            // Merge: for each array, combine by id (local wins on conflict)
-            const merged = JSON.parse(JSON.stringify(remote));
-            for (const key in localData) {
-                if (Array.isArray(localData[key]) && Array.isArray(merged[key])) {
-                    const ids = new Set(localData[key].map(item => item.id).filter(Boolean));
-                    const remoteOnly = merged[key].filter(item => !item.id || !ids.has(item.id));
-                    merged[key] = [...localData[key], ...remoteOnly];
-                } else if (localData[key] && typeof localData[key] === 'object' && !Array.isArray(localData[key])) {
-                    if (!merged[key]) merged[key] = {};
-                    for (const subKey in localData[key]) {
-                        if (Array.isArray(localData[key][subKey]) && Array.isArray((merged[key] || {})[subKey])) {
-                            const ids = new Set(localData[key][subKey].map(item => item.id).filter(Boolean));
-                            const remoteOnly = (merged[key][subKey] || []).filter(item => !item.id || !ids.has(item.id));
-                            merged[key][subKey] = [...localData[key][subKey], ...remoteOnly];
-                        } else {
-                            merged[key][subKey] = localData[key][subKey];
-                        }
-                    }
-                } else {
-                    merged[key] = localData[key];
-                }
-            }
-            return merged;
-        } catch(e) {
-            console.error('Merge failed, using local data');
-            return localData;
+            const file = await _fetchFile();
+            const remote = file.data;
+            _fileSha = file.sha;
+            let base = _base;
+            // Если на сервере пропало больше половины записей — не доверяем удалениям (ничего не удаляем локально)
+            if (base !== undefined && countRecords(remote) < countRecords(base) * 0.5) base = undefined;
+            return merge3(base, localData, remote);
+        } catch (e) {
+            console.error('Merge failed', e && e.message);
+            return null;
         }
     }
 
@@ -593,65 +633,47 @@ const DbSync = (function() {
         }
     }
 
-    // Poll for changes from other devices (every 30 seconds)
+    // Опрос изменений с других устройств (каждые 30 секунд)
     function startPolling(callback) {
+        if (callback) _onRemoteCallback = callback;
         if (_pollTimer) clearInterval(_pollTimer);
-        _pollTimer = setInterval(async () => {
-            if (_saving || !_token || !navigator.onLine) return;
-            try {
-                const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`;
-                const res = await fetchWithTimeout(url, {
-                    headers: {
-                        'Authorization': 'token ' + _token,
-                        'Accept': 'application/vnd.github+json'
-                    },
-                    cache: 'no-store'
-                });
-                if (!res.ok) return;
-                const fileData = await res.json();
-
-                if (fileData.sha !== _fileSha) {
-                    _fileSha = fileData.sha;
-                    let parsed;
-                    if (fileData.content) {
-                        const decoded = b64DecodeUTF8(fileData.content);
-                        parsed = JSON.parse(decoded);
-                    } else {
-                        const rawUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${DATA_BRANCH}/${DATA_FILE}?_t=${Date.now()}`;
-                        const rawRes = await fetchWithTimeout(rawUrl, { cache: 'no-store' });
-                        if (!rawRes.ok) return;
-                        parsed = await rawRes.json();
-                    }
-                    const newHash = hashData(parsed);
-
-                    if (newHash !== _lastHash) {
-                        // Protect against syncing empty/corrupted data from GitHub
-                        const incomingSize = countRecords(parsed);
-                        const incomingKeys = countDataKeys(parsed);
-                        if (_lastSavedSize > 5 && incomingSize < _lastSavedSize * 0.5) {
-                            console.error('Polling BLOCKED: incoming data too small (' + _lastSavedSize + ' → ' + incomingSize + ')');
-                            return;
-                        }
-                        if (_lastSavedKeys > 3 && incomingKeys < _lastSavedKeys * 0.5) {
-                            console.error('Polling BLOCKED: incoming data missing sections (' + _lastSavedKeys + ' → ' + incomingKeys + ')');
-                            return;
-                        }
-                        _lastHash = newHash;
-                        _lastSavedSize = incomingSize;
-                        _lastSavedKeys = incomingKeys;
-                        // Update cache with new data
-                        try {
-                            localStorage.setItem('db_cache', JSON.stringify(parsed));
-                            localStorage.setItem('db_cache_sha', _fileSha);
-                        } catch(e) {}
-                        callback(parsed);
-                        showSyncStatus('synced');
-                    }
-                }
-            } catch(e) {
-                console.warn('Polling error:', e);
+        _pollTimer = setInterval(pollOnce, 30000);
+    }
+    async function pollOnce() {
+        if (_saving || _awaitingConfirm || !_token || !navigator.onLine || !_dataLoaded) return;
+        try {
+            const meta = await fetchWithTimeout(`${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${DATA_BRANCH}&_t=${Date.now()}`, {
+                headers: { 'Authorization': 'token ' + _token, 'Accept': 'application/vnd.github+json' }, cache: 'no-store'
+            });
+            if (!meta.ok) return;
+            const m = await meta.json();
+            if (m.sha === _fileSha) return;
+            const file = await _fetchFile();
+            if (_saving || _awaitingConfirm) return; // за время загрузки началось сохранение — разберётся через конфликт
+            const remote = file.data;
+            const newHash = hashData(remote);
+            if (newHash === _lastHash) { _fileSha = file.sha; _setBase(remote); return; }
+            let base = _base;
+            if (base !== undefined && _lastSavedSize > 5 && countRecords(remote) < _lastSavedSize * 0.5) {
+                console.error('Polling: на сервере пропало больше половины записей — удаления не применяются');
+                base = undefined;
             }
-        }, 30000);
+            // Отменяем отложенное сохранение старого снимка: приложение сольёт и сохранит заново
+            if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+            _pendingSave = null;
+            _fileSha = file.sha;
+            _lastHash = newHash;
+            _lastSavedSize = countRecords(remote);
+            _lastSavedKeys = countDataKeys(remote);
+            _setBase(remote);
+            _safeSet('db_cache', JSON.stringify(remote));
+            _safeSet('db_cache_sha', _fileSha);
+            _setDirty(false);
+            if (typeof _onRemoteCallback === 'function') _onRemoteCallback(remote, base);
+            showSyncStatus('synced');
+        } catch (e) {
+            console.warn('Polling error:', e && e.message);
+        }
     }
 
     function stopPolling() {
@@ -678,17 +700,7 @@ const DbSync = (function() {
     async function restoreFromCommit(commitSha) {
         if (!_token) return null;
         try {
-            const url = `${API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_FILE}?ref=${commitSha}`;
-            const res = await fetchWithTimeout(url, {
-                headers: {
-                    'Authorization': 'token ' + _token,
-                    'Accept': 'application/vnd.github+json'
-                }
-            });
-            if (!res.ok) return null;
-            const fileData = await res.json();
-            const decoded = b64DecodeUTF8(fileData.content);
-            const parsed = JSON.parse(decoded);
+            const parsed = (await _fetchFile(commitSha)).data;
             // Validate restored data has meaningful content
             const restoredCount = countRecords(parsed);
             if (restoredCount < 5) {
@@ -699,8 +711,16 @@ const DbSync = (function() {
         } catch(e) { return null; }
     }
 
-    function logout() {
+    async function logout() {
+        if (_isDirty()) {
+            if (_dataLoaded && navigator.onLine) {
+                try { const c = JSON.parse(localStorage.getItem('db_cache')); if (c) { _lastHash = ''; await saveData(c); } } catch (e) {}
+            }
+            if (_isDirty() && !confirm('Есть изменения, которые ещё не сохранены в GitHub. Выйти и потерять их?')) return;
+        }
         stopPolling();
+        localStorage.removeItem('db_base');
+        localStorage.removeItem('db_dirty');
         localStorage.removeItem('auth_session');
         localStorage.removeItem('db_cache');
         localStorage.removeItem('db_cache_sha');
@@ -816,6 +836,7 @@ const DbSync = (function() {
     }
 
     let _lastFailedData = null;
+    let _mergedFrom = null;
 
     function showSyncStatus(status) {
         const el = document.getElementById('syncStatus');
@@ -825,7 +846,9 @@ const DbSync = (function() {
             saved: { text: 'Сохранено в GitHub', color: '#4caf50' },
             synced: { text: 'Синхронизировано', color: '#2196f3' },
             error: { text: 'Ошибка сохранения! [повторить]', color: '#f44336' },
-            offline: { text: 'Нет сети', color: '#999' }
+            offline: { text: 'Нет сети — изменения сохраняются локально', color: '#999' },
+            loadError: { text: 'Нет связи с GitHub — изменения сохраняются локально', color: '#f44336' },
+            quota: { text: 'Локальное хранилище переполнено!', color: '#f44336' }
         };
         const s = states[status] || states.saved;
         el.textContent = s.text;
@@ -858,6 +881,8 @@ const DbSync = (function() {
     return {
         onSave: function(cb) { _onSaveCallback = cb; },
         onDataLoaded: function(cb) { _onDataLoaded = cb; },
+        onRemote: function(cb) { _onRemoteCallback = cb; },
+        merge3, needsSave, pollOnce,
         init, getToken, setToken, clearToken, validateToken,
         loadData, scheduleSave, forceSave, isDataLoaded,
         startPolling, stopPolling,

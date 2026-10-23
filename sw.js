@@ -1,4 +1,4 @@
-const CACHE_NAME = 'esep-offline-v40';
+const CACHE_NAME = 'esep-offline-v41';
 const BASE = '/my-buh-dev/';
 const ASSETS = [
     BASE,
@@ -19,7 +19,8 @@ const CDN_ASSETS = [
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS).then(() => {
+            // cache: 'reload' — мимо HTTP-кэша, чтобы новая версия не сохранила старые JS/CSS
+            return cache.addAll(ASSETS.map((u) => new Request(u, { cache: 'reload' }))).then(() => {
                 const cdnPromises = CDN_ASSETS.map((url) =>
                     fetch(url, { mode: 'cors' })
                         .then((resp) => {
@@ -72,13 +73,28 @@ self.addEventListener('fetch', (event) => {
                 }
                 return resp;
             }).catch(() => {
-                return caches.match(event.request);
+                return caches.match(event.request, { ignoreSearch: true })
+                    .then((r) => r || caches.match(BASE + (url.pathname.endsWith('index.html') ? 'index.html' : 'app.html')));
             })
         );
         return;
     }
 
-    // CSS, JS, CDN — cache first, update in background
+    // Свои JS/CSS — сначала сеть (чтобы app.html и js/*.js были одной версии), офлайн — из кэша
+    if (url.origin === self.location.origin) {
+        event.respondWith(
+            fetch(event.request).then((resp) => {
+                if (resp && resp.ok) {
+                    const clone = resp.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                }
+                return resp;
+            }).catch(() => caches.match(event.request, { ignoreSearch: true }))
+        );
+        return;
+    }
+
+    // CDN — cache first, update in background
     event.respondWith(
         caches.match(event.request).then((cached) => {
             if (cached) {

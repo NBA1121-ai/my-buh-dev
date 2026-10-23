@@ -414,9 +414,24 @@
                 Object.assign(db, DB_DEFAULTS, data);
                 initializeDefaults();
                 selectPage(currentPage || 'dashboard');
-                showToast('Данные загружены с сервера');
+                showToast('Связь с GitHub восстановлена, данные синхронизированы');
+                if (DbSync.needsSave()) saveData();
             }
         });
+
+        // Данные пришли с сервера (другое устройство или слияние при конфликте).
+        // base — общий предок: сливаем с текущими локальными правками, чтобы ничего не потерять.
+        function _applyRemoteData(remote, base) {
+            const cur = JSON.parse(JSON.stringify(db));
+            const res = DbSync.merge3(base, cur, remote);
+            Object.keys(db).forEach(k => delete db[k]);
+            Object.assign(db, DB_DEFAULTS, res);
+            renderPage();
+            if (JSON.stringify(res) !== JSON.stringify(remote)) { saveData(); }
+            else { _hasUnsavedEdits = false; }
+            showToast('Данные синхронизированы с другим устройством');
+        }
+        DbSync.onRemote(_applyRemoteData);
 
         async function init() {
             await DbSync.init();
@@ -474,6 +489,8 @@
             initializeDefaults();
             tradeInit();
             tSeedDemo(false);
+            // Локальные правки, сделанные офлайн или при сбое связи, — отправить на сервер
+            if (DbSync.needsSave()) saveData();
 
             // Hide loading, show app
             document.getElementById('appLoading').style.display = 'none';
@@ -490,18 +507,7 @@
             if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
 
             // Poll for changes from other devices (every 30 sec)
-            DbSync.startPolling((newData) => {
-                if (_hasUnsavedEdits) {
-                    if (!confirm('Другое устройство обновило данные. Загрузить новую версию?\n\nОК — загрузить (ваши несохранённые изменения будут потеряны)\nОтмена — оставить текущую версию')) {
-                        return;
-                    }
-                }
-                Object.keys(db).forEach(k => delete db[k]);
-                Object.assign(db, DB_DEFAULTS, newData);
-                _hasUnsavedEdits = false;
-                renderPage();
-                showToast('Данные синхронизированы');
-            });
+            DbSync.startPolling(_applyRemoteData);
 
             // Warn before closing tab with unsaved data
             window.addEventListener('beforeunload', (e) => {
@@ -6928,7 +6934,7 @@
 
         // ==================== STARTUP ====================
         // One-time cache reset
-        if (localStorage.getItem('cache_version') !== 'v5') {
+        if (localStorage.getItem('cache_version') !== 'v5' && localStorage.getItem('db_dirty') !== '1') {
             localStorage.removeItem('db_cache');
             localStorage.removeItem('db_cache_sha');
             localStorage.setItem('cache_version', 'v5');
@@ -6941,13 +6947,18 @@
             navigator.serviceWorker.register('sw.js').catch(() => {});
             navigator.serviceWorker.addEventListener('message', (e) => {
                 if (e.data && e.data.type === 'CLEAR_CACHE') {
-                    // Save current data before clearing cache
-                    try { localStorage.setItem('db_cache', JSON.stringify(db)); } catch(e2) {}
-                    if (typeof DbSync !== 'undefined' && DbSync.isDataLoaded && DbSync.isDataLoaded()) {
-                        DbSync.forceSave(JSON.parse(JSON.stringify(db)));
-                    }
-                    localStorage.removeItem('db_cache_sha');
-                    setTimeout(() => location.reload(), 1000);
+                    // Вышла новая версия сайта — не перезагружаем сами (можно потерять открытую форму), а предлагаем
+                    if (document.getElementById('updateBanner')) return;
+                    const bar = document.createElement('div');
+                    bar.id = 'updateBanner';
+                    bar.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:3000;background:#1a73e8;color:#fff;padding:10px 16px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);display:flex;gap:12px;align-items:center;font-size:14px';
+                    bar.innerHTML = '<span>Доступна новая версия сайта</span><button class="btn" style="background:#fff;color:#1a73e8;border:none;padding:6px 12px;border-radius:6px;cursor:pointer">Обновить</button><span style="cursor:pointer;opacity:.8" title="Позже">✕</span>';
+                    bar.querySelector('button').onclick = async () => {
+                        try { if (typeof DbSync !== 'undefined' && DbSync.isDataLoaded()) await DbSync.forceSave(JSON.parse(JSON.stringify(db))); } catch (e2) {}
+                        location.reload();
+                    };
+                    bar.querySelector('span:last-child').onclick = () => bar.remove();
+                    document.body.appendChild(bar);
                 }
             });
         }
