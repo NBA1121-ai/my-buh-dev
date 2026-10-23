@@ -411,7 +411,7 @@
                 Object.keys(db).forEach(k => delete db[k]);
                 Object.assign(db, DB_DEFAULTS, data);
                 initializeDefaults();
-                navigate(currentPage || 'dashboard');
+                selectPage(currentPage || 'dashboard');
                 showToast('Данные загружены с сервера');
             }
         });
@@ -2001,6 +2001,8 @@
                 const isOut = ['payment_out', 'rko', 'payment_order', 'statement', 'directbank'].includes(d.type);
                 if (isIn) accBalances[d.account] += sum;
                 else if (isOut) accBalances[d.account] -= sum;
+                // Комиссия банка списывается со счёта
+                if (['payment_out', 'payment_in', 'payment_order', 'statement', 'directbank'].includes(d.type)) accBalances[d.account] -= Number(d.bankFee || 0);
                 // internal_transfer: простой перевод между счетами (1:1)
                 else if (d.type === 'internal_transfer') {
                     accBalances[d.account] -= sum;
@@ -2258,11 +2260,11 @@
             _searchResults = [];
             // Search bank docs
             (db.bankDocuments || []).forEach(d => {
-                if (JSON.stringify(d).toLowerCase().includes(q)) _searchResults.push({ section: 'Банк', number: d.number, date: d.date, desc: d.contractor || d.purpose || '', sum: d.sum });
+                if (JSON.stringify(d).toLowerCase().includes(q)) _searchResults.push({ section: 'Банк', number: d.number, date: d.date, desc: d.contractor || d.purpose || '', sum: d.sum, action: `editDoc('${esc(d.id)}')` });
             });
             // Search cash docs
             (db.cashDocuments || []).forEach(d => {
-                if (JSON.stringify(d).toLowerCase().includes(q)) _searchResults.push({ section: 'Касса', number: d.number, date: d.date, desc: d.contractor || d.purpose || '', sum: d.sum });
+                if (JSON.stringify(d).toLowerCase().includes(q)) _searchResults.push({ section: 'Касса', number: d.number, date: d.date, desc: d.contractor || d.purpose || '', sum: d.sum, action: `editDoc('${esc(d.id)}')` });
             });
             // Search trade docs
             if (db.trade && db.trade.docs) db.trade.docs.forEach(d => {
@@ -2271,15 +2273,15 @@
             });
             // Search contractors
             if (db.trade && db.trade.contractors) db.trade.contractors.forEach(c => {
-                if (JSON.stringify(c).toLowerCase().includes(q)) _searchResults.push({ section: 'Контрагент', number: '', date: '', desc: c.name, sum: '', action: `selectPage('contractors');setTimeout(()=>{const el=document.querySelector('[data-id="${esc(c.id)}"]');if(el)el.click()},100)` });
+                if (JSON.stringify(c).toLowerCase().includes(q)) _searchResults.push({ section: 'Контрагент', number: '', date: '', desc: c.name, sum: '', action: `selectPage('ref_contractors');tRefOpen('contractors','${esc(c.id)}')` });
             });
             // Search nomenclature
             if (db.trade && db.trade.nomenclature) db.trade.nomenclature.forEach(n => {
-                if (JSON.stringify(n).toLowerCase().includes(q)) _searchResults.push({ section: 'Номенклатура', number: n.article || '', date: '', desc: n.name, sum: n.price || '', action: `selectPage('nomenclature');setTimeout(()=>{const el=document.querySelector('[data-id="${esc(n.id)}"]');if(el)el.click()},100)` });
+                if (JSON.stringify(n).toLowerCase().includes(q)) _searchResults.push({ section: 'Номенклатура', number: n.article || '', date: '', desc: n.name, sum: n.price || '', action: `selectPage('ref_nomenclature');tRefOpen('nomenclature','${esc(n.id)}')` });
             });
             // Search employees
             if (db.trade && db.trade.employees) db.trade.employees.forEach(e => {
-                if (JSON.stringify(e).toLowerCase().includes(q)) _searchResults.push({ section: 'Сотрудник', number: e.tabNumber || '', date: '', desc: e.name, sum: '', action: `selectPage('employees')` });
+                if (JSON.stringify(e).toLowerCase().includes(q)) _searchResults.push({ section: 'Сотрудник', number: e.tabNumber || '', date: '', desc: e.name, sum: '', action: `selectPage('ref_employees');tRefOpen('employees','${esc(e.id)}')` });
             });
             selectPage('search_results');
         }
@@ -2914,7 +2916,7 @@
             if (feeRow) feeRow.style.display = isBankPayment ? '' : 'none';
             // Filter articles by type (in/out)
             const artSelect = document.getElementById('docArticle');
-            const isIncoming = ['payment_in', 'pko'].includes(docType);
+            const isIncoming = ['payment_in', 'pko'].includes(type);
             const artFiltered = db.articles.filter(a => !a.type || a.type === (isIncoming ? 'in' : 'out'));
             const currentArt = artSelect.value;
             artSelect.innerHTML = '<option value="">Выбрать...</option>' +
@@ -3131,7 +3133,7 @@
             if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
             docs.sort(docCmp);
             const headers = ['Номер', 'Дата', 'Тип', 'Счёт', 'Контрагент', 'Назначение', 'Сумма', 'Статус'];
-            const rows = docs.map(d => [d.number, d.date, getDocTypeLabel(d.type), getAccountName(d.account), d.contractor || '', d.purpose || '', d.sum || 0, d.status === 'posted' ? 'Проведено' : 'Черновик']);
+            const rows = docs.map(d => [d.number, d.date, getDocTypeLabel(d.type), getAccountNameRaw(d.account), d.contractor || '', d.purpose || '', d.sum || 0, d.status === 'posted' ? 'Проведено' : 'Черновик']);
             exportExcel(headers, rows, 'Банковские_документы.xlsx', 'Банк');
         }
 
@@ -3142,7 +3144,7 @@
             if (_finFilter.search) { const q = _finFilter.search.toLowerCase(); docs = docs.filter(d => (d.number + ' ' + (d.contractor || '') + ' ' + (d.purpose || '')).toLowerCase().includes(q)); }
             docs.sort(docCmp);
             const headers = ['Номер', 'Дата', 'Тип', 'Касса', 'Контрагент', 'Назначение', 'Сумма', 'Статус'];
-            const rows = docs.map(d => [d.number, d.date, getDocTypeLabel(d.type), getAccountName(d.account), d.contractor || '', d.purpose || '', d.sum || 0, d.status === 'posted' ? 'Проведено' : 'Черновик']);
+            const rows = docs.map(d => [d.number, d.date, getDocTypeLabel(d.type), getAccountNameRaw(d.account), d.contractor || '', d.purpose || '', d.sum || 0, d.status === 'posted' ? 'Проведено' : 'Черновик']);
             exportExcel(headers, rows, 'Кассовые_документы.xlsx', 'Касса');
         }
 
@@ -3183,6 +3185,10 @@
         }
 
         function getAccountName(id) {
+            const acc = db.accounts.find(a => a.id === id);
+            return acc ? esc(acc.name) : '-';
+        }
+        function getAccountNameRaw(id) {
             const acc = db.accounts.find(a => a.id === id);
             return acc ? acc.name : '-';
         }
@@ -3750,7 +3756,7 @@
                 <tbody>${docs.map(d => `<tr>
                     <td>${formatDate(d.sf.date)}</td><td><strong>${esc(d.sf.number)}</strong></td><td>${esc(tContractorName(d.contractor))}</td>
                     <td><a href="#" onclick="event.preventDefault();tOpen('${esc(d.id)}')">${esc(tDocTitle(d))}</a></td>
-                    <td class="num amount">${formatAmount(d.total)}</td><td class="num">${formatAmount(d.vatTotal)}</td><td>${d.sf.code || '01'}</td>
+                    <td class="num amount">${formatAmount(d.total)}</td><td class="num">${formatAmount(d.vatTotal)}</td><td>${esc(d.sf.code || '01')}</td>
                     <td><div class="action-buttons">
                         <button class="action-btn" onclick="tPrint('${esc(d.id)}','Счет-фактура')">🖨️ Счет-фактура</button>
                         <button class="action-btn" onclick="tIssueSF('${esc(d.id)}')">✏️ Реквизиты</button>
@@ -4057,15 +4063,15 @@
                         <select onchange="tDoc.invoiceStatus=this.value" style="margin-left:auto"><option value="" ${!d.invoiceStatus ? 'selected' : ''}>Активен</option><option value="cancelled" ${d.invoiceStatus === 'cancelled' ? 'selected' : ''}>Отменен</option></select></div></div>` : ''}
                     ${cfg.discount ? `<div class="fg"><label>Скидка, %</label><input type="number" min="0" max="100" step="0.01" value="${d.discount || 0}" onchange="tDoc.discount=this.value;tRecalcAll()"></div>` : ''}
                     ${cfg.noSum || cfg.gtd || cfg.noSettle ? '' : `
-                    <div class="fg"><label>Расчеты</label><div class="tlink" onclick="tToggleSettle()">срок ${d.payTerm ? formatDate(d.payTerm) : 'не задан'}, ${d.settle.acc} / ${d.settle.adv}, ${d.settle.offset.toLowerCase()} ▾</div></div>
+                    <div class="fg"><label>Расчеты</label><div class="tlink" onclick="tToggleSettle()">срок ${d.payTerm ? formatDate(d.payTerm) : 'не задан'}, ${esc(d.settle.acc)} / ${esc(d.settle.adv)}, ${esc(d.settle.offset.toLowerCase())} ▾</div></div>
                     <div class="fg"><label>Цены</label><div class="tlink" onclick="tTogglePrices()">${(db.trade.priceTypes.find(p => p.id === d.priceType) || {}).name || '—'}, НДС ${d.vatMode === 'in' ? 'в сумме' : 'сверху'} ▾</div></div>`}
                     ${cfg.commission ? `<div class="fg"><label>Вознаграждение, %</label><input type="number" step="0.01" value="${d.rewardPct}" onchange="tDoc.rewardPct=this.value;tRecalcAll()"></div>` : ''}
                 </div>
                 <div id="tSettle" class="tsub" style="display:none">
                     <div class="thead-grid">
                         <div class="fg"><label>Срок оплаты</label><input type="date" value="${d.payTerm || ''}" onchange="tDoc.payTerm=this.value"></div>
-                        <div class="fg"><label>Счет расчетов</label><input value="${d.settle.acc}" onchange="tDoc.settle.acc=this.value"></div>
-                        <div class="fg"><label>Счет авансов</label><input value="${d.settle.adv}" onchange="tDoc.settle.adv=this.value"></div>
+                        <div class="fg"><label>Счет расчетов</label><input value="${esc(d.settle.acc)}" onchange="tDoc.settle.acc=this.value"></div>
+                        <div class="fg"><label>Счет авансов</label><input value="${esc(d.settle.adv)}" onchange="tDoc.settle.adv=this.value"></div>
                         <div class="fg"><label>Зачет аванса</label><select onchange="tDoc.settle.offset=this.value">${['Автоматически', 'По документу', 'Не зачитывать'].map(o => `<option ${d.settle.offset === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
                     </div>
                 </div>
@@ -4247,7 +4253,7 @@
             const isPurch = TT[tDoc.type].group === 'purchase', isStock = ['stock', 'prod'].includes(TT[tDoc.type].group);
             const showBal = isStock || ['sale', 'retail_report', 'commission_report', 'purchase_return'].includes(tDoc.type);
             document.getElementById('tPickBody').innerHTML = list.length ? `<table><thead><tr><th>Артикул</th><th>Наименование</th><th>Вид</th><th>Ед.</th>${showBal ? '<th style="text-align:right">Остаток на складе</th>' : ''}<th style="text-align:right">${isPurch || isStock ? (tPickTarget === 'products' ? 'Плановая цена' : 'Себестоимость') : 'Цена продажи'}</th><th>НДС</th><th>Кол-во</th><th></th></tr></thead><tbody>
-                ${list.map(n => `<tr><td>${esc(n.article)}</td><td>${esc(n.name)}</td><td>${n.kind}</td><td>${n.unit}</td>${showBal ? `<td class="num">${stockQty(n.id, tDoc.warehouse, tDoc.date, tDoc.id)}</td>` : ''}<td class="num">${formatAmount(tPickPrice(n, tPickTarget))}</td><td>${tVatLabel(n.vat)}</td>
+                ${list.map(n => `<tr><td>${esc(n.article)}</td><td>${esc(n.name)}</td><td>${esc(n.kind)}</td><td>${esc(n.unit)}</td>${showBal ? `<td class="num">${stockQty(n.id, tDoc.warehouse, tDoc.date, tDoc.id)}</td>` : ''}<td class="num">${formatAmount(tPickPrice(n, tPickTarget))}</td><td>${tVatLabel(n.vat)}</td>
                 <td><input type="number" id="pq_${esc(n.id)}" value="1" min="0" step="1" style="width:70px;padding:4px"></td><td><button class="btn primary" onclick="tPickAdd('${esc(n.id)}')">Добавить</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Ничего не найдено</div>';
         }
         function tPickAdd(nid) {
@@ -4388,6 +4394,7 @@
                     if (changes.length) copy.history.push({ ts: new Date().toISOString(), user: userName, action: 'Изменение', details: changes.join('; ') });
                 }
                 if (idx >= 0) db.trade.docs[idx] = copy; else db.trade.docs.push(copy);
+                d.history = JSON.parse(JSON.stringify(copy.history));
                 logActivity(isNew ? 'Создание документа' : 'Изменение документа', (d.type||'') + ' ' + (d.number||''));
                 saveData(); tSelected = d.id; _tDocSnapshot = JSON.stringify(d); renderPage(); showToast('Документ записан');
                 if (close) { const _ti = _openTabs.findIndex(function(t){return t.id==='t_'+d.id;}); if (_ti>=0) _openTabs.splice(_ti,1); document.getElementById('tModal').classList.remove('active'); tDoc = null; _tDocSnapshot = ''; _activeTabId=null; _tabRender(); } else tRenderForm(false);
@@ -4409,7 +4416,7 @@
             document.getElementById('tPostTitle').textContent = 'Движения документа: ' + tDocTitle(d);
             document.getElementById('tPostBody').innerHTML = d.status !== 'posted' ? '<div class="empty-state">Документ не проведен — движений нет. Проведите документ.</div>' :
                 (rows.length ? `<table><thead><tr><th>№</th><th>Дт</th><th>Кт</th><th style="text-align:right">Сумма</th><th>Содержание</th></tr></thead><tbody>
-                ${rows.map((r, i) => `<tr><td>${i + 1}</td><td><b>${r.dt}</b></td><td><b>${r.kt}</b></td><td class="num">${formatAmount(r.sum)}</td><td>${esc(r.txt)}</td></tr>`).join('')}</tbody></table>`
+                ${rows.map((r, i) => `<tr><td>${i + 1}</td><td><b>${esc(r.dt)}</b></td><td><b>${esc(r.kt)}</b></td><td class="num">${formatAmount(r.sum)}</td><td>${esc(r.txt)}</td></tr>`).join('')}</tbody></table>`
                     : '<div class="empty-state">Документ не формирует бухгалтерских проводок (например, счет на оплату, доверенность, акт сверки).</div>');
             document.getElementById('tPostModal').classList.add('active');
         }
@@ -4478,7 +4485,7 @@
         function tGoodsTable(d, opts) {
             opts = opts || {}; const rows = tRowsAll(d); let i = 0;
             return `<table><thead><tr><th>№</th><th>Наименование товара (услуги)</th><th>Ед.</th><th>Кол-во</th><th>Цена</th><th>Сумма без НДС</th><th>Ставка НДС</th><th>Сумма НДС</th><th>Всего с НДС</th>${opts.country ? '<th>Страна</th><th>№ ГТД</th>' : ''}</tr></thead>
-            <tbody>${rows.map(r => { const n = tNom(r.nom) || {}; return `<tr><td>${++i}</td><td>${esc(n.name || '')}${r.content ? '<br><span class="small">' + esc(r.content) + '</span>' : ''}</td><td>${n.unit || ''}</td><td class="num">${r.qty}</td><td class="num">${formatAmount(r.price)}</td><td class="num">${formatAmount(r.total - r.vatSum)}</td><td class="center">${tVatLabel(r.vat)}</td><td class="num">${formatAmount(r.vatSum)}</td><td class="num">${formatAmount(r.total)}</td>${opts.country ? `<td>${esc(r.country || '')}</td><td>${esc(r.gtd || '')}</td>` : ''}</tr>`; }).join('')}
+            <tbody>${rows.map(r => { const n = tNom(r.nom) || {}; return `<tr><td>${++i}</td><td>${esc(n.name || '')}${r.content ? '<br><span class="small">' + esc(r.content) + '</span>' : ''}</td><td>${esc(n.unit || '')}</td><td class="num">${r.qty}</td><td class="num">${formatAmount(r.price)}</td><td class="num">${formatAmount(r.total - r.vatSum)}</td><td class="center">${tVatLabel(r.vat)}</td><td class="num">${formatAmount(r.vatSum)}</td><td class="num">${formatAmount(r.total)}</td>${opts.country ? `<td>${esc(r.country || '')}</td><td>${esc(r.gtd || '')}</td>` : ''}</tr>`; }).join('')}
             <tr><td colspan="5" class="right"><b>Итого:</b></td><td class="num"><b>${formatAmount(d.total - d.vatTotal)}</b></td><td></td><td class="num"><b>${formatAmount(d.vatTotal)}</b></td><td class="num"><b>${formatAmount(d.total)}</b></td>${opts.country ? '<td></td><td></td>' : ''}</tr></tbody></table>
             <p>Всего наименований ${rows.length}, на сумму <b>${formatAmount(d.total)}</b> сом${d.vatTotal ? ', в том числе НДС ' + formatAmount(d.vatTotal) : ' (без НДС)'}.</p>`;
         }
@@ -4638,7 +4645,7 @@
             const byC = {}; docs.forEach(d => { byC[d.contractor] = (byC[d.contractor] || 0) + d.total; });
             return tReportBar() + `<div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">ВЫРУЧКА</div><div class="stat-value">${formatAmount(docs.reduce((s, d) => s + d.total, 0))}</div></div><div class="stat-card"><div class="stat-label">НДС</div><div class="stat-value">${formatAmount(docs.reduce((s, d) => s + d.vatTotal, 0))}</div></div><div class="stat-card"><div class="stat-label">ДОКУМЕНТОВ</div><div class="stat-value">${docs.length}</div></div><div class="stat-card"><div class="stat-label">ПОКУПАТЕЛЕЙ</div><div class="stat-value">${Object.keys(byC).length}</div></div></div>
             <h3 style="margin:10px 0">По номенклатуре</h3><div class="table-container"><table><thead><tr><th>Номенклатура</th><th>Вид</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Выручка</th><th style="text-align:right">НДС</th><th style="text-align:right">Средняя цена</th></tr></thead>
-            <tbody>${rows.map(r => `<tr><td>${esc(r.n.name)}</td><td>${r.n.kind || ''}</td><td class="num">${r.qty}</td><td class="num amount">${formatAmount(r.sum)}</td><td class="num">${formatAmount(r.vat)}</td><td class="num">${formatAmount(r.qty ? r.sum / r.qty : 0)}</td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="6" class="empty-state">Нет проведенных продаж за период</td></tr>'}</tbody></table></div>
+            <tbody>${rows.map(r => `<tr><td>${esc(r.n.name)}</td><td>${esc(r.n.kind || '')}</td><td class="num">${r.qty}</td><td class="num amount">${formatAmount(r.sum)}</td><td class="num">${formatAmount(r.vat)}</td><td class="num">${formatAmount(r.qty ? r.sum / r.qty : 0)}</td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="6" class="empty-state">Нет проведенных продаж за период</td></tr>'}</tbody></table></div>
             <h3 style="margin:20px 0 10px">По покупателям</h3><div class="table-container"><table><thead><tr><th>Покупатель</th><th style="text-align:right">Выручка</th><th style="text-align:right">Доля</th></tr></thead><tbody>${Object.entries(byC).sort((a, b) => b[1] - a[1]).map(([c, s]) => { const t = docs.reduce((x, d) => x + d.total, 0); return `<tr><td>${esc(tContractorName(c))}</td><td class="num amount">${formatAmount(s)}</td><td class="num">${t ? (s / t * 100).toFixed(1) : 0}%</td></tr>`; }).join('')}</tbody></table></div></div>`;
         }
         function renderGrossReport() {
@@ -5048,7 +5055,7 @@
                 return rowsBar('materials', fill) + `<div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Материал</th><th>Кол-во</th><th>Ед.</th><th>Остаток на складе</th><th>Цена (себест.)</th><th>Сумма</th><th>Счет учета</th>${cfg.specDoc ? '' : '<th>Счет затрат</th><th>Статья затрат</th>'}</tr></thead>
                 <tbody>${d.materials.map((r, i) => { const n = tNom(r.nom) || {}; const b = cfg.specDoc ? null : bal(r.nom); return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td>
                     <td><select class="tcell" data-i="${i}" data-f="nom" data-tab="materials">${nomOpts(['Материал', 'Товар', 'Продукция'], r.nom)}</select></td>
-                    <td>${inp('materials', i, 'qty', 'number')}</td><td>${n.unit || ''}</td><td class="num" style="color:${b != null && b < (Number(r.qty) || 0) ? 'var(--danger)' : 'var(--success)'}">${b == null ? '—' : b}</td>
+                    <td>${inp('materials', i, 'qty', 'number')}</td><td>${esc(n.unit || '')}</td><td class="num" style="color:${b != null && b < (Number(r.qty) || 0) ? 'var(--danger)' : 'var(--success)'}">${b == null ? '—' : b}</td>
                     <td>${inp('materials', i, 'price', 'number')}</td><td class="num">${formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0))}</td><td>${inp('materials', i, 'account')}</td>
                     ${cfg.specDoc ? '' : `<td>${inp('materials', i, 'costAccount', 'text', 'placeholder="' + (d.costAccount || '20.01') + '"')}</td><td><select class="tcell" data-i="${i}" data-f="costItem" data-tab="materials"><option value="">—</option>${(db.trade.costItems || []).map(c => `<option value="${esc(c.id)}" ${r.costItem === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></td>`}</tr>`; }).join('')}
                 ${d.materials.length ? '' : '<tr><td colspan="' + (cfg.specDoc ? 8 : 10) + '" style="text-align:center;color:var(--text-muted);padding:25px">Нет строк. «Добавить», «Подбор»' + (d.type === 'shift_report' ? ' или «Заполнить по спецификации»' : '') + '.</td></tr>'}</tbody>
@@ -5059,7 +5066,7 @@
                 return rowsBar('products') + `<div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Продукция</th><th>Кол-во</th><th>Ед.</th><th>Плановая цена</th><th>Плановая сумма</th><th>Спецификация</th><th>Счет учета</th><th>Номенклатурная группа</th></tr></thead>
                 <tbody>${d.products.map((r, i) => { const n = tNom(r.nom) || {}; const specs = tSpecsFor(r.nom); return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td>
                     <td><select class="tcell" data-i="${i}" data-f="nom" data-tab="products">${nomOpts(['Продукция', 'Товар'], r.nom)}</select></td>
-                    <td>${inp('products', i, 'qty', 'number')}</td><td>${n.unit || ''}</td><td>${inp('products', i, 'price', 'number')}</td><td class="num"><b>${formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0))}</b></td>
+                    <td>${inp('products', i, 'qty', 'number')}</td><td>${esc(n.unit || '')}</td><td>${inp('products', i, 'price', 'number')}</td><td class="num"><b>${formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0))}</b></td>
                     <td><select class="tcell" data-i="${i}" data-f="spec" data-tab="products"><option value="">—</option>${specs.map(s => `<option value="${esc(s.id)}" ${r.spec === s.id ? 'selected' : ''}>${esc(s.specName || s.number)}</option>`).join('')}</select></td>
                     <td>${inp('products', i, 'account', 'text', 'placeholder="43"')}</td><td><select class="tcell" data-i="${i}" data-f="nomGroup" data-tab="products"><option value="">—</option>${(db.trade.nomGroups || []).map(g => `<option value="${esc(g.id)}" ${(r.nomGroup || n.nomGroup) === g.id ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></td></tr>`; }).join('')}
                 ${d.products.length ? '' : '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:25px">Нет строк. Добавьте выпускаемую продукцию.</td></tr>'}</tbody>
@@ -5068,7 +5075,7 @@
             if (tab === 'waste') {
                 d.waste = d.waste || [];
                 return rowsBar('waste') + `<div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Номенклатура (отход)</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th><th>Счет учета</th></tr></thead>
-                <tbody>${d.waste.map((r, i) => { const n = tNom(r.nom) || {}; return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="nom" data-tab="waste">${nomOpts(['Материал', 'Товар'], r.nom)}</select></td><td>${inp('waste', i, 'qty', 'number')}</td><td>${n.unit || ''}</td><td>${inp('waste', i, 'price', 'number')}</td><td class="num">${formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0))}</td><td>${inp('waste', i, 'account', 'text', 'placeholder="10.06"')}</td></tr>`; }).join('')}
+                <tbody>${d.waste.map((r, i) => { const n = tNom(r.nom) || {}; return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="nom" data-tab="waste">${nomOpts(['Материал', 'Товар'], r.nom)}</select></td><td>${inp('waste', i, 'qty', 'number')}</td><td>${esc(n.unit || '')}</td><td>${inp('waste', i, 'price', 'number')}</td><td class="num">${formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0))}</td><td>${inp('waste', i, 'account', 'text', 'placeholder="10.06"')}</td></tr>`; }).join('')}
                 ${d.waste.length ? '' : '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:25px">Возвратных отходов нет</td></tr>'}</tbody></table></div>`;
             }
             if (tab === 'costacc') return `<div class="thead-grid">
@@ -5081,7 +5088,7 @@
                 d.goods = d.goods || [];
                 return rowsBar('goods', `<button class="btn primary" onclick="tFillInventory()">Заполнить по остаткам</button>`) + `<div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Номенклатура</th><th>Ед.</th><th>Кол-во по учету</th><th>Кол-во факт</th><th>Отклонение</th><th>Цена</th><th>Сумма учет</th><th>Сумма факт</th><th>Сумма отклонения</th></tr></thead>
                 <tbody>${d.goods.map((r, i) => { const n = tNom(r.nom) || {}; const dev = (Number(r.qtyFact) || 0) - (Number(r.qtyAcc) || 0); return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td>
-                    <td><select class="tcell" data-i="${i}" data-f="nom" data-tab="goods">${nomOpts(['Товар', 'Материал', 'Продукция', 'Тара'], r.nom)}</select></td><td>${n.unit || ''}</td>
+                    <td><select class="tcell" data-i="${i}" data-f="nom" data-tab="goods">${nomOpts(['Товар', 'Материал', 'Продукция', 'Тара'], r.nom)}</select></td><td>${esc(n.unit || '')}</td>
                     <td>${inp('goods', i, 'qtyAcc', 'number')}</td><td>${inp('goods', i, 'qtyFact', 'number')}</td><td class="num" style="color:${dev < 0 ? 'var(--danger)' : dev > 0 ? 'var(--success)' : 'var(--text-secondary)'}"><b>${dev > 0 ? '+' : ''}${dev}</b></td>
                     <td>${inp('goods', i, 'price', 'number')}</td><td class="num">${formatAmount((Number(r.qtyAcc) || 0) * (Number(r.price) || 0))}</td><td class="num">${formatAmount((Number(r.qtyFact) || 0) * (Number(r.price) || 0))}</td><td class="num">${formatAmount(dev * (Number(r.price) || 0))}</td></tr>`; }).join('')}
                 ${d.goods.length ? '' : '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:25px">Нажмите «Заполнить по остаткам» — таблица заполнится учетными остатками склада на дату документа</td></tr>'}</tbody>
@@ -5102,7 +5109,7 @@
                 const fill = `<button class="btn" onclick="tFillPrices()">Заполнить всей номенклатурой</button>`;
                 return `<div class="tcmd small"><button class="btn" onclick="tDoc.prices.push({nom:'',oldPrice:0,price:0});tRecalcAll()">Добавить</button><button class="btn" onclick="tDelRow('prices')">Удалить</button>${fill}<span style="flex:1"></span><span style="font-size:12px;color:var(--text-muted)">Строк: ${d.prices.length}</span></div>
                 <div class="table-container"><table class="ttable"><thead><tr><th>№</th><th style="min-width:220px">Номенклатура</th><th>Ед.</th><th>${isPlan ? 'Текущая плановая цена' : 'Текущая цена'}</th><th>${isPlan ? 'Новая плановая цена' : 'Новая цена'}</th><th>Изменение</th></tr></thead>
-                <tbody>${d.prices.map((r, i) => { const n = tNom(r.nom) || {}; const ch = (Number(r.price) || 0) - (Number(r.oldPrice) || 0); return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="nom" data-tab="prices">${nomOpts(isPlan ? ['Продукция'] : ['Товар', 'Продукция', 'Услуга', 'Материал', 'Тара'], r.nom)}</select></td><td>${n.unit || ''}</td><td class="num">${formatAmount(r.oldPrice)}</td><td>${inp('prices', i, 'price', 'number')}</td><td class="num" style="color:${ch > 0 ? 'var(--success)' : ch < 0 ? 'var(--danger)' : 'var(--text-secondary)'}">${ch > 0 ? '+' : ''}${formatAmount(ch)} ${r.oldPrice ? '(' + (ch / r.oldPrice * 100).toFixed(1) + '%)' : ''}</td></tr>`; }).join('')}
+                <tbody>${d.prices.map((r, i) => { const n = tNom(r.nom) || {}; const ch = (Number(r.price) || 0) - (Number(r.oldPrice) || 0); return `<tr class="${d._sel === i ? 'sel' : ''}" onclick="tDoc._sel=${i}"><td>${i + 1}</td><td><select class="tcell" data-i="${i}" data-f="nom" data-tab="prices">${nomOpts(isPlan ? ['Продукция'] : ['Товар', 'Продукция', 'Услуга', 'Материал', 'Тара'], r.nom)}</select></td><td>${esc(n.unit || '')}</td><td class="num">${formatAmount(r.oldPrice)}</td><td>${inp('prices', i, 'price', 'number')}</td><td class="num" style="color:${ch > 0 ? 'var(--success)' : ch < 0 ? 'var(--danger)' : 'var(--text-secondary)'}">${ch > 0 ? '+' : ''}${formatAmount(ch)} ${r.oldPrice ? '(' + (ch / r.oldPrice * 100).toFixed(1) + '%)' : ''}</td></tr>`; }).join('')}
                 ${d.prices.length ? '' : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:25px">Добавьте номенклатуру или заполните списком</td></tr>'}</tbody></table></div>
                 <p style="color:var(--text-secondary);font-size:12px;margin-top:8px">При проведении новые ${isPlan ? 'плановые цены записываются в карточки продукции и используются в «Отчете производства за смену»' : 'цены записываются в карточки номенклатуры (тип цен «' + esc((db.trade.priceTypes.find(p => p.id === d.priceType) || {}).name || '') + '») и подставляются в документы продаж'}.</p>`;
             }
@@ -5240,7 +5247,7 @@
             const c = cols || ['qty', 'price', 'sum'];
             const head = { qty: 'Кол-во', price: 'Цена', sum: 'Сумма', qtyAcc: 'По данным учета', qtyFact: 'Фактически', dev: 'Отклонение', devSum: 'Сумма отклонения', account: 'Счет учета', oldPrice: 'Старая цена', newPrice: 'Новая цена' };
             return `<table><thead><tr><th>№</th><th>Наименование</th><th>Ед.</th>${c.map(k => `<th>${head[k]}</th>`).join('')}</tr></thead><tbody>
-            ${rows.map(r => { const n = tNom(r.nom) || {}; const dev = (Number(r.qtyFact) || 0) - (Number(r.qtyAcc) || 0); const v = { qty: r.qty, price: formatAmount(r.price), sum: formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0)), qtyAcc: r.qtyAcc, qtyFact: r.qtyFact, dev: (dev > 0 ? '+' : '') + dev, devSum: formatAmount(dev * (Number(r.price) || 0)), account: r.account || n.account || '', oldPrice: formatAmount(r.oldPrice), newPrice: formatAmount(r.price) }; return `<tr><td>${++i}</td><td>${esc(n.name || tNG(r.nomGroup))}</td><td>${n.unit || ''}</td>${c.map(k => `<td class="num">${v[k]}</td>`).join('')}</tr>`; }).join('')}
+            ${rows.map(r => { const n = tNom(r.nom) || {}; const dev = (Number(r.qtyFact) || 0) - (Number(r.qtyAcc) || 0); const v = { qty: r.qty, price: formatAmount(r.price), sum: formatAmount((Number(r.qty) || 0) * (Number(r.price) || 0)), qtyAcc: r.qtyAcc, qtyFact: r.qtyFact, dev: (dev > 0 ? '+' : '') + dev, devSum: formatAmount(dev * (Number(r.price) || 0)), account: r.account || n.account || '', oldPrice: formatAmount(r.oldPrice), newPrice: formatAmount(r.price) }; return `<tr><td>${++i}</td><td>${esc(n.name || tNG(r.nomGroup))}</td><td>${esc(n.unit || '')}</td>${c.map(k => `<td class="num">${v[k]}</td>`).join('')}</tr>`; }).join('')}
             ${c.includes('sum') ? `<tr><td colspan="${3 + c.indexOf('sum')}" class="right"><b>Итого</b></td><td class="num"><b>${formatAmount(rows.reduce((s, r) => s + (Number(r.qty) || 0) * (Number(r.price) || 0), 0))}</b></td>${c.slice(c.indexOf('sum') + 1).map(() => '<td></td>').join('')}</tr>` : ''}</tbody></table>`;
         }
         function tPrintExtra(d, form) {
@@ -5255,7 +5262,7 @@
             if (/ТОРГ-16|Акт списания/.test(form)) return `<p class="small">Унифицированная форма № ТОРГ-16</p>${hdr('АКТ о списании товаров')}${wh}<p>Причина списания: <b>${esc(d.opKind || '')}</b>. ${esc(d.extra.comment || '')}</p>${tStockTable(d, 'goods', ['qty', 'price', 'sum', 'account'])}<div class="sig"><div>Председатель комиссии<div class="line"></div></div><div>Члены комиссии<div class="line"></div><div class="line"></div></div></div><p>Утверждаю: руководитель ${esc(org.director)} ______________</p>`;
             if (/оприходован|излишков/.test(form)) return `${hdr('АКТ об оприходовании товаров (излишков)')}${wh}<p>Основание: ${d.basis ? esc(tDocTitle(tDocById(d.basis))) : esc(d.extra.comment || 'выявленные излишки')}</p>${tStockTable(d, 'goods', ['qty', 'price', 'sum', 'account'])}${sig('Принял', 'Сдал')}`;
             if (/начальных остатков/.test(form)) return `${hdr('ВЕДОМОСТЬ остатков запасов на начало учета')}${wh}${tStockTable(d, 'goods', ['qty', 'price', 'sum', 'account'])}<div class="sig"><div>Главный бухгалтер<div class="line"></div><span class="small">${esc(org.accountant)}</span></div><div></div></div>`;
-            if (/комплектации|разукомплектации/.test(form)) { const kit = tNom(d.kitNom) || {}; const sum = (d.goods || []).reduce((s, r) => s + (+r.qty || 0) * (+r.price || 0), 0); return `${hdr('АКТ ' + (d.opKind === 'Разукомплектация' ? 'разукомплектации' : 'комплектации') + ' номенклатуры')}${wh}<p><b>Комплект:</b> ${esc(kit.name || '')} — ${d.kitQty || 1} ${kit.unit || 'шт'}, себестоимость единицы <b>${formatAmount(sum / (Number(d.kitQty) || 1))}</b></p><h3>Комплектующие</h3>${tStockTable(d, 'goods', ['qty', 'price', 'sum'])}${sig('Комплектовщик', 'Кладовщик')}`; }
+            if (/комплектации|разукомплектации/.test(form)) { const kit = tNom(d.kitNom) || {}; const sum = (d.goods || []).reduce((s, r) => s + (+r.qty || 0) * (+r.price || 0), 0); return `${hdr('АКТ ' + (d.opKind === 'Разукомплектация' ? 'разукомплектации' : 'комплектации') + ' номенклатуры')}${wh}<p><b>Комплект:</b> ${esc(kit.name || '')} — ${d.kitQty || 1} ${esc(kit.unit || 'шт')}, себестоимость единицы <b>${formatAmount(sum / (Number(d.kitQty) || 1))}</b></p><h3>Комплектующие</h3>${tStockTable(d, 'goods', ['qty', 'price', 'sum'])}${sig('Комплектовщик', 'Кладовщик')}`; }
             if (/Прейскурант|Изменение цен|Плановые цены/.test(form)) return `<h2>${form.includes('Плановые') ? 'ПЛАНОВЫЕ ЦЕНЫ ПРОДУКЦИИ' : form.includes('Прейскурант') ? 'ПРЕЙСКУРАНТ' : 'ИЗМЕНЕНИЕ ЦЕН'} (документ № ${esc(d.number)} от ${formatDate(d.date)})</h2><p>${esc(org.name)}. Тип цен: <b>${d.type === 'plan_prices' ? 'Плановая себестоимость' : esc((db.trade.priceTypes.find(p => p.id === d.priceType) || {}).name || '')}</b>. Действуют с ${formatDate(d.date)}.</p>${tStockTable(d, 'prices', form.includes('Прейскурант') ? ['newPrice'] : ['oldPrice', 'newPrice'])}<div class="sig"><div>Утверждаю: руководитель<div class="line"></div><span class="small">${esc(org.director)}</span></div><div></div></div>`;
             if (/М-11|М-8/.test(form)) return `<p class="small">Типовая межотраслевая форма № ${form.includes('М-8') ? 'М-8' : 'М-11'}</p>${hdr(form.includes('М-8') ? 'ЛИМИТНО-ЗАБОРНАЯ КАРТА' : 'ТРЕБОВАНИЕ-НАКЛАДНАЯ')}${wh}<p><b>Отправитель:</b> склад ${esc(tWh(d.warehouse))}. <b>Получатель:</b> ${esc(tDep(d.department))}. <b>Корреспондирующий счет:</b> ${esc(d.costAccount || '20.01')}${d.nomGroup ? ', номенклатурная группа «' + esc(tNG(d.nomGroup)) + '»' : ''}</p>${tStockTable(d, 'materials', ['qty', 'price', 'sum', 'account'])}${sig('Отпустил', 'Получил')}`;
             if (/Отчет производства за смену/.test(form)) return `${hdr('ОТЧЕТ ПРОИЗВОДСТВА ЗА СМЕНУ')}${wh}<p><b>Счет затрат:</b> ${esc(d.costAccount || '20.01')}. <b>Номенклатурная группа:</b> ${esc(tNG(d.nomGroup))}</p><h3>Выпущенная продукция (по плановой себестоимости)</h3>${tStockTable(d, 'products', ['qty', 'price', 'sum', 'account'])}${(d.materials || []).length ? '<h3>Списанные материалы</h3>' + tStockTable(d, 'materials', ['qty', 'price', 'sum', 'account']) : ''}${(d.waste || []).length ? '<h3>Возвратные отходы</h3>' + tStockTable(d, 'waste', ['qty', 'price', 'sum']) : ''}${sig('Начальник цеха', 'Кладовщик')}`;
@@ -5304,7 +5311,7 @@
             <button class="quick-btn" onclick="sFilters={wh:'',date:''};renderPage()">Сбросить</button><span style="flex:1"></span><button class="btn" onclick="tPrintReport()">🖨 Печать</button></div>
             <div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">ПОЗИЦИЙ НА ОСТАТКЕ</div><div class="stat-value">${bal.length}</div></div><div class="stat-card"><div class="stat-label">СТОИМОСТЬ ЗАПАСОВ</div><div class="stat-value">${formatAmount(totalSum)}</div></div><div class="stat-card"><div class="stat-label">ОТРИЦАТЕЛЬНЫХ ОСТАТКОВ</div><div class="stat-value" style="color:${bal.some(b => b.qty < 0) ? 'var(--danger)' : 'var(--success)'}">${bal.filter(b => b.qty < 0).length}</div></div></div>
             ${Object.entries(byWh).map(([wh, list]) => `<div class="table-container" style="margin-bottom:15px"><div style="padding:10px 15px;background:var(--bg-table-head);border-bottom:1px solid var(--border-input)"><b>${esc(tWh(wh))}</b></div><table><thead><tr><th>Артикул</th><th>Номенклатура</th><th>Вид</th><th>Счет</th><th>Ед.</th><th style="text-align:right">Количество</th><th style="text-align:right">Средняя себестоимость</th><th style="text-align:right">Сумма</th></tr></thead>
-            <tbody>${list.map(b => { const n = tNom(b.nom) || {}; return `<tr style="${b.qty < 0 ? 'color:var(--danger)' : ''}"><td>${esc(n.article || '')}</td><td><a href="#" onclick="event.preventDefault();sMoveNom='${b.nom}';selectPageById('r_stock_moves')">${esc(n.name || b.nom)}</a></td><td>${n.kind || ''}</td><td>${n.account || ''}</td><td>${n.unit || ''}</td><td class="num"><b>${b.qty}</b></td><td class="num">${formatAmount(b.qty ? b.sum / b.qty : 0)}</td><td class="num amount">${formatAmount(b.sum)}</td></tr>`; }).join('')}</tbody>
+            <tbody>${list.map(b => { const n = tNom(b.nom) || {}; return `<tr style="${b.qty < 0 ? 'color:var(--danger)' : ''}"><td>${esc(n.article || '')}</td><td><a href="#" onclick="event.preventDefault();sMoveNom='${b.nom}';selectPageById('r_stock_moves')">${esc(n.name || b.nom)}</a></td><td>${esc(n.kind || '')}</td><td>${esc(n.account || '')}</td><td>${esc(n.unit || '')}</td><td class="num"><b>${b.qty}</b></td><td class="num">${formatAmount(b.qty ? b.sum / b.qty : 0)}</td><td class="num amount">${formatAmount(b.sum)}</td></tr>`; }).join('')}</tbody>
             <tfoot><tr><td colspan="7" style="text-align:right;font-weight:600">Итого по складу:</td><td class="num amount">${formatAmount(list.reduce((s, b) => s + b.sum, 0))}</td></tr></tfoot></table></div>`).join('')}
             ${bal.length ? '' : '<div class="empty-state">Остатков нет. Оформите «Ввод начальных остатков» или «Поступление».</div>'}</div>`;
         }
@@ -5334,7 +5341,7 @@
             const names = { '10': 'Материалы', '41': 'Товары', '43': 'Готовая продукция', '20': 'Основное производство' };
             const rows = Object.values(accs).sort((a, b) => a.a.localeCompare(b.a));
             return tReportBar() + `<div id="tReport"><div class="table-container"><table><thead><tr><th>Счет</th><th>Наименование</th><th style="text-align:right">Сальдо на начало (Дт)</th><th style="text-align:right">Оборот Дт</th><th style="text-align:right">Оборот Кт</th><th style="text-align:right">Сальдо на конец (Дт)</th></tr></thead>
-            <tbody>${rows.map(r => `<tr><td><b>${r.a}</b></td><td>${names[r.a] || 'Запасы'}</td><td class="num">${formatAmount(r.open)}</td><td class="num">${formatAmount(r.dt)}</td><td class="num">${formatAmount(r.kt)}</td><td class="num amount">${formatAmount(r.open + r.dt - r.kt)}</td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="6" class="empty-state">Нет данных</td></tr>'}</tbody>
+            <tbody>${rows.map(r => `<tr><td><b>${esc(r.a)}</b></td><td>${esc(names[r.a] || 'Запасы')}</td><td class="num">${formatAmount(r.open)}</td><td class="num">${formatAmount(r.dt)}</td><td class="num">${formatAmount(r.kt)}</td><td class="num amount">${formatAmount(r.open + r.dt - r.kt)}</td></tr>`).join('')}${rows.length ? '' : '<tr><td colspan="6" class="empty-state">Нет данных</td></tr>'}</tbody>
             <tfoot><tr><td colspan="2"><b>Итого</b></td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.open, 0))}</td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.dt, 0))}</td><td class="num">${formatAmount(rows.reduce((s, r) => s + r.kt, 0))}</td><td class="num amount">${formatAmount(rows.reduce((s, r) => s + r.open + r.dt - r.kt, 0))}</td></tr></tfoot></table></div><p style="color:var(--text-secondary);font-size:12px;margin-top:8px">Ведомость строится по счетам учета номенклатуры (10 — материалы, 41 — товары, 43 — готовая продукция) на основании проведенных складских, торговых и производственных документов.</p></div>`;
         }
         function renderStockJournal() {
@@ -6088,7 +6095,7 @@
                 e.preventDefault();
                 const el = document.getElementById('globalSearch') || document.getElementById('tfSearch');
                 if (el) el.focus();
-            } else if (e.ctrlKey && e.shiftKey && e.key === 'p') {
+            } else if (e.ctrlKey && e.shiftKey && (e.key || '').toLowerCase() === 'p') {
                 e.preventDefault();
                 if (isTrade && tSelected) { const _d = tDocById(tSelected); if (_d && TT[_d.type] && TT[_d.type].prints && TT[_d.type].prints[0]) tPrint(tSelected, TT[_d.type].prints[0]); }
             } else if (e.key === 'Escape') {
@@ -6101,7 +6108,7 @@
                     else if (top.id === 'documentModal') bankMinimize();
                     else top.classList.remove('active');
                 }
-            } else if (e.ctrlKey && e.shiftKey && e.key === 'n' && !isTrade && isBankCash) {
+            } else if (e.ctrlKey && e.shiftKey && (e.key || '').toLowerCase() === 'n' && !isTrade && isBankCash) {
                 e.preventDefault(); openCreateModal();
             }
         });
@@ -6184,9 +6191,9 @@
                     const e = tEmp(r.employee) || {};
                     totalSalary += Number(r.gross) || 0;
                     totalTax += Number(r.tax) || 0;
-                    totalSocial += Number(r.social) || 0;
+                    totalSocial += (Number(r.sfEmp) || 0) + (Number(r.sfEmployer) || 0);
                     totalNet += Number(r.net) || 0;
-                    salaryRows.push({ name: e.name || '—', position: tPos(e.position), gross: Number(r.gross) || 0, tax: Number(r.tax) || 0, social: Number(r.social) || 0, net: Number(r.net) || 0 });
+                    salaryRows.push({ name: e.name || '—', position: tPos(e.position), gross: Number(r.gross) || 0, tax: Number(r.tax) || 0, social: (Number(r.sfEmp) || 0) + (Number(r.sfEmployer) || 0), net: Number(r.net) || 0 });
                 });
             });
 
