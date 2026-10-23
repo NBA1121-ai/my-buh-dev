@@ -2724,6 +2724,7 @@
         };
         function openCreateModal() {
             _tabMinimizeActive();
+            _bankCtx = {};
             editingId = null;
             const group = ['cash','cash_pko','cash_rko'].includes(currentPage) ? 'cash' : 'bank';
             document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
@@ -2741,8 +2742,9 @@
             updateFormByType();
         }
         function openCreateModalForType(docType, group) {
-            editingId = null;
             _tabMinimizeActive();
+            _bankCtx = {};
+            editingId = null;
 
             document.getElementById('modalTitle').textContent = group === 'cash' ? 'Создать кассовый документ' : 'Создать банковский документ';
             document.getElementById('documentForm').reset();
@@ -2775,6 +2777,7 @@
             const tabIdx = _openTabs.findIndex(function(t) { return t.id === 'b_' + id; });
             if (tabIdx >= 0) { _tabSwitch('b_' + id); return; }
             _tabMinimizeActive();
+            _bankCtx = {};
             editingId = id;
             const doc = [...db.bankDocuments, ...db.cashDocuments].find(d => d.id === id);
             if (!doc) return;
@@ -2823,7 +2826,10 @@
                 if (accFrom === accTo) { alert('Счёт списания и назначения не могут совпадать'); return; }
             }
 
-            const doc = {
+            const old = editingId ? [...db.bankDocuments, ...db.cashDocuments].find(d => d.id === editingId) : null;
+            if (editingId && !old && !confirm('Этот документ был удалён. Сохранить его как новый?')) return;
+            const wasCash = !!(old && db.cashDocuments.some(d => d.id === editingId));
+            let doc = {
                 id: editingId || uid(),
                 type: docType,
                 number: document.getElementById('docNumber').value,
@@ -2843,15 +2849,23 @@
                 created: new Date().toISOString()
             };
 
+            if (old) {
+                // Сохраняем поля, которых нет в форме (basis, contractorId, history и т.д.)
+                const keepContractorId = old.contractor === doc.contractor;
+                doc = Object.assign({}, old, doc, { created: old.created });
+                if (!keepContractorId) delete doc.contractorId;
+            } else {
+                if (_bankCtx.basis) doc.basis = _bankCtx.basis;
+                if (_bankCtx.contractorId) doc.contractorId = _bankCtx.contractorId;
+            }
             if (editingId) {
-                const old = [...db.bankDocuments, ...db.cashDocuments].find(d => d.id === editingId);
-                if (old) { doc.created = old.created; if (old.basis) doc.basis = old.basis; }
                 db.bankDocuments = db.bankDocuments.filter(d => d.id !== editingId);
                 db.cashDocuments = db.cashDocuments.filter(d => d.id !== editingId);
             }
             // Кассовые документы — в кассу, банковские — в банк
-            // internal_transfer — по текущей странице
-            if (CASH_TYPES.includes(doc.type) || (doc.type === 'internal_transfer' && ['cash','cash_pko','cash_rko'].includes(currentPage))) {
+            // internal_transfer — туда, где был; новый — по текущей странице
+            const transferToCash = old ? wasCash : ['cash','cash_pko','cash_rko'].includes(currentPage);
+            if (CASH_TYPES.includes(doc.type) || (doc.type === 'internal_transfer' && transferToCash)) {
                 db.cashDocuments.push(doc);
             } else {
                 db.bankDocuments.push(doc);
@@ -2873,6 +2887,7 @@
             }
             db.bankDocuments = db.bankDocuments.filter(d => d.id !== id);
             db.cashDocuments = db.cashDocuments.filter(d => d.id !== id);
+            { const ti = _openTabs.findIndex(t => t.id === 'b_' + id); if (ti >= 0) { _openTabs.splice(ti, 1); if (_activeTabId === 'b_' + id) _activeTabId = null; _tabRender(); } }
             logActivity('Удаление документа', found ? (found.type + ' ' + found.number) : id);
             saveData();
             showToast('Документ удален');
@@ -3814,7 +3829,7 @@
                 calcSumKGS();
                 document.getElementById('docPurpose').value = 'Оплата по документу ' + tDocTitle(base) + (base.vatTotal ? ', в т.ч. НДС ' + formatAmount(base.vatTotal) : '');
                 document.getElementById('docNote').value = 'Создано на основании ' + tDocTitle(base);
-                const _basisId = uid();
+                _bankCtx = { basis: base.id, contractorId: base.contractor || '' };
                 document.getElementById('documentModal').classList.add('active');
                 return;
             }
@@ -3854,6 +3869,7 @@
         }
         // ========== СИСТЕМА ВКЛАДОК (1С-стиль) ==========
         const _openTabs = []; // { id, title, type:'trade'|'bank', docId, state }
+        let _bankCtx = {}; // скрытые поля банковской формы: basis, contractorId
         let _activeTabId = null;
 
         function _tabRender() {
@@ -3862,11 +3878,19 @@
             bar.style.display = 'flex';
             let html = '';
             _openTabs.forEach(function(tab) {
-                html += '<div class="tab-bar-item' + (tab.id === _activeTabId ? ' active' : '') + '" onclick="_tabSwitch(\'' + tab.id + '\')">' +
+                html += '<div class="tab-bar-item' + (tab.id === _activeTabId ? ' active' : '') + '" data-tab-id="' + esc(tab.id) + '" title="' + esc(tab.title) + '">' +
                     '<span class="tb-title">' + esc(tab.title) + '</span>' +
-                    '<span class="tab-bar-close" onclick="event.stopPropagation();_tabClose(\'' + tab.id + '\')" title="Закрыть">&times;</span></div>';
+                    '<span class="tab-bar-close" data-tab-close="1" title="Закрыть">&times;</span></div>';
             });
             bar.innerHTML = html;
+            if (!bar._tabHandler) {
+                bar._tabHandler = true;
+                bar.addEventListener('click', function(e) {
+                    const item = e.target.closest('.tab-bar-item'); if (!item) return;
+                    const id = item.getAttribute('data-tab-id');
+                    if (e.target.closest('[data-tab-close]')) _tabClose(id); else _tabSwitch(id);
+                });
+            }
         }
 
         function _tabSaveBankForm() {
@@ -3939,13 +3963,15 @@
             const modalTitle = document.getElementById('modalTitle').textContent;
             const typeLabels = { payment_in:'ПП вх.', payment_out:'ПП исх.', payment_order:'Плат.поруч.', pko:'ПКО', rko:'РКО', statement:'Выписка', directbank:'Директ-банк', conversion:'Конвертация', internal_transfer:'Перевод' };
             const title = (typeLabels[fv.type] || fv.type) + ' ' + (fv.number || '') + ' от ' + formatDate(fv.date);
-            const tabId = 'b_' + (editingId || fv.number || Date.now());
+            // Постоянный ключ вкладки: восстановленная вкладка, id документа или id нового черновика
+            const tabId = (_activeTabId && _activeTabId.startsWith('b_')) ? _activeTabId : (editingId ? 'b_' + editingId : 'b_new_' + uid());
+            const state = { editingId: editingId, fv: fv, modalTitle: modalTitle, ctx: Object.assign({}, _bankCtx) };
             const existing = _openTabs.find(function(t) { return t.id === tabId; });
             if (existing) {
-                existing.state = { editingId: editingId, fv: fv, modalTitle: modalTitle };
+                existing.state = state;
                 existing.title = title;
             } else {
-                _openTabs.push({ id: tabId, title: title, type: 'bank', state: { editingId: editingId, fv: fv, modalTitle: modalTitle } });
+                _openTabs.push({ id: tabId, title: title, type: 'bank', state: state });
             }
             document.getElementById('documentModal').classList.remove('active');
             _activeTabId = null;
@@ -3965,7 +3991,13 @@
                 _tDocSnapshot = tab.state.snap;
                 tRenderForm(false);
             } else if (tab.type === 'bank') {
+                if (tab.state.editingId && ![...db.bankDocuments, ...db.cashDocuments].some(function(d) { return d.id === tab.state.editingId; })) {
+                    _openTabs.splice(_openTabs.indexOf(tab), 1); _activeTabId = null; _tabRender();
+                    showToast('Документ был удалён — вкладка закрыта', 'error');
+                    return;
+                }
                 editingId = tab.state.editingId;
+                _bankCtx = Object.assign({}, tab.state.ctx || {});
                 document.getElementById('modalTitle').textContent = tab.state.modalTitle;
                 _tabRestoreBankForm(tab.state.fv);
                 document.getElementById('documentModal').classList.add('active');
