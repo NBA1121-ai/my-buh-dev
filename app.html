@@ -671,15 +671,15 @@
                 db.accounts.push({ id: '_mbank_kgs', name: 'МБанк', number: '', bank: 'МБанк', type: 'bank', openingBalance: 434850 });
             }
             // Миграция: подотчётные лица как кассы
-            if (!db.accounts.find(a => a.id === '_pod_tynchtyk')) {
+            if (!db.accounts.find(a => a.id === '_pod_tynchtyk') && !(db.podotchetPersons || []).find(p => p.id === '_pod_tynchtyk')) {
                 changed = true;
                 db.accounts.push({ id: '_pod_tynchtyk', name: 'Тынчтык (подотчёт)', number: '', bank: '', type: 'cash', openingBalance: 1550201 });
             }
-            if (!db.accounts.find(a => a.id === '_pod_azim')) {
+            if (!db.accounts.find(a => a.id === '_pod_azim') && !(db.podotchetPersons || []).find(p => p.id === '_pod_azim')) {
                 changed = true;
                 db.accounts.push({ id: '_pod_azim', name: 'Азим Хожи (подотчёт)', number: '', bank: '', type: 'cash', openingBalance: 325500 });
             }
-            if (!db.accounts.find(a => a.id === '_pod_zhusupbekov')) {
+            if (!db.accounts.find(a => a.id === '_pod_zhusupbekov') && !(db.podotchetPersons || []).find(p => p.id === '_pod_zhusupbekov')) {
                 changed = true;
                 db.accounts.push({ id: '_pod_zhusupbekov', name: 'Жусупбеков Максатбек (подотчёт)', number: '', bank: '', type: 'cash', openingBalance: 4875096 });
             }
@@ -709,6 +709,12 @@
                 if (acc && !db.podotchetPersons.find(p => p.id === pid)) {
                     changed = true;
                     db.podotchetPersons.push({ id: pid, name: acc.name.replace(' (подотчёт)', ''), openingBalance: acc.openingBalance || 0 });
+                }
+                // Подотчётное лицо больше не касса: убираем счёт (или помечаем, если на него ссылаются документы)
+                if (acc && db.podotchetPersons.find(p => p.id === pid)) {
+                    const used = [...db.bankDocuments, ...db.cashDocuments].some(d => d.account === pid || d.accountTo === pid);
+                    if (!used) { db.accounts = db.accounts.filter(a => a.id !== pid); changed = true; }
+                    else if (!acc.podotchet) { acc.podotchet = true; changed = true; }
                 }
             });
 
@@ -1180,9 +1186,9 @@
         }
 
         function renderReports() {
-            const allDocs = [...db.bankDocuments, ...db.cashDocuments].filter(d => d.status === 'posted');
-            const totalIn = allDocs.filter(d => d.type === 'payment_in' || d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
-            const totalOut = allDocs.filter(d => d.type === 'payment_out' || d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
+            const allDocs = [...db.bankDocuments, ...db.cashDocuments].filter(d => d.status === 'posted' && !MONEY_TRANSFER_TYPES.includes(d.type));
+            const totalIn = allDocs.filter(d => MONEY_IN_TYPES.includes(d.type)).reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
+            const totalOut = allDocs.filter(d => MONEY_OUT_TYPES.includes(d.type)).reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
             const postedDocs = allDocs.length;
 
             return `
@@ -1235,11 +1241,12 @@
         }
 
         function renderCashbook() {
-            const cashDocs = db.cashDocuments.filter(d => (d.type === 'pko' || d.type === 'rko') && d.status === 'posted').sort((a, b) => docCmp(b, a));
+            const podIds = new Set((db.accounts || []).filter(isPodAccount).map(a => a.id));
+            const cashDocs = db.cashDocuments.filter(d => (d.type === 'pko' || d.type === 'rko') && d.status === 'posted' && !podIds.has(d.account)).sort((a, b) => docCmp(a, b));
             const byDay = {};
             cashDocs.forEach(d => { (byDay[d.date] = byDay[d.date] || []).push(d); });
             const days = Object.keys(byDay).sort();
-            let balance = (db.accounts || []).filter(a => a.type === 'cash').reduce((s, a) => s + Number(a.openingBalance || 0), 0);
+            let balance = (db.accounts || []).filter(a => a.type === 'cash' && !isPodAccount(a) && accCurCode(a) === 'KGS').reduce((s, a) => s + Number(a.openingBalance || 0), 0);
             let pageNo = 0;
             if (!days.length) return '<div class="empty-state">Кассовых ордеров нет — кассовая книга пуста</div>';
             return `
@@ -1263,7 +1270,7 @@
                                 <td><strong>${esc(d.number)}</strong> <span style="color:var(--text-muted)">(${d.type === 'pko' ? 'ПКО' : 'РКО'})</span></td>
                                 <td>${esc(d.contractor || '-')}${d.purpose ? '<br><span style="color:var(--text-muted);font-size:12px">' + esc(d.purpose) + '</span>' : ''}</td>
                                 <td>${art ? (art.type === 'in' ? '62.01' : '60.01') : (d.type === 'pko' ? '62.01' : '71.01')}</td>
-                                <td class="num">${d.type === 'pko' ? formatAmount(d.sum) : ''}</td><td class="num">${d.type === 'rko' ? formatAmount(d.sum) : ''}</td></tr>`; }).join('')}
+                                <td class="num">${d.type === 'pko' ? formatAmount(Number(d.sum || 0) * (Number(d.rate) || 1)) : ''}</td><td class="num">${d.type === 'rko' ? formatAmount(Number(d.sum || 0) * (Number(d.rate) || 1)) : ''}</td></tr>`; }).join('')}
                             <tr style="background:var(--bg-table-hover)"><td colspan="3"><b>Итого за день</b></td><td class="num"><b>${formatAmount(inSum)}</b></td><td class="num"><b>${formatAmount(outSum)}</b></td></tr>
                             <tr><td colspan="3"><b>Остаток на конец дня</b></td><td class="num amount">${formatAmount(balance)}</td><td></td></tr>
                         </tbody>
@@ -1373,6 +1380,7 @@
                         <div class="form-group"><label>Банк</label><input id="accBank" class="form-control" placeholder="АБ Кыргызстан"></div>
                         <div class="form-group"><label>Тип</label><select id="accType" class="form-control"><option value="bank">Банковский</option><option value="cash">Касса</option></select></div>
                         <div class="form-group"><label>Начальный остаток</label><input id="accOpeningBalance" type="number" class="form-control" placeholder="0"></div>
+                        <div class="form-group"><label>Валюта счёта</label><select id="accCurrency" class="form-control"><option value="KGS">KGS — сом</option>${(db.currencies || []).filter(c => c.code && c.code !== 'KGS').map(c => `<option value="${esc(c.code)}">${esc(c.code)} — ${esc(c.name || '')}</option>`).join('')}</select></div>
                     </div>
                     <div style="margin-top:10px;display:flex;gap:8px">
                         <button class="btn primary" onclick="saveAccount()">Сохранить</button>
@@ -1386,6 +1394,7 @@
                             <th>Номер счета</th>
                             <th>Банк</th>
                             <th>Тип</th>
+                            <th>Валюта</th>
                             <th style="text-align:right">Нач. остаток</th>
                             <th style="width:100px">Действия</th>
                         </tr>
@@ -1397,6 +1406,7 @@
                                 <td>${esc(a.number || '-')}</td>
                                 <td>${esc(a.bank || '-')}</td>
                                 <td><span class="badge ${a.type === 'bank' ? 'posted' : 'draft'}">${a.type === 'bank' ? 'Банк' : 'Касса'}</span></td>
+                                <td>${esc(accCurCode(a))}</td>
                                 <td class="num">${a.openingBalance ? formatAmount(a.openingBalance) : '-'}</td>
                                 <td>
                                     <button class="btn" style="padding:4px 8px;font-size:12px" onclick="editAccount('${esc(a.id)}')">✏️</button>
@@ -1418,6 +1428,7 @@
             document.getElementById('accBank').value = '';
             document.getElementById('accType').value = 'bank';
             document.getElementById('accOpeningBalance').value = '';
+            document.getElementById('accCurrency').value = 'KGS';
         }
         function editAccount(id) {
             const a = db.accounts.find(x => x.id === id);
@@ -1430,6 +1441,7 @@
             document.getElementById('accBank').value = a.bank || '';
             document.getElementById('accType').value = a.type || 'bank';
             document.getElementById('accOpeningBalance').value = a.openingBalance || '';
+            document.getElementById('accCurrency').value = accCurCode(a);
         }
         function saveAccount() {
             const name = document.getElementById('accName').value.trim();
@@ -1438,9 +1450,11 @@
             const openBal = Number(document.getElementById('accOpeningBalance').value) || 0;
             if (editId) {
                 const a = db.accounts.find(x => x.id === editId);
-                if (a) { a.name = name; a.number = document.getElementById('accNumber').value.trim(); a.bank = document.getElementById('accBank').value.trim(); a.type = document.getElementById('accType').value; a.openingBalance = openBal; }
+                const curCode = document.getElementById('accCurrency').value;
+                if (a) { a.name = name; a.number = document.getElementById('accNumber').value.trim(); a.bank = document.getElementById('accBank').value.trim(); a.type = document.getElementById('accType').value; a.openingBalance = openBal; a.currency = curCode === 'KGS' ? '' : curCode; }
             } else {
-                db.accounts.push({ id: uid(), name, number: document.getElementById('accNumber').value.trim(), bank: document.getElementById('accBank').value.trim(), type: document.getElementById('accType').value, openingBalance: openBal });
+                const curCode = document.getElementById('accCurrency').value;
+                db.accounts.push({ id: uid(), name, number: document.getElementById('accNumber').value.trim(), bank: document.getElementById('accBank').value.trim(), type: document.getElementById('accType').value, openingBalance: openBal, currency: curCode === 'KGS' ? '' : curCode });
             }
             saveData(); populateSelects(); renderPage();
         }
@@ -2009,35 +2023,26 @@
                 const isOut = ['payment_out', 'rko', 'payment_order', 'statement', 'directbank'].includes(d.type);
                 if (isIn) accBalances[d.account] += sum;
                 else if (isOut) accBalances[d.account] -= sum;
-                // Комиссия банка списывается со счёта
-                if (['payment_out', 'payment_in', 'payment_order', 'statement', 'directbank'].includes(d.type)) accBalances[d.account] -= Number(d.bankFee || 0);
                 // internal_transfer: простой перевод между счетами (1:1)
                 else if (d.type === 'internal_transfer') {
                     accBalances[d.account] -= sum;
-                    if (d.accountTo && accBalances[d.accountTo] !== undefined) {
-                        accBalances[d.accountTo] += sum;
-                    }
+                    if (d.accountTo && accBalances[d.accountTo] !== undefined) accBalances[d.accountTo] += sum;
                 }
-                // conversion: списание с исходного счёта, зачисление на целевой
+                // conversion: списание в валюте исходного счёта, зачисление в валюте целевого
                 else if (d.type === 'conversion') {
                     accBalances[d.account] -= sum;
-                    if (d.accountTo && accBalances[d.accountTo] !== undefined) {
-                        const accFrom = (db.accounts || []).find(a => a.id === d.account);
-                        const accTo = (db.accounts || []).find(a => a.id === d.accountTo);
-                        const curFrom = accFrom ? accFrom.currency || '' : '';
-                        const curTo = accTo ? accTo.currency || '' : '';
-                        const creditSum = (curFrom === curTo) ? sum : sum * (Number(d.rate) || 1);
-                        accBalances[d.accountTo] += creditSum;
-                    }
+                    if (d.accountTo && accBalances[d.accountTo] !== undefined) accBalances[d.accountTo] += conversionCredit(d);
                 }
+                // Комиссия банка списывается со счёта
+                if (['payment_out', 'payment_in', 'payment_order', 'statement', 'directbank'].includes(d.type)) accBalances[d.account] -= Number(d.bankFee || 0);
             });
 
             // Account balance cards — grouped by currency
             let balanceHtml = '';
             if (db.accounts && db.accounts.length) {
-                const getCur = (a) => { const c = (db.currencies || []).find(x => x.id === a.currency); return c ? c.code : 'KGS'; };
+                const getCur = (a) => accCurCode(a);
                 const curGroups = {};
-                db.accounts.forEach(a => {
+                db.accounts.filter(a => !isPodAccount(a)).forEach(a => {
                     const cur = getCur(a);
                     if (!curGroups[cur]) curGroups[cur] = [];
                     curGroups[cur].push(a);
@@ -2060,7 +2065,7 @@
 
                 // Totals by currency
                 const totalsByCur = {};
-                db.accounts.forEach(a => {
+                db.accounts.filter(a => !isPodAccount(a)).forEach(a => {
                     const cur = getCur(a);
                     totalsByCur[cur] = (totalsByCur[cur] || 0) + (accBalances[a.id] || 0);
                 });
@@ -2193,8 +2198,8 @@
                 const idx = months.findIndex(m => m.y === dd.getFullYear() && m.m === dd.getMonth() + 1);
                 if (idx < 0) return;
                 const sumKGS = (doc.sum || 0) * (Number(doc.rate) || 1);
-                if (doc.type === 'payment_in' || doc.type === 'pko') income[idx] += sumKGS;
-                else if (doc.type === 'payment_out' || doc.type === 'rko') expense[idx] += sumKGS;
+                if (MONEY_IN_TYPES.includes(doc.type)) income[idx] += sumKGS;
+                else if (MONEY_OUT_TYPES.includes(doc.type)) expense[idx] += sumKGS;
             });
 
             _dashBarChart = new Chart(el, {
@@ -2211,7 +2216,7 @@
 
             // Pie — expense by article
             const byArticle = {};
-            allFin.filter(d => d.type === 'payment_out' || d.type === 'rko').forEach(d => {
+            allFin.filter(d => MONEY_OUT_TYPES.includes(d.type)).forEach(d => {
                 const art = d.article ? ((db.articles || []).find(a => a.id === d.article) || {}).name || 'Прочее' : 'Без статьи';
                 byArticle[art] = (byArticle[art] || 0) + (d.sum || 0) * (Number(d.rate) || 1);
             });
@@ -2321,11 +2326,9 @@
             }
             // Overdue debts (customers who owe money, based on sales + customer_invoices - payments)
             if (db.trade && db.trade.contractors && db.trade.docs) {
-                const chargeTypes = ['sale', 'production_services', 'commission_report', 'sale_correction', 'customer_invoice'];
-                const payTypes = ['payment_in', 'pko'];
                 db.trade.contractors.forEach(c => {
-                    const charged = db.trade.docs.filter(d => chargeTypes.includes(d.type) && d.contractor === c.id && d.status === 'posted').reduce((s,d) => s + (d.total||0), 0);
-                    const paid = [...(db.bankDocuments||[]), ...(db.cashDocuments||[])].filter(p => p.status === 'posted' && payTypes.includes(p.type) && matchContractor(p.contractor, c.name)).reduce((s,p) => s + Number(p.sum||0) * (Number(p.rate)||1), 0);
+                    const charged = db.trade.docs.filter(d => d.contractor === c.id && d.status === 'posted').reduce((s, d) => s + tDebtAmount(d, 'sale'), 0);
+                    const paid = tContractorPayments(c, MONEY_IN_TYPES);
                     const debt = charged - paid;
                     if (debt > 1000) {
                         notifs.push({ title: 'Задолженность: ' + esc(c.name), text: 'Долг: ' + fmt(debt) + ' сом', time: '', type: 'warning' });
@@ -2720,7 +2723,10 @@
 
         function nextDocNumber(prefix, docs) {
             let max = 0;
-            docs.forEach(d => { const m = String(d.number).match(/(\d+)$/); if (m) max = Math.max(max, parseInt(m[1])); });
+            const take = (num) => { const m = String(num || '').match(/(\d+)$/); if (m) max = Math.max(max, parseInt(m[1])); };
+            docs.forEach(d => take(d.number));
+            // Учитываем номера свёрнутых черновиков, чтобы два новых документа не получили один номер
+            if (typeof _openTabs !== 'undefined') _openTabs.forEach(t => { if (t.type === 'bank' && t.state && t.state.fv && !t.state.editingId) take(t.state.fv.number); });
             return prefix + '-' + String(max + 1).padStart(4, '0');
         }
         // Типы документов по подразделам
@@ -3211,6 +3217,41 @@
             const acc = db.accounts.find(a => a.id === id);
             return acc ? esc(acc.name) : '-';
         }
+        // Код валюты счёта: в поле currency может лежать код ('USD') или id валюты ('_2'); пусто — сом
+        function accCurCode(acc) {
+            if (!acc || !acc.currency) return 'KGS';
+            const c = (db.currencies || []).find(x => x.id === acc.currency || x.code === acc.currency);
+            return c ? (c.code || 'KGS') : String(acc.currency);
+        }
+        function curRateByCode(code) {
+            if (!code || code === 'KGS') return 1;
+            const c = (db.currencies || []).find(x => x.code === code);
+            return c ? (Number(c.rate) || 1) : 1;
+        }
+        // Сумма зачисления при конвертации: rate документа — сомов за единицу иностранной валюты
+        function conversionCredit(d) {
+            const sum = Number(d.sum || 0);
+            const accFrom = (db.accounts || []).find(a => a.id === d.account);
+            const accTo = (db.accounts || []).find(a => a.id === d.accountTo);
+            const from = accCurCode(accFrom), to = accCurCode(accTo);
+            if (from === to) return sum;
+            if (from === 'KGS') return sum / (Number(d.rate) || curRateByCode(to) || 1);
+            if (to === 'KGS') return sum * (Number(d.rate) || curRateByCode(from) || 1);
+            return sum * curRateByCode(from) / (curRateByCode(to) || 1);
+        }
+        // Счёт бухучёта для денежного счёта: касса 50, сомовый 51, валютный 52
+        function moneyAccCode(accId) {
+            const a = (db.accounts || []).find(x => x.id === accId);
+            if (!a) return '51';
+            if (isPodAccount(a)) return '71';
+            if (a.type === 'cash') return '50';
+            return accCurCode(a) === 'KGS' ? '51' : '52';
+        }
+        // Типы денежных документов: приход, расход и перемещения между своими счетами (не доход и не расход)
+        const MONEY_IN_TYPES = ['payment_in', 'pko'];
+        const MONEY_OUT_TYPES = ['payment_out', 'rko', 'payment_order', 'statement', 'directbank'];
+        const MONEY_TRANSFER_TYPES = ['internal_transfer', 'conversion'];
+        function isPodAccount(a) { return !!a && (a.podotchet === true || String(a.id || '').startsWith('_pod_')); }
         function getAccountNameRaw(id) {
             const acc = db.accounts.find(a => a.id === id);
             return acc ? acc.name : '-';
@@ -3374,7 +3415,9 @@
         // tUid -> js/utils.js
         function tNextNumber(type) {
             let max = 0;
-            db.trade.docs.filter(d => d.type === type).forEach(d => {
+            const drafts = (typeof _openTabs !== 'undefined' ? _openTabs : []).filter(t => t.type === 'trade' && t.state && t.state.tDoc).map(t => t.state.tDoc);
+            const open = (typeof tDoc !== 'undefined' && tDoc) ? [tDoc] : [];
+            [...db.trade.docs, ...drafts, ...open].filter(d => d.type === type).forEach(d => {
                 const m = String(d.number).match(/(\d+)$/);
                 if (m) max = Math.max(max, parseInt(m[1]));
             });
@@ -3452,13 +3495,60 @@
             return { label: 'Оплачен', cls: 'posted', paid };
         }
 
+        // Корректировка: разница между новыми и старыми суммами (старые — qtyOld/priceOld в строках)
+        function tCorrDelta(d) {
+            let oldTotal = 0, oldVat = 0, hasOld = false;
+            ['goods', 'services'].forEach(tab => (d[tab] || []).forEach(r => {
+                if (r.qtyOld == null && r.priceOld == null) return;
+                hasOld = true;
+                const o = { qty: Number(r.qtyOld != null ? r.qtyOld : r.qty) || 0, price: Number(r.priceOld != null ? r.priceOld : r.price) || 0, vat: r.vat };
+                tCalcRow(o, d.vatMode);
+                oldTotal += o.total || 0; oldVat += o.vatSum || 0;
+            }));
+            if (!hasOld) return { total: d.total || 0, vat: d.vatTotal || 0 };
+            return { total: Math.round(((d.total || 0) - oldTotal) * 100) / 100, vat: Math.round(((d.vatTotal || 0) - oldVat) * 100) / 100 };
+        }
+        // Зачёт аванса: оплаты по основанию (и по самому документу) минус то, что уже зачли
+        // другие проведённые документы с тем же основанием, проведённые раньше
+        function tAdvanceOffset(d) {
+            const isSale = TT[d.type] && TT[d.type].group === 'sale';
+            const sameKind = isSale ? ['sale', 'production_services'] : ['purchase'];
+            const paidOf = (id) => tPayments(id).reduce((s, p) => s + (p.sum || 0) * (Number(p.rate) || 1), 0);
+            let available = paidOf(d.id);
+            if (d.basis) {
+                available += paidOf(d.basis);
+                const earlier = db.trade.docs.filter(x => x.id !== d.id && x.basis === d.basis && x.status === 'posted' && sameKind.includes(x.type) && ((x.date || '') < (d.date || '') || (x.date === d.date && String(x.id) < String(d.id))));
+                available -= earlier.reduce((s, x) => s + (x.total || 0), 0);
+            }
+            return Math.max(0, Math.min(d.total || 0, available));
+        }
+
+        // Влияние проведённого документа на долг контрагента (side: 'sale' — долг покупателя, 'purchase' — наш долг поставщику).
+        // Счета на оплату, доверенности и акты сверки долг не меняют.
+        const DEBT_TYPES = {
+            sale: { sale: 1, production_services: 1, commission_report: 1, sale_return: -1, sale_correction: 'delta' },
+            purchase: { purchase: 1, add_expenses: 1, purchase_return: -1, purchase_correction: 'delta' }
+        };
+        function tDebtAmount(d, side) {
+            const k = (DEBT_TYPES[side] || {})[d.type];
+            if (!k) return 0;
+            return k === 'delta' ? tCorrDelta(d).total : k * (Number(d.total) || 0);
+        }
+        // Проведённые оплаты контрагента (по id или по имени), в сомах
+        function tContractorPayments(c, types, toDate, fromDate) {
+            return [...(db.bankDocuments || []), ...(db.cashDocuments || [])]
+                .filter(p => p.status === 'posted' && types.includes(p.type) && (p.contractorId === c.id || matchContractor(p.contractor, c.name)) && (!toDate || p.date <= toDate) && (!fromDate || p.date >= fromDate))
+                .reduce((s, p) => s + Number(p.sum || 0) * (Number(p.rate) || 1), 0);
+        }
+
         // ---------- Проводки Дт/Кт ----------
         function tPostings(d) {
             const rows = [], kg = d.type;
             const goods = (d.goods || []), services = (d.services || []);
             const gSum = goods.reduce((s, r) => s + r.total - r.vatSum, 0), gVat = goods.reduce((s, r) => s + r.vatSum, 0);
             const sSum = services.reduce((s, r) => s + r.total - r.vatSum, 0), sVat = services.reduce((s, r) => s + r.vatSum, 0);
-            const cost = goods.reduce((s, r) => { const n = tNom(r.nom); return s + (n ? (n.cost || 0) : 0) * (Number(r.qty) || 0); }, 0);
+            const cost = goods.reduce((s, r) => { const n = tNom(r.nom); const cp = r.costPrice != null ? Number(r.costPrice) : (n ? (n.cost || 0) : 0); return s + cp * (Number(r.qty) || 0); }, 0);
+            const advance = tAdvanceOffset(d);
             const add = (dt, kt, sum, txt) => { if (sum > 0.004) rows.push({ dt, kt, sum: Math.round(sum * 100) / 100, txt }); };
             const goodsAcc = goods[0] ? (goods[0].account || '41.01') : '41.01';
             const srvAcc = services[0] ? (services[0].account || '26') : '26';
@@ -3471,14 +3561,18 @@
                     { const agent = (d.agent || []), aSum = agent.reduce((s, r) => s + (r.total || 0) - (r.vatSum || 0), 0), aVat = agent.reduce((s, r) => s + (r.vatSum || 0), 0);
                       agent.forEach(r => add(r.account || '76.09', '60.01', (r.total || 0) - (r.vatSum || 0), 'Агентские услуги: ' + tNomName(r.nom)));
                       add('19.04', '60.01', aVat, 'НДС по агентским услугам'); }
-                    add('60.01', '60.02', Math.min(d.total, tPayments(d.basis || d.id).reduce((s, p) => s + (p.sum || 0) * (Number(p.rate) || 1), 0)), 'Зачет аванса поставщику');
+                    add('60.01', '60.02', advance, 'Зачет аванса поставщику');
                     break;
                 case 'add_expenses':
                     add(goodsAcc, '60.01', d.total - d.vatTotal, 'Доп. расходы включены в стоимость'); add('19.04', '60.01', d.vatTotal, 'НДС по доп. расходам'); break;
                 case 'purchase_return':
                     add('60.01', goodsAcc, d.total - d.vatTotal, 'Возврат товаров поставщику'); add('60.01', '19.03', d.vatTotal, 'Восстановление НДС'); break;
-                case 'purchase_correction':
-                    add(goodsAcc, '60.01', d.total - d.vatTotal, 'Корректировка стоимости поступления'); add('19.03', '60.01', d.vatTotal, 'Корректировка НДС'); break;
+                case 'purchase_correction': {
+                    // Проводится разница между новой и старой суммой (со знаком)
+                    const dl = tCorrDelta(d), net = dl.total - dl.vat;
+                    if (net > 0) add(goodsAcc, '60.01', net, 'Увеличение стоимости поступления'); else add('60.01', goodsAcc, -net, 'Уменьшение стоимости поступления');
+                    if (dl.vat > 0) add('19.03', '60.01', dl.vat, 'Корректировка НДС (увеличение)'); else add('60.01', '19.03', -dl.vat, 'Корректировка НДС (уменьшение)');
+                    break; }
                 case 'gtd':
                     add(goodsAcc, '76.05', (d.gtdData || {}).duty || 0, 'Таможенная пошлина'); add(goodsAcc, '76.05', Number((d.gtdData || {}).fee) || 0, 'Таможенный сбор'); add('19.05', '76.05', d.vatTotal, 'НДС, уплаченный на таможне'); break;
                 case 'sale':
@@ -3486,17 +3580,21 @@
                     add('90.02.1', goodsAcc, cost, 'Списание себестоимости');
                     add('62.01', '90.01.1', d.total, 'Выручка от реализации');
                     add('90.03', '68.02', d.vatTotal, 'НДС с реализации');
-                    add('62.02', '62.01', Math.min(d.total, tPayments(d.basis || d.id).reduce((s, p) => s + (p.sum || 0) * (Number(p.rate) || 1), 0)), 'Зачет аванса покупателя');
+                    add('62.02', '62.01', advance, 'Зачет аванса покупателя');
                     break;
                 case 'commission_report':
                     add('62.01', '90.01.1', d.total, 'Выручка по отчету комиссионера'); add('90.03', '68.02', d.vatTotal, 'НДС'); add('44.01', '60.01', (d.reward || 0), 'Комиссионное вознаграждение'); add('90.02.1', '45.01', cost, 'Себестоимость отгруженных товаров'); break;
                 case 'sale_return':
                     add(goodsAcc, '90.02.1', cost, 'Возврат себестоимости'); add('90.01.1', '62.01', d.total, 'Сторно выручки'); add('68.02', '90.03', d.vatTotal, 'Сторно НДС'); break;
-                case 'sale_correction':
-                    add('62.01', '90.01.1', d.total, 'Корректировка выручки'); add('90.03', '68.02', d.vatTotal, 'Корректировка НДС'); break;
+                case 'sale_correction': {
+                    // Проводится разница между новой и старой суммой (со знаком)
+                    const dl = tCorrDelta(d);
+                    if (dl.total > 0) add('62.01', '90.01.1', dl.total, 'Увеличение выручки'); else add('90.01.1', '62.01', -dl.total, 'Уменьшение выручки (сторно)');
+                    if (dl.vat > 0) add('90.03', '68.02', dl.vat, 'Корректировка НДС (увеличение)'); else add('68.02', '90.03', -dl.vat, 'Корректировка НДС (уменьшение)');
+                    break; }
                 case 'retail_report': {
                     const cash = Number(d.payCash) || 0, card = Number(d.payCard) || 0, diff = Math.round((d.total - cash - card) * 100) / 100;
-                    add('90.02.1', goodsAcc, cost, 'Себестоимость розничных продаж'); add('50.01', '90.01.1', cash, 'Розничная выручка наличными'); add('57.03', '90.01.1', card, 'Оплата платежными картами');
+                    add('90.02.1', goodsAcc, cost, 'Себестоимость розничных продаж'); add('50', '90.01.1', cash, 'Розничная выручка наличными'); add('57.03', '90.01.1', card, 'Оплата платежными картами');
                     if (diff > 0.004) add('62.01', '90.01.1', diff, 'Прочие формы оплаты (разница)');
                     add('90.03', '68.02', d.vatTotal, 'НДС с розничных продаж'); break; }
                 default: return tPostingsExtra(d);
@@ -3652,24 +3750,70 @@
         function tResetFilters() { tFilters = { from: '', to: '', contractor: '', search: '', status: '' }; renderPage(); }
 
         // ---------- Действия над документами журнала ----------
-        function tSetStatus(id, status) {
-            const d = tDocById(id); if (!d) return;
-            if (status === 'posted') {
-                const err = tValidate(d); if (err) { alert(err); return; }
-                tApplyPrices(d); tApplyMonthClose(d); tApplyHR(d);
-                if (d.type === 'inventory') showToast('Инвентаризация проведена. Для оформления отклонений создайте документы «Оприходование» или «Списание» на основании.');
-            } else if (d.type === 'dismissal') { const e = tEmp(d.employee); if (e) { e.status = 'Работает'; e.fireDate = ''; } }
+        // ---------- Проведение / отмена проведения (единая логика для журнала, формы и массовых операций) ----------
+        const COST_OUT_TYPES = ['sale', 'production_services', 'retail_report', 'commission_report', 'stock_out', 'sale_return'];
+        function tFreezeCost(d) {
+            if (!COST_OUT_TYPES.includes(d.type)) return;
+            const base = d.basis ? tDocById(d.basis) : null;
+            (d.goods || []).forEach(r => {
+                const n = tNom(r.nom); if (!n) return;
+                let cp = n.kind === 'Продукция' ? (n.planPrice || n.cost || 0) : (n.cost || 0);
+                if (d.type === 'sale_return' && base) { const br = (base.goods || []).find(x => x.nom === r.nom && x.costPrice != null); if (br) cp = br.costPrice; }
+                r.costPrice = cp;
+            });
+        }
+        function tHistory(d, action) {
             if (!d.history) d.history = [];
             const userName = (db.trade && db.trade.org && db.trade.org.responsible) || 'система';
-            d.history.push({ ts: new Date().toISOString(), user: userName, action: status === 'posted' ? 'Проведение' : 'Отмена проведения' });
-            d.status = status; saveData(); renderPage();
+            d.history.push({ ts: new Date().toISOString(), user: userName, action });
+        }
+        // Проведение: проверка, фиксация себестоимости, изменения справочников с запоминанием старых значений
+        function tDoPost(d) {
+            if (d.status === 'deleted') return 'Документ помечен на удаление — снимите пометку перед проведением';
+            const err = tValidate(d); if (err) return err;
+            const prev = { noms: {}, emps: {} };
+            if (d.type === 'price_setting' || d.type === 'plan_prices') (d.prices || []).forEach(r => { const n = tNom(r.nom); if (n) prev.noms[n.id] = { price: n.price, purchasePrice: n.purchasePrice, planPrice: n.planPrice, cost: n.cost }; });
+            if (d.type === 'month_close') (db.trade.nomenclature || []).filter(n => n.kind === 'Продукция').forEach(n => { prev.noms[n.id] = { cost: n.cost }; });
+            const e = d.employee ? tEmp(d.employee) : null;
+            if (e && TT[d.type] && TT[d.type].hr) prev.emps[e.id] = { hireDate: e.hireDate, department: e.department, position: e.position, salary: e.salary, bonus: e.bonus, schedule: e.schedule, status: e.status, fireDate: e.fireDate };
+            tFreezeCost(d);
+            tApplyPrices(d); tApplyMonthClose(d); tApplyHR(d);
+            if (!d._applied) d._applied = prev; // при перепроведении сохраняем значения до самого первого проведения
+            d.status = 'posted';
+            tHistory(d, 'Проведение');
+            return '';
+        }
+        // Отмена проведения: проверка остатков и возврат изменений справочников
+        function tDoUnpost(d, newStatus) {
+            if (d.status !== 'posted') { d.status = newStatus || 'draft'; return ''; }
+            const sh = tUnpostShortages(d);
+            if (sh.length) return 'Нельзя отменить проведение: по более поздним документам остаток уйдёт в минус.\n' + tShortageText(sh);
+            const p = d._applied;
+            if (p) {
+                Object.entries(p.noms || {}).forEach(([id, v]) => { const n = tNom(id); if (n) Object.keys(v).forEach(k => { if (v[k] === undefined) delete n[k]; else n[k] = v[k]; }); });
+                Object.entries(p.emps || {}).forEach(([id, v]) => { const e = tEmp(id); if (e) Object.keys(v).forEach(k => { if (v[k] === undefined) delete e[k]; else e[k] = v[k]; }); });
+                delete d._applied;
+            } else if (d.type === 'dismissal') { const e = tEmp(d.employee); if (e) { e.status = 'Работает'; e.fireDate = ''; } }
+            (d.goods || []).forEach(r => { delete r.costPrice; });
+            d.status = newStatus || 'draft';
+            tHistory(d, newStatus === 'deleted' ? 'Пометка на удаление (проведение отменено)' : 'Отмена проведения');
+            return '';
+        }
+        function tSetStatus(id, status) {
+            const d = tDocById(id); if (!d) return;
+            const err = status === 'posted' ? tDoPost(d) : tDoUnpost(d, status);
+            if (err) { alert(err); return; }
+            if (status === 'posted' && d.type === 'inventory') showToast('Инвентаризация проведена. Для оформления отклонений создайте документы «Оприходование» или «Списание» на основании.');
+            saveData(); renderPage();
             showToast(status === 'posted' ? 'Документ проведен' : 'Проведение отменено');
         }
         function tToggleDelete(id) {
             const d = tDocById(id); if (!d) return;
             const isDel = d.status === 'deleted';
-            if (!isDel && !confirm('Пометить документ №' + (d.number || '—') + ' на удаление?')) return;
-            d.status = isDel ? 'draft' : 'deleted'; saveData(); renderPage();
+            if (!isDel && !confirm('Пометить документ №' + (d.number || '—') + ' на удаление?' + (d.status === 'posted' ? ' Проведение будет отменено.' : ''))) return;
+            if (!isDel) { const err = tDoUnpost(d, 'deleted'); if (err) { alert(err); return; } }
+            else { d.status = 'draft'; tHistory(d, 'Снята пометка удаления'); }
+            saveData(); renderPage();
             showToast(d.status === 'deleted' ? 'Документ помечен на удаление' : 'Пометка удаления снята');
         }
         function tPurgeDeleted() {
@@ -3682,6 +3826,7 @@
             const src = tDocById(id); if (!src) return;
             const copy = JSON.parse(JSON.stringify(src));
             copy.id = tUid(); copy.number = tNextNumber(src.type); copy.date = tToday(); copy.status = 'draft'; copy.sf = null;
+            copy.basis = ''; copy.history = []; delete copy._applied; (copy.goods || []).forEach(r => { delete r.costPrice; });
             db.trade.docs.push(copy); saveData(); tSelected = copy.id; renderPage(); showToast('Документ скопирован'); tOpen(copy.id);
         }
         // ---------- Массовое проведение ----------
@@ -3704,9 +3849,9 @@
             tMassSelected.forEach(id => {
                 const d = tDocById(id);
                 if (d && d.status !== 'posted' && d.status !== 'deleted') {
-                    const err = tValidate(d);
+                    const err = tDoPost(d);
                     if (err) { errors.push('№' + (d.number || '—') + ': ' + err); }
-                    else { tApplyPrices(d); tApplyMonthClose(d); tApplyHR(d); d.status = 'posted'; count++; }
+                    else count++;
                 }
             });
             tMassSelected.clear(); saveData(); renderPage();
@@ -3714,16 +3859,16 @@
         }
         function tMassUnpost() {
             if (!tMassSelected.size) return;
-            let count = 0;
+            let count = 0; const errors = [];
             tMassSelected.forEach(id => {
                 const d = tDocById(id);
                 if (d && d.status === 'posted') {
-                    if (d.type === 'dismissal') { const e = tEmp(d.employee); if (e) { e.status = 'Работает'; e.fireDate = ''; } }
-                    d.status = 'draft'; count++;
+                    const err = tDoUnpost(d, 'draft');
+                    if (err) errors.push('№' + (d.number || '—') + ': ' + err.split('\n')[0]); else count++;
                 }
             });
             tMassSelected.clear(); saveData(); renderPage();
-            showToast(`Отменено проведение: ${count}`);
+            showToast(`Отменено проведение: ${count}` + (errors.length ? `. Не отменено (${errors.length}): ` + errors.slice(0, 2).join('; ') : ''));
         }
         function tValidate(d) {
             const cfg = TT[d.type];
@@ -4056,7 +4201,7 @@
             const basisItems = (cfg.basis || []).map(b => ({ label: tBasisLabel(b), action: `tFormBasis('${b}')` }));
             const moreItems = [
                 { label: 'Копировать', action: `tFormSave(false);tCopy(tDoc.id)` },
-                { label: 'Отменить проведение', action: `tDoc.status='draft';tFormSave(false)` },
+                { label: 'Отменить проведение', action: `tFormUnpost()` },
                 { label: 'Пометить на удаление', action: `if(confirm('Пометить документ на удаление?')){tDoc.status='deleted';tFormSave(true)}` },
                 { sep: true },
                 { label: 'Пересчитать цены по типу цен', action: `tRefillPrices()` },
@@ -4442,9 +4587,12 @@
         }
         function tFormPost(close) {
             if (_tSaving) return;
-            const err = tValidate(tDoc); if (err) { alert(err); return; }
-            tApplyPrices(tDoc); tApplyMonthClose(tDoc); tApplyHR(tDoc);
-            tDoc.status = 'posted'; tFormSave(close); showToast('Документ проведен');
+            const err = tDoPost(tDoc); if (err) { alert(err); return; }
+            tFormSave(close); showToast('Документ проведен');
+        }
+        function tFormUnpost() {
+            const err = tDoUnpost(tDoc, 'draft'); if (err) { alert(err); return; }
+            tFormSave(false); showToast('Проведение отменено');
         }
         function tFormPrint(form) { tFormSave(false); tPrint(tDoc.id, form); }
         function tFormBasis(target) { tFormSave(false); const id = tDoc.id; tCloseForm(); tCreateOnBasis(id, target); }
@@ -4487,13 +4635,17 @@
         }
         function tReconRows(d) {
             const r = d.recon; const cname = tContractorName(d.contractor); const rows = [];
-            db.trade.docs.filter(x => x.contractor === d.contractor && x.status === 'posted' && x.date >= r.from && x.date <= r.to && !TT[x.type].noSum && (!TT[x.type].payStatus || x.type === 'customer_invoice')).forEach(x => {
-                const g = TT[x.type].group; const isDebit = (g === 'sale' && !['sale_return'].includes(x.type)) || x.type === 'purchase_return';
-                rows.push({ date: x.date, doc: tDocTitle(x), dt: isDebit ? x.total : 0, kt: isDebit ? 0 : x.total });
+            // Дебет — увеличивает долг контрагента перед нами (отгрузка, наша оплата), кредит — уменьшает (оплата от него, поступление от него)
+            db.trade.docs.filter(x => x.contractor === d.contractor && x.status === 'posted' && x.date >= r.from && x.date <= r.to).forEach(x => {
+                const s = tDebtAmount(x, 'sale'), p = tDebtAmount(x, 'purchase');
+                if (!s && !p) return; // счета, доверенности и т.п. не влияют на расчёты
+                const dt = Math.max(0, s) + Math.max(0, -p), kt = Math.max(0, -s) + Math.max(0, p);
+                rows.push({ date: x.date, doc: tDocTitle(x), dt, kt });
             });
-            [...db.bankDocuments, ...db.cashDocuments].filter(p => (p.contractorId === d.contractor || p.contractor === cname) && p.date >= r.from && p.date <= r.to).forEach(p => {
-                const inc = ['payment_in', 'pko'].includes(p.type);
-                rows.push({ date: p.date, doc: getDocTypeLabel(p.type) + ' ' + p.number, dt: inc ? 0 : p.sum, kt: inc ? p.sum : 0 });
+            [...db.bankDocuments, ...db.cashDocuments].filter(p => p.status === 'posted' && !MONEY_TRANSFER_TYPES.includes(p.type) && (p.contractorId === d.contractor || matchContractor(p.contractor, cname)) && p.date >= r.from && p.date <= r.to).forEach(p => {
+                const inc = MONEY_IN_TYPES.includes(p.type);
+                const sum = Math.round(Number(p.sum || 0) * (Number(p.rate) || 1) * 100) / 100;
+                rows.push({ date: p.date, doc: getDocTypeLabel(p.type) + ' ' + p.number, dt: inc ? 0 : sum, kt: inc ? sum : 0 });
             });
             return rows.sort((a, b) => a.date.localeCompare(b.date));
         }
@@ -4649,15 +4801,16 @@
 
         function renderDebtReport(group) {
             const isSale = group === 'sale';
-            const chargeTypes = isSale ? ['sale', 'production_services', 'commission_report', 'sale_correction', 'customer_invoice'] : ['purchase', 'add_expenses', 'purchase_correction'];
-            const returnTypes = isSale ? ['sale_return'] : ['purchase_return'];
-            const payTypes = isSale ? ['payment_in', 'pko'] : ['payment_out', 'rko'];
+            const side = isSale ? 'sale' : 'purchase';
+            const payTypes = isSale ? MONEY_IN_TYPES : MONEY_OUT_TYPES;
             const today = localISODate(new Date());
+            const sideDocs = tPosted(Object.keys(DEBT_TYPES[side]));
             const rows = db.trade.contractors.map(c => {
-                const cDocs = tPosted(chargeTypes).filter(d => d.contractor === c.id);
-                const charged = cDocs.reduce((s, d) => s + d.total, 0);
-                const returned = tPosted(returnTypes).filter(d => d.contractor === c.id).reduce((s, d) => s + d.total, 0);
-                const paid = [...db.bankDocuments, ...db.cashDocuments].filter(p => p.status === 'posted' && payTypes.includes(p.type) && matchContractor(p.contractor, c.name) && tInPeriod(p)).reduce((s, p) => s + Number(p.sum || 0) * (Number(p.rate) || 1), 0);
+                const mine = sideDocs.filter(d => d.contractor === c.id);
+                const cDocs = mine.filter(d => tDebtAmount(d, side) > 0);
+                const charged = mine.reduce((s, d) => { const a = tDebtAmount(d, side); return s + (a > 0 ? a : 0); }, 0);
+                const returned = mine.reduce((s, d) => { const a = tDebtAmount(d, side); return s + (a < 0 ? -a : 0); }, 0);
+                const paid = tContractorPayments(c, payTypes, rFilters.to, rFilters.from);
                 const debt = charged - returned - paid;
                 const lastDate = cDocs.length ? cDocs.sort((a, b) => b.date.localeCompare(a.date))[0].date : '';
                 const overdue = lastDate && debt > 0 ? Math.max(0, Math.floor((new Date(today) - new Date(lastDate)) / 86400000)) : 0;
@@ -5002,21 +5155,23 @@
 
         // ---------- Регистр остатков ----------
         // Движения: {date, nom, wh, qty(+/-), sum, docId, type}
-        function stockMoves(untilDate, excludeId) {
+        function stockMoves(untilDate, excludeId, extraDoc) {
             const moves = [];
             const push = (d, nom, wh, qty, price) => { if (!nom || !qty) return; moves.push({ date: d.date, nom, wh: wh || 'w1', qty, sum: Math.round(qty * (Number(price) || 0) * 100) / 100, docId: d.id, type: d.type, number: d.number }); };
             const costOf = (nid) => { const n = tNom(nid); return n ? (n.kind === 'Продукция' ? (n.planPrice || n.cost || 0) : (n.cost || 0)) : 0; };
-            db.trade.docs.forEach(d => {
+            const rc = (r) => r.costPrice != null ? Number(r.costPrice) : costOf(r.nom); // себестоимость, зафиксированная при проведении
+            const docs = extraDoc ? [...db.trade.docs, Object.assign({}, extraDoc, { status: 'posted', id: '__extra__' })] : db.trade.docs;
+            docs.forEach(d => {
                 if (d.status !== 'posted' || d.id === excludeId) return;
                 if (untilDate && d.date > untilDate) return;
                 const cfg = TT[d.type];
                 switch (d.type) {
                     case 'purchase': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, +r.qty, r.total - r.vatSum > 0 ? (r.total - r.vatSum) / r.qty : costOf(r.nom))); (d.tara || []).forEach(r => push(d, r.nom, d.warehouse, +r.qty, r.price)); break;
-                    case 'purchase_return': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, r.price || costOf(r.nom))); break;
-                    case 'sale': case 'retail_report': case 'commission_report': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, costOf(r.nom))); (d.tara || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, r.price)); break;
-                    case 'sale_return': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, +r.qty, r.price || costOf(r.nom))); break;
+                    case 'purchase_return': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, (r.total - r.vatSum) > 0 && r.qty ? (r.total - r.vatSum) / r.qty : rc(r))); break;
+                    case 'sale': case 'retail_report': case 'commission_report': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, rc(r))); (d.tara || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, r.price)); break;
+                    case 'sale_return': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, +r.qty, rc(r))); break;
                     case 'stock_opening': case 'stock_in': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, +r.qty, r.price)); break;
-                    case 'stock_out': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, r.price || costOf(r.nom))); break;
+                    case 'stock_out': (d.goods || []).forEach(r => push(d, r.nom, d.warehouse, -r.qty, r.price || rc(r))); break;
                     case 'transfer': (d.goods || []).forEach(r => { push(d, r.nom, d.warehouse, -r.qty, r.price || costOf(r.nom)); push(d, r.nom, d.warehouseTo, +r.qty, r.price || costOf(r.nom)); }); break;
                     case 'assembly': {
                         const sign = d.opKind === 'Разукомплектация' ? -1 : 1;
@@ -5047,9 +5202,33 @@
             if (d.type === 'assembly') { if (d.opKind === 'Разукомплектация') add(d.kitNom, d.warehouse, d.kitQty); else (d.goods || []).forEach(r => add(r.nom, d.warehouse, r.qty)); }
             if (['requisition', 'to_processing', 'shift_report'].includes(d.type)) (d.materials || []).forEach(r => add(r.nom, d.warehouse, r.qty));
             const bal = stockBalances(d.date, d.id);
-            return Object.entries(need).map(([k, q]) => { const [nom, wh] = k.split('|'); const b = bal.find(x => x.nom === nom && x.wh === wh); const have = b ? b.qty : 0; return have + 1e-9 < q ? { nom, wh, need: q, have } : null; }).filter(Boolean);
+            const now = Object.entries(need).map(([k, q]) => { const [nom, wh] = k.split('|'); const b = bal.find(x => x.nom === nom && x.wh === wh); const have = b ? b.qty : 0; return have + 1e-9 < q ? { nom, wh, need: q, have } : null; }).filter(Boolean);
+            if (now.length) return now;
+            // Проведение задним числом: остаток не должен уйти в минус и на более поздние даты
+            const keys = new Set(Object.keys(need));
+            return tNegativeAfter(stockMoves(undefined, d.id, d), keys, d.date).map(x => ({ nom: x.nom, wh: x.wh, need: Object.entries(need).find(([k]) => k === x.nom + '|' + x.wh)[1], have: Math.round((Object.entries(need).find(([k]) => k === x.nom + '|' + x.wh)[1] + x.min) * 1000) / 1000, date: x.date }));
         }
-        function tShortageText(list) { return 'Не хватает остатка на складе:\n' + list.map(s => '• ' + tNomName(s.nom) + ' (' + tWh(s.wh) + '): требуется ' + s.need + ', в наличии ' + s.have).join('\n'); }
+        // Минимальный накопленный остаток по ключам начиная с даты fromDate; возвращает ушедшие в минус
+        function tNegativeAfter(moves, keys, fromDate) {
+            const out = [];
+            keys.forEach(k => {
+                const [nom, wh] = k.split('|');
+                const ms = moves.filter(m => m.nom === nom && m.wh === wh).sort((a, b) => (a.date || '').localeCompare(b.date || '') || (b.qty - a.qty));
+                let run = 0, min = 0, minDate = '';
+                ms.forEach(m => { run = Math.round((run + m.qty) * 1000) / 1000; if (m.date >= fromDate && run < min - 1e-9) { min = run; minDate = m.date; } });
+                if (min < -1e-9) out.push({ nom, wh, min, date: minDate });
+            });
+            return out;
+        }
+        // Можно ли отменить проведение прихода: не уйдут ли в минус уже проведённые расходы
+        function tUnpostShortages(d) {
+            if (d.status !== 'posted') return [];
+            const own = stockMoves(undefined, null).filter(m => m.docId === d.id && m.qty > 0);
+            if (!own.length) return [];
+            const keys = new Set(own.map(m => m.nom + '|' + m.wh));
+            return tNegativeAfter(stockMoves(undefined, d.id), keys, d.date).map(x => ({ nom: x.nom, wh: x.wh, need: 0, have: x.min, date: x.date }));
+        }
+        function tShortageText(list) { return 'Не хватает остатка на складе:\n' + list.map(s => '• ' + tNomName(s.nom) + ' (' + tWh(s.wh) + '): ' + (s.need ? 'требуется ' + s.need + ', в наличии ' + s.have : 'остаток станет ' + s.have) + (s.date ? ' на ' + formatDate(s.date) : '')).join('\n'); }
 
         // Спецификации продукции (документы вида spec, проведенные)
         function tSpecsFor(nomId) { return db.trade.docs.filter(d => d.type === 'spec' && d.status === 'posted' && d.productNom === nomId); }
@@ -5800,7 +5979,7 @@
                 add('70', '68.01', d.taxTotal || 0, 'Удержан подоходный налог'); add('70', '69.01', (d.sfEmpTotal || 0) * P.sfEmployeePF / (P.sfEmployee || 1), 'Удержаны взносы в Пенсионный фонд'); add('70', '69.02', (d.sfEmpTotal || 0) * P.sfEmployeeGNPF / (P.sfEmployee || 1), 'Удержаны взносы в ГНПФ');
                 add('70', '76.41', (d.rows || []).reduce((s, r) => s + r.otherDed, 0), 'Прочие удержания (алименты, займы, профвзносы)');
             } else if (d.type === 'payout_bank') add('70', '51', d.total, 'Перечислена зарплата на карты (ведомость в банк)');
-            else if (d.type === 'payout_cash') add('70', '50.01', d.total, 'Выплачена зарплата из кассы');
+            else if (d.type === 'payout_cash') add('70', '50', d.total, 'Выплачена зарплата из кассы');
             else if (d.type === 'gph') { add(d.costAccount || '26', '76.10', d.total, 'Начислено вознаграждение по договору ГПХ: ' + (d.gphPerson || '')); add('76.10', '68.01', d.gphTax || 0, 'Удержан подоходный налог с ГПХ'); }
             return rows;
         }
@@ -5931,7 +6110,7 @@
             <h3>IV. Текущее состояние</h3><table><tr><th>Подразделение</th><td>${esc(tDep(e.department))}</td><th>Должность</th><td>${esc(tPos(e.position))}</td></tr><tr><th>Оклад</th><td>${formatAmount(e.salary)}</td><th>Статус</th><td>${esc(e.status || '')}${e.fireDate ? ' с ' + formatDate(e.fireDate) : ''}</td></tr></table><div class="sig"><div>Работник кадровой службы<div class="line"></div></div><div>Работник<div class="line"></div><span class="small">${esc(e.name)}</span></div></div>`, 'Личная карточка Т-2');
         }
         function renderAbsencesReport() {
-            const docs = db.trade.docs.filter(d => ['vacation', 'sick_leave'].includes(d.type) && d.status !== 'deleted' && tInPeriod(d)).sort((a, b) => (b.absFrom || b.date).localeCompare(a.absFrom || a.date));
+            const docs = db.trade.docs.filter(d => ['vacation', 'sick_leave'].includes(d.type) && d.status === 'posted' && tInPeriod(d)).sort((a, b) => (b.absFrom || b.date).localeCompare(a.absFrom || a.date));
             return tReportBar() + `<div id="tReport"><div class="stats"><div class="stat-card"><div class="stat-label">ОТПУСКОВ</div><div class="stat-value">${docs.filter(d => d.type === 'vacation').length}</div></div><div class="stat-card"><div class="stat-label">БОЛЬНИЧНЫХ</div><div class="stat-value">${docs.filter(d => d.type === 'sick_leave').length}</div></div><div class="stat-card"><div class="stat-label">СУММА ОТПУСКНЫХ</div><div class="stat-value">${formatAmount(docs.filter(d => d.type === 'vacation').reduce((s, d) => s + d.total, 0))}</div></div><div class="stat-card"><div class="stat-label">СУММА ПОСОБИЙ</div><div class="stat-value">${formatAmount(docs.filter(d => d.type === 'sick_leave').reduce((s, d) => s + d.total, 0))}</div></div></div>
             <div class="table-container"><table><thead><tr><th></th><th>Сотрудник</th><th>Вид</th><th>Период</th><th style="text-align:right">Дней</th><th style="text-align:right">Средний дневной</th><th style="text-align:right">Сумма</th><th>Документ</th></tr></thead><tbody>${docs.map(d => `<tr ondblclick="tOpen('${esc(d.id)}')" style="cursor:pointer"><td>${tStatusIcon(d)}</td><td>${esc(tEmpName(d.employee))}</td><td>${esc(d.opKind || TT[d.type].short)}</td><td>${d.absFrom ? formatDate(d.absFrom) : ''} — ${d.absTo ? formatDate(d.absTo) : ''}</td><td class="num">${d.absDays || 0}</td><td class="num">${formatAmount(d.avgDay)}</td><td class="num amount">${formatAmount(d.total)}</td><td>${esc(d.number)}</td></tr>`).join('')}${docs.length ? '' : '<tr><td colspan="8" class="empty-state">Нет отпусков и больничных за период</td></tr>'}</tbody></table></div></div>`;
         }
@@ -5944,7 +6123,7 @@
         }
         function renderHRSettings() {
             const P = db.trade.payroll;
-            const f = (k, l, step) => `<div class="fg"><label>${l}</label><input type="number" step="${step || 0.01}" value="${P[k]}" onchange="db.trade.payroll.${k}=Number(this.value)||0;saveData();showToast('Сохранено')"></div>`;
+            const f = (k, l, step) => `<div class="fg"><label>${l}</label><input type="number" step="${step || 0.01}" value="${P[k]}" onchange="db.trade.payroll.${k}=Number(this.value)||0;${['sfEmployeePF','sfEmployeeGNPF','sfEmployerPF','sfEmployerFOMS','sfEmployerFOT'].includes(k) ? 'tRecalcRates()' : 'saveData();showToast(\'Сохранено\')'}"></div>`;
             return `<div class="table-container" style="padding:20px"><h3 style="margin-bottom:12px">Подоходный налог</h3><div class="thead-grid">${f('incomeTax', 'Ставка подоходного налога, %')}${f('stdDeduction', 'Стандартный вычет, сом/мес', 1)}${f('dependentDeduction', 'Вычет на иждивенца, сом/мес', 1)}${f('minSalary', 'Минимальная зарплата, сом', 1)}</div>
             <h3 style="margin:18px 0 12px">Взносы в Социальный фонд — работник (удержание)</h3><div class="thead-grid">${f('sfEmployeePF', 'Пенсионный фонд, %')}${f('sfEmployeeGNPF', 'ГНПФ (накопительный), %')}<div class="fg"><label>Итого с работника</label><input value="${P.sfEmployee}%" disabled></div></div>
             <h3 style="margin:18px 0 12px">Взносы в Социальный фонд — работодатель</h3><div class="thead-grid">${f('sfEmployerPF', 'Пенсионный фонд, %')}${f('sfEmployerFOMS', 'ФОМС, %')}${f('sfEmployerFOT', 'Фонд оздоровления трудящихся, %')}<div class="fg"><label>Итого с работодателя</label><input value="${P.sfEmployer}%" disabled></div></div>
@@ -6219,11 +6398,11 @@
 
             const toKGS = d => Number(d.sum || 0) * (Number(d.rate) || 1);
             const bankIn = bankDocs.filter(d => d.type === 'payment_in').reduce((s, d) => s + toKGS(d), 0);
-            const bankOut = bankDocs.filter(d => d.type !== 'payment_in').reduce((s, d) => s + toKGS(d), 0);
+            const bankOut = bankDocs.filter(d => MONEY_OUT_TYPES.includes(d.type)).reduce((s, d) => s + toKGS(d), 0);
             const cashIn = cashDocs.filter(d => d.type === 'pko').reduce((s, d) => s + toKGS(d), 0);
             const cashOut = cashDocs.filter(d => d.type === 'rko').reduce((s, d) => s + toKGS(d), 0);
 
-            const payrolls = tradeDocs.filter(d => d.type === 'payroll' && d.period === month);
+            const payrolls = (db.trade && db.trade.docs || []).filter(d => d.type === 'payroll' && d.status === 'posted' && d.period === month);
             let totalSalary = 0, totalTax = 0, totalSocial = 0, totalNet = 0;
             const salaryRows = [];
             payrolls.forEach(pr => {
@@ -6241,14 +6420,8 @@
             if (db.trade && db.trade.contractors) {
                 db.trade.contractors.forEach(c => {
                     let sold = 0, paid = 0;
-                    (db.trade.docs || []).filter(d => d.contractor === c.id && d.status === 'posted' && d.date <= to).forEach(d => {
-                        const tt = TT[d.type]; if (!tt) return;
-                        const sum = Number(d.total) || Number(d.sum) || 0;
-                        if (tt.group === 'sale' && !['sale_return','sale_correction'].includes(d.type)) sold += sum;
-                        if (d.type === 'sale_return') sold -= sum;
-                    });
-                    (db.bankDocuments || []).filter(d => matchContractor(d.contractor, c.name) && d.type === 'payment_in' && d.date <= to).forEach(d => paid += toKGS(d));
-                    (db.cashDocuments || []).filter(d => matchContractor(d.contractor, c.name) && d.type === 'pko' && d.date <= to).forEach(d => paid += toKGS(d));
+                    (db.trade.docs || []).filter(d => d.contractor === c.id && d.status === 'posted' && d.date <= to).forEach(d => { sold += tDebtAmount(d, 'sale'); });
+                    paid = tContractorPayments(c, MONEY_IN_TYPES, to);
                     const debt = sold - paid;
                     if (Math.abs(debt) > 0.01) receivables.push({ name: c.name, sold, paid, debt });
                 });
@@ -6258,14 +6431,8 @@
             if (db.trade && db.trade.contractors) {
                 db.trade.contractors.forEach(c => {
                     let bought = 0, paid = 0;
-                    (db.trade.docs || []).filter(d => d.contractor === c.id && d.status === 'posted' && d.date <= to).forEach(d => {
-                        const tt = TT[d.type]; if (!tt) return;
-                        const sum = Number(d.total) || Number(d.sum) || 0;
-                        if (tt.group === 'purchase' && !['purchase_return','purchase_correction','power_of_attorney','gtd'].includes(d.type)) bought += sum;
-                        if (d.type === 'purchase_return') bought -= sum;
-                    });
-                    (db.bankDocuments || []).filter(d => matchContractor(d.contractor, c.name) && d.type === 'payment_out' && d.date <= to).forEach(d => paid += toKGS(d));
-                    (db.cashDocuments || []).filter(d => matchContractor(d.contractor, c.name) && d.type === 'rko' && d.date <= to).forEach(d => paid += toKGS(d));
+                    (db.trade.docs || []).filter(d => d.contractor === c.id && d.status === 'posted' && d.date <= to).forEach(d => { bought += tDebtAmount(d, 'purchase'); });
+                    paid = tContractorPayments(c, MONEY_OUT_TYPES, to);
                     const debt = bought - paid;
                     if (Math.abs(debt) > 0.01) payables.push({ name: c.name, bought, paid, debt });
                 });
@@ -6369,13 +6536,16 @@
             const to = document.getElementById('abcTo').value;
             const type = document.getElementById('abcType').value;
             if (!db.trade || !db.trade.docs) { document.getElementById('abcResult').innerHTML = '<div class="empty-state">Нет данных</div>'; return; }
-            const sales = db.trade.docs.filter(d => d.status === 'posted' && TT[d.type] && TT[d.type].group === 'sale' && (!from || d.date >= from) && (!to || d.date <= to));
+            // Только фактические продажи (без счетов на оплату); возвраты уменьшают продажи
+            const SALE_SIGN = { sale: 1, production_services: 1, commission_report: 1, retail_report: 1, sale_return: -1 };
+            const sales = db.trade.docs.filter(d => d.status === 'posted' && SALE_SIGN[d.type] && (!from || d.date >= from) && (!to || d.date <= to));
             const map = {};
             if (type === 'nom') {
-                sales.forEach(d => { (d.goods || []).concat(d.services || []).forEach(r => { const name = tNomName(r.nom) || 'Без названия'; map[name] = (map[name] || 0) + (Number(r.sum) || 0); }); });
+                sales.forEach(d => { const k = SALE_SIGN[d.type]; (d.goods || []).concat(d.services || []).forEach(r => { const name = tNomName(r.nom) || 'Без названия'; map[name] = (map[name] || 0) + k * (Number(r.sum) || 0); }); });
             } else {
-                sales.forEach(d => { const name = tContractorName(d.contractor) || 'Без контрагента'; map[name] = (map[name] || 0) + (d.total || 0); });
+                sales.forEach(d => { if (d.type === 'retail_report') return; const name = tContractorName(d.contractor) || 'Без контрагента'; map[name] = (map[name] || 0) + SALE_SIGN[d.type] * (d.total || 0); });
             }
+            Object.keys(map).forEach(k => { if (map[k] <= 0) delete map[k]; });
             const items = Object.entries(map).sort((a, b) => b[1] - a[1]);
             const total = items.reduce((s, i) => s + i[1], 0);
             if (!total) { document.getElementById('abcResult').innerHTML = '<div class="empty-state">Нет продаж за период</div>'; return; }
@@ -6420,33 +6590,23 @@
         function buildPnL() {
             const from = document.getElementById('pnlFrom').value;
             const to = document.getElementById('pnlTo').value;
-            // Доходы: продажи (торговые) + поступления (банк/касса)
-            const tradeDocs = (db.trade && db.trade.docs || []).filter(d => d.status === 'posted' && d.date >= from && d.date <= to);
-            const finDocs = [...(db.bankDocuments || []), ...(db.cashDocuments || [])].filter(d => d.date >= from && d.date <= to);
-
-            const incomeByArticle = {};
-            const expenseByArticle = {};
-            const artName = id => ((db.articles || []).find(a => a.id === id) || {}).name || 'Без статьи';
-
-            // Trade docs
-            tradeDocs.forEach(d => {
-                const tt = TT[d.type];
-                if (!tt) return;
-                if (tt.group === 'sale') { const a = 'Продажи: ' + (tt.label || d.type); incomeByArticle[a] = (incomeByArticle[a] || 0) + (d.total || 0); }
-                else if (tt.group === 'purchase') { const a = 'Закупки: ' + (tt.label || d.type); expenseByArticle[a] = (expenseByArticle[a] || 0) + (d.total || 0); }
+            // Строится по проводкам (метод начисления): выручка 90.01, НДС 90.03, себестоимость 90.02,
+            // расходы периода 26 и 44, прочие доходы/расходы 91. Деньги (банк/касса) в прибыль не входят.
+            const turn = {};
+            _collectAllPostings(from, to).filter(p => p.date >= from && p.date <= to).forEach(p => {
+                const t = (a) => turn[a] = turn[a] || { dt: 0, kt: 0 };
+                t(p.dt).dt += p.sum; t(p.kt).kt += p.sum;
             });
-            // Financial docs
-            finDocs.forEach(d => {
-                const sum = (d.sum || 0) * (Number(d.rate) || 1);
-                if (d.type === 'payment_in' || d.type === 'pko') { incomeByArticle[artName(d.article)] = (incomeByArticle[artName(d.article)] || 0) + sum; }
-                else if (d.type === 'payment_out' || d.type === 'rko') { expenseByArticle[artName(d.article)] = (expenseByArticle[artName(d.article)] || 0) + sum; }
-            });
-            // Payroll
-            const payrollDocs = tradeDocs.filter(d => d.type === 'payroll');
-            if (payrollDocs.length) {
-                const payrollTotal = payrollDocs.reduce((s, d) => s + (d.total || d.netTotal || 0), 0);
-                expenseByArticle['Зарплата и начисления'] = (expenseByArticle['Зарплата и начисления'] || 0) + payrollTotal;
-            }
+            const sumBy = (prefix, side) => Object.keys(turn).filter(a => a === prefix || a.startsWith(prefix + '.')).reduce((s, a) => s + turn[a][side], 0);
+            const net = (prefix) => sumBy(prefix, 'dt') - sumBy(prefix, 'kt');
+            const incomeByArticle = {}, expenseByArticle = {};
+            const revenue = -net('90.01'); if (Math.abs(revenue) > 0.004) incomeByArticle['Выручка от продаж (90.01)'] = revenue;
+            const otherInc = sumBy('91.01', 'kt') - sumBy('91.01', 'dt'); if (Math.abs(otherInc) > 0.004) incomeByArticle['Прочие доходы (91.01)'] = otherInc;
+            const vatOut = net('90.03'); if (Math.abs(vatOut) > 0.004) expenseByArticle['НДС с продаж (90.03)'] = vatOut;
+            const cogs = net('90.02'); if (Math.abs(cogs) > 0.004) expenseByArticle['Себестоимость продаж (90.02)'] = cogs;
+            const adm = net('26'); if (Math.abs(adm) > 0.004) expenseByArticle['Общехозяйственные расходы (26)'] = adm;
+            const sell = net('44'); if (Math.abs(sell) > 0.004) expenseByArticle['Расходы на продажу (44)'] = sell;
+            const otherExp = net('91.02'); if (Math.abs(otherExp) > 0.004) expenseByArticle['Прочие расходы (91.02), в т.ч. комиссии банка'] = otherExp;
 
             const totalIncome = Object.values(incomeByArticle).reduce((s, v) => s + v, 0);
             const totalExpense = Object.values(expenseByArticle).reduce((s, v) => s + v, 0);
@@ -6493,21 +6653,14 @@
             // Trade docs
             (db.trade.docs || []).filter(d => d.status === 'posted' && d.date <= asOf && d.contractor).forEach(d => {
                 const r = result[d.contractor]; if (!r) return;
-                const tt = TT[d.type];
-                if (!tt) return;
-                if (tt.group === 'sale') r.sales += d.total || 0;
-                else if (tt.group === 'purchase') r.purchases += d.total || 0;
-                if (d.type === 'sale_return') r.sales -= (d.total || 0) * 2; // reverse: was added as sale, now subtract double
-                if (d.type === 'purchase_return') r.purchases -= (d.total || 0) * 2;
+                r.sales += tDebtAmount(d, 'sale');
+                r.purchases += tDebtAmount(d, 'purchase');
             });
-            // Financial docs linked to contractors
-            [...(db.bankDocuments || []), ...(db.cashDocuments || [])].filter(d => d.date <= asOf && d.contractor).forEach(d => {
-                const cId = db.trade.contractors.find(c => c.name === d.contractor || c.id === d.contractor);
-                if (!cId) return;
-                const r = result[cId.id]; if (!r) return;
-                const sum = (d.sum || 0) * (Number(d.rate) || 1);
-                if (d.type === 'payment_in' || d.type === 'pko') r.paymentsIn += sum;
-                else if (d.type === 'payment_out' || d.type === 'rko') r.paymentsOut += sum;
+            // Проведённые оплаты контрагентов
+            db.trade.contractors.forEach(c => {
+                const r = result[c.id];
+                r.paymentsIn += tContractorPayments(c, MONEY_IN_TYPES, asOf);
+                r.paymentsOut += tContractorPayments(c, MONEY_OUT_TYPES, asOf);
             });
             const rows = Object.values(result).filter(r => r.sales || r.purchases || r.paymentsIn || r.paymentsOut).map(r => {
                 const rawDebit = r.sales - r.paymentsIn; // they owe us (negative = they overpaid)
@@ -6552,6 +6705,15 @@
         }
         function _collectAllPostings(from, to) {
             const postings = [];
+            // Начальные остатки денежных счетов и подотчётных лиц (корр. счёт 000 — ввод остатков)
+            (db.accounts || []).filter(a => !isPodAccount(a) && Number(a.openingBalance)).forEach(a => {
+                const kgs = Number(a.openingBalance) * curRateByCode(accCurCode(a));
+                postings.push(kgs > 0 ? { dt: moneyAccCode(a.id), kt: '000', sum: kgs, date: '0000-01-01' } : { dt: '000', kt: moneyAccCode(a.id), sum: -kgs, date: '0000-01-01' });
+            });
+            (db.podotchetPersons || []).filter(pp => Number(pp.openingBalance)).forEach(pp => {
+                const v = Number(pp.openingBalance);
+                postings.push(v > 0 ? { dt: '71', kt: '000', sum: v, date: '0000-01-01' } : { dt: '000', kt: '71', sum: -v, date: '0000-01-01' });
+            });
             // Trade docs
             if (db.trade && db.trade.docs) {
                 db.trade.docs.filter(d => d.status === 'posted' && d.date <= to).forEach(d => {
@@ -6562,27 +6724,25 @@
             // Bank/cash docs -> postings
             const finDocs = [...(db.bankDocuments || []), ...(db.cashDocuments || [])].filter(d => d.status === 'posted' && d.date <= to);
             finDocs.forEach(d => {
+                // Выплата по ведомости уже проведена самой ведомостью (Дт 70 Кт 50/51) — не дублируем
+                const basisDoc = d.basis && db.trade ? db.trade.docs.find(x => x.id === d.basis) : null;
+                if (basisDoc && (basisDoc.type === 'payout_bank' || basisDoc.type === 'payout_cash') && basisDoc.status === 'posted') return;
+                const money = moneyAccCode(d.account);
                 const sum = (d.sum || 0) * (Number(d.rate) || 1);
-                if (d.type === 'payment_out') { postings.push({ dt: '60.02', kt: '51', sum, date: d.date }); }
-                else if (d.type === 'payment_in') { postings.push({ dt: '51', kt: '62.02', sum, date: d.date }); }
-                else if (d.type === 'rko') { postings.push({ dt: '71', kt: '50', sum, date: d.date }); }
-                else if (d.type === 'pko') { postings.push({ dt: '50', kt: '71', sum, date: d.date }); }
-                else if (d.type === 'payment_order') { postings.push({ dt: '60.02', kt: '51', sum, date: d.date }); }
+                if (d.type === 'payment_out' || d.type === 'payment_order') { postings.push({ dt: '60.02', kt: money, sum, date: d.date }); }
+                else if (d.type === 'payment_in') { postings.push({ dt: money, kt: '62.02', sum, date: d.date }); }
+                else if (d.type === 'rko') { postings.push({ dt: '71', kt: money, sum, date: d.date }); }
+                else if (d.type === 'pko') { postings.push({ dt: money, kt: '71', sum, date: d.date }); }
                 else if (d.type === 'internal_transfer') {
-                    const accFrom = (db.accounts || []).find(a => a.id === d.account);
-                    const accTo = (db.accounts || []).find(a => a.id === d.accountTo);
-                    const dtAcc = accTo ? (accTo.type === 'cash' ? '50' : '51') : '51';
-                    const ktAcc = accFrom ? (accFrom.type === 'cash' ? '50' : '51') : '51';
-                    postings.push({ dt: dtAcc, kt: ktAcc, sum, date: d.date });
+                    postings.push({ dt: moneyAccCode(d.accountTo), kt: money, sum, date: d.date });
                 }
                 else if (d.type === 'conversion') {
-                    const sumKGS = (d.sum || 0) * (Number(d.rate) || 1);
-                    const accFrom = (db.accounts || []).find(a => a.id === d.account);
-                    const accTo = (db.accounts || []).find(a => a.id === d.accountTo);
-                    const dtAcc = accTo ? (accTo.currency && accTo.currency !== '' ? '52' : accTo.type === 'cash' ? '50' : '51') : '51';
-                    const ktAcc = accFrom ? (accFrom.currency && accFrom.currency !== '' ? '52' : accFrom.type === 'cash' ? '50' : '51') : '52';
-                    postings.push({ dt: dtAcc, kt: ktAcc, sum: sumKGS, date: d.date });
+                    const from = accCurCode((db.accounts || []).find(a => a.id === d.account));
+                    const sumKGS = from === 'KGS' ? Number(d.sum || 0) : Number(d.sum || 0) * (Number(d.rate) || curRateByCode(from));
+                    postings.push({ dt: moneyAccCode(d.accountTo), kt: money, sum: sumKGS, date: d.date });
                 }
+                // Комиссия банка — прочие расходы
+                if (Number(d.bankFee) > 0 && d.type !== 'internal_transfer' && d.type !== 'conversion') postings.push({ dt: '91.02', kt: money, sum: Number(d.bankFee), date: d.date });
             });
             return postings;
         }
@@ -6686,10 +6846,11 @@
 
             const articles = {};
             allDocs.forEach(d => {
+                if (MONEY_TRANSFER_TYPES.includes(d.type)) return; // перемещение между своими счетами — не приход и не расход
                 const sum = (d.sum || 0) * (Number(d.rate) || 1);
                 const art = artName(d.article);
                 if (!articles[art]) articles[art] = { name: art, inSum: 0, outSum: 0, inCount: 0, outCount: 0 };
-                const isIn = d.type === 'payment_in' || d.type === 'pko';
+                const isIn = MONEY_IN_TYPES.includes(d.type);
                 if (isIn) { articles[art].inSum += sum; articles[art].inCount++; }
                 else { articles[art].outSum += sum; articles[art].outCount++; }
             });
@@ -6769,31 +6930,38 @@
                 return s + total;
             }, 0);
 
-            // АКТИВ
-            const fixedAssets = bal(['01']) - bal(['02']); // ОС - амортизация
-            const intangible = bal(['04']) - bal(['05']); // НМА
+            // Каждый счёт (субсчёт) попадает в актив или пассив по знаку своего сальдо — так баланс всегда сходится.
+            const pre = (code, list) => list.some(x => code === x || code.startsWith(x + '.'));
+            let fixedAssets = 0, intangible = 0, inventory = 0, vatReceivable = 0, receivables = 0, cash = 0, otherCurrent = 0;
+            let capital = 0, profitLoss = 0, longTermLiab = 0, payables = 0, taxPayable = 0, salaryPayable = 0, shortTermLoans = 0, otherPayables = 0;
+            Object.keys(accs).forEach(code => {
+                const b = Math.round(accs[code] * 100) / 100;
+                if (!b) return;
+                if (pre(code, ['80', '82', '83', '84', '000'])) { capital -= b; return; }        // капитал и введённые начальные остатки
+                if (pre(code, ['90', '91', '99'])) { profitLoss -= b; return; }                  // финансовый результат
+                if (pre(code, ['01', '02'])) { fixedAssets += b; return; }                       // ОС за вычетом амортизации
+                if (pre(code, ['04', '05'])) { intangible += b; return; }
+                if (b > 0) {
+                    if (pre(code, ['10', '41', '43', '45', '20', '21', '23', '25', '26', '28', '29', '44', '97'])) inventory += b;
+                    else if (pre(code, ['19'])) vatReceivable += b;
+                    else if (pre(code, ['50', '51', '52', '55', '57'])) cash += b;
+                    else if (pre(code, ['60', '62', '76'])) receivables += b;                    // дебиторка, в т.ч. авансы выданные
+                    else otherCurrent += b;                                                       // 71, 73, 68/69 переплата и прочее
+                } else {
+                    const v = -b;
+                    if (pre(code, ['60', '62', '76'])) payables += v;                             // кредиторка, в т.ч. авансы полученные
+                    else if (pre(code, ['68', '69'])) taxPayable += v;
+                    else if (pre(code, ['70'])) salaryPayable += v;
+                    else if (pre(code, ['67'])) longTermLiab += v;
+                    else if (pre(code, ['66'])) shortTermLoans += v;
+                    else otherPayables += v;                                                      // 71 (долг подотчётному), 94, прочее
+                }
+            });
             const nonCurrent = fixedAssets + intangible;
-
-            const inventory = bal(['10', '41', '43', '45', '20', '21', '23', '25', '26', '28', '29', '44', '97']);
-            const vatReceivable = bal(['19']);
-            const receivables = bal(['62']) + bal(['76']); // дебиторка (сальдо Дт)
-            const cash = bal(['50', '51', '52', '55', '57']);
-            const otherCurrent = bal(['71', '73']);
-            const currentAssets = inventory + vatReceivable + Math.max(0, receivables) + cash + otherCurrent;
+            const currentAssets = inventory + vatReceivable + receivables + cash + otherCurrent;
             const totalAssets = nonCurrent + currentAssets;
-
-            // ПАССИВ
-            const capital = -bal(['80', '82', '83', '84']); // уставный, резервный, добавочный, нераспределенная прибыль
-            const profitLoss = -bal(['90', '91', '99']); // финрезультат
             const equity = capital + profitLoss;
-
-            const longTermLiab = -bal(['67']); // долгосрочные кредиты
-            const payables = -bal(['60']); // кредиторка (сальдо Кт)
-            const taxPayable = -bal(['68', '69']);
-            const salaryPayable = -bal(['70']);
-            const shortTermLoans = -bal(['66']);
-            const otherPayables = Math.max(0, -receivables) + -bal(['76.05', '94']);
-            const shortTermLiab = Math.max(0, payables) + taxPayable + salaryPayable + shortTermLoans + otherPayables;
+            const shortTermLiab = payables + taxPayable + salaryPayable + shortTermLoans + otherPayables;
             const totalLiabilities = equity + longTermLiab + shortTermLiab;
 
             const orgName = db.trade && db.trade.org ? db.trade.org.name : 'Организация';
@@ -6823,7 +6991,7 @@
                         <thead><tr><th colspan="2" style="text-align:center;background:#fce4ec">ПАССИВ</th></tr><tr><th>Статья</th><th style="text-align:right">Сумма</th></tr></thead>
                         <tbody>
                             ${row('III. КАПИТАЛ И РЕЗЕРВЫ', '', true)}
-                            ${row('Уставный капитал', capital, false, true)}
+                            ${row('Капитал и начальные остатки', capital, false, true)}
                             ${row('Нераспределённая прибыль (убыток)', profitLoss, false, true)}
                             ${row('Итого раздел III', equity, true)}
                             ${row('IV. ДОЛГОСРОЧНЫЕ ОБЯЗАТЕЛЬСТВА', '', true)}

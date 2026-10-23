@@ -177,12 +177,17 @@ function amountInWords(n) {
         else { if (tens[Math.floor(rem / 10)]) r += (r ? ' ' : '') + tens[Math.floor(rem / 10)]; if (units[rem % 10]) r += (r ? ' ' : '') + units[rem % 10]; }
         return r;
     }
+    // Тысячи — женского рода (одна, две тысячи); добавлены миллиарды
+    function groupFem(num) { return group(num).replace(/один$/, 'одна').replace(/два$/, 'две'); }
+    function plural(num, one, few, many) { const n10 = num % 10, n100 = num % 100; if (n10 === 1 && n100 !== 11) return one; if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return few; return many; }
     let result = '';
-    const millions = Math.floor(intPart / 1000000);
+    const billions = Math.floor(intPart / 1000000000);
+    const millions = Math.floor((intPart % 1000000000) / 1000000);
     const thousands = Math.floor((intPart % 1000000) / 1000);
     const rest = intPart % 1000;
-    if (millions) result += group(millions) + ' млн ';
-    if (thousands) result += group(thousands) + ' тыс. ';
+    if (billions) result += group(billions) + ' ' + plural(billions, 'миллиард', 'миллиарда', 'миллиардов') + ' ';
+    if (millions) result += group(millions) + ' ' + plural(millions, 'миллион', 'миллиона', 'миллионов') + ' ';
+    if (thousands) result += groupFem(thousands) + ' ' + plural(thousands, 'тысяча', 'тысячи', 'тысяч') + ' ';
     if (rest || !result) result += group(rest);
     result = result.trim();
     result = result.charAt(0).toUpperCase() + result.slice(1);
@@ -312,13 +317,12 @@ function createFromTemplate(tmplId) {
     const doc = { ...tmpl, id: uid(), date: localISODate(new Date()), status: 'draft', created: new Date().toISOString() };
     delete doc.templateName; delete doc.isTemplate;
     const isCash = ['pko', 'rko', 'advance'].includes(doc.type);
-    if (isCash) {
-        doc.number = 'К-' + String((db.cashDocuments || []).length + 1).padStart(4, '0');
-        db.cashDocuments.push(doc);
-    } else {
-        doc.number = 'ПП-' + String((db.bankDocuments || []).length + 1).padStart(4, '0');
-        db.bankDocuments.push(doc);
-    }
+    // Номер — следующий после максимального (а не «количество + 1», чтобы после удаления не было дублей)
+    const prefix = { pko: 'ПКО', rko: 'РКО', payment_in: 'ПП-ВХ' }[doc.type] || (isCash ? 'К' : 'ПП');
+    const all = [...(db.bankDocuments || []), ...(db.cashDocuments || [])];
+    if (typeof nextDocNumber === 'function') doc.number = nextDocNumber(prefix, all);
+    else { let max = 0; all.forEach(d => { const m = String(d.number || '').match(/(\d+)$/); if (m) max = Math.max(max, parseInt(m[1])); }); doc.number = prefix + '-' + String(max + 1).padStart(4, '0'); }
+    if (isCash) db.cashDocuments.push(doc); else db.bankDocuments.push(doc);
     saveData(); renderPage();
     showToast('Документ создан из шаблона');
 }
