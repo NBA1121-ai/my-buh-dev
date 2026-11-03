@@ -147,6 +147,7 @@
             <div class="nav-item" onclick="selectPage('r_balance')">📊 Бухгалтерский баланс</div>
             <div class="nav-item" onclick="selectPage('r_pnl')">📊 Прибыли и убытки</div>
             <div class="nav-item" onclick="selectPage('r_settlements')">📊 Взаиморасчёты</div>
+            <div class="nav-item" onclick="selectPage('settle_openings')">📒 Остатки по расчетам</div>
             <div class="nav-item" onclick="selectPage('r_abc')">📊 ABC-анализ</div>
 
             <div class="section-title" onclick="tToggleGroup(this)">Сервис</div>
@@ -884,6 +885,7 @@
                 r_abc: renderABC,
                 r_pnl: renderPnL,
                 r_settlements: renderSettlements,
+                settle_openings: renderSettleOpenings,
                 r_osv_full: renderOSVFull,
                 r_dds_articles: renderDDSArticles,
                 r_balance: renderBalance,
@@ -915,6 +917,7 @@
                 r_abc: 'ABC-анализ',
                 r_pnl: 'Прибыли и убытки',
                 r_settlements: 'Взаиморасчёты с контрагентами',
+                settle_openings: 'Ввод остатков по расчетам с контрагентами',
                 r_osv_full: 'Оборотно-сальдовая ведомость',
                 r_dds_articles: 'Анализ ДДС по статьям',
                 r_balance: 'Бухгалтерский баланс',
@@ -2327,9 +2330,7 @@
             // Overdue debts (customers who owe money, based on sales + customer_invoices - payments)
             if (db.trade && db.trade.contractors && db.trade.docs) {
                 db.trade.contractors.forEach(c => {
-                    const charged = db.trade.docs.filter(d => d.contractor === c.id && d.status === 'posted').reduce((s, d) => s + tDebtAmount(d, 'sale'), 0);
-                    const paid = tContractorPayments(c, MONEY_IN_TYPES);
-                    const debt = charged - paid;
+                    const debt = tContractorDebt(c, 'sale').debt;
                     if (debt > 1000) {
                         notifs.push({ title: 'Задолженность: ' + esc(c.name), text: 'Долг: ' + fmt(debt) + ' сом', time: '', type: 'warning' });
                     }
@@ -3189,8 +3190,8 @@
             const rows = window._lastDebtRows || [];
             const isSale = window._lastDebtGroup === 'sale';
             const title = isSale ? 'Задолженность покупателей' : 'Задолженность поставщикам';
-            const headers = ['Контрагент', 'ИНН', isSale ? 'Отгружено' : 'Поступило', 'Возвраты', 'Оплачено', isSale ? 'Долг покупателя' : 'Наш долг', 'Аванс', 'Последний документ', 'Просрочка (дн.)'];
-            const data = rows.map(r => [r.c.name, r.c.inn, r.charged, r.returned, r.paid, Math.max(0, r.debt), Math.max(0, -r.debt), r.lastDate || '', r.overdue || 0]);
+            const headers = ['Контрагент', 'ИНН', 'Нач. остаток', isSale ? 'Отгружено' : 'Поступило', 'Возвраты', 'Оплачено', isSale ? 'Долг покупателя' : 'Наш долг', 'Аванс', 'Последний документ', 'Просрочка (дн.)'];
+            const data = rows.map(r => [r.c.name, r.c.inn, r.opening || 0, r.charged, r.returned, r.paid, Math.max(0, r.debt), Math.max(0, -r.debt), r.lastDate || '', r.overdue || 0]);
             exportExcel(headers, data, title + '.xlsx', title);
         }
 
@@ -3535,10 +3536,50 @@
             return k === 'delta' ? tCorrDelta(d).total : k * (Number(d.total) || 0);
         }
         // Проведённые оплаты контрагента (по id или по имени), в сомах
-        function tContractorPayments(c, types, toDate, fromDate) {
+        function tContractorPayments(c, types, toDate, fromDate, afterDate) {
             return [...(db.bankDocuments || []), ...(db.cashDocuments || [])]
-                .filter(p => p.status === 'posted' && types.includes(p.type) && (p.contractorId === c.id || matchContractor(p.contractor, c.name)) && (!toDate || p.date <= toDate) && (!fromDate || p.date >= fromDate))
+                .filter(p => p.status === 'posted' && types.includes(p.type) && (p.contractorId === c.id || matchContractor(p.contractor, c.name)) && (!toDate || p.date <= toDate) && (!fromDate || p.date >= fromDate) && (!afterDate || p.date > afterDate))
                 .reduce((s, p) => s + Number(p.sum || 0) * (Number(p.rate) || 1), 0);
+        }
+
+        // ---------- Ввод остатков по расчетам ----------
+        // db.trade.settlementOpenings = [{ id, date, comment, rows: [{ contractor, sale, purchase, currency, saleCur, purchaseCur, rate }] }]
+        // sale — долг контрагента нам (сом), purchase — наш долг контрагенту (сом; минус — выданный аванс).
+        // Ввод остатков — полный список на дату: долги считаются от него плюс операции ПОСЛЕ этой даты.
+        function tSettleCut(asOf) {
+            const list = ((db.trade && db.trade.settlementOpenings) || []).filter(o => !asOf || o.date <= asOf).sort((a, b) => a.date.localeCompare(b.date));
+            return list.length ? list[list.length - 1] : null;
+        }
+        function tSettleOpen(o, cId, side) {
+            if (!o) return 0;
+            const r = (o.rows || []).find(x => x.contractor === cId);
+            return r ? (Number(r[side]) || 0) : 0;
+        }
+        // Долг контрагента по стороне ('sale' — он нам, 'purchase' — мы ему) с учётом ввода остатков
+        function tContractorDebt(c, side, toDate, fromDate) {
+            const o = tSettleCut(toDate || localISODate(new Date()));
+            const cut = o ? o.date : '';
+            const opening = (!fromDate || !cut || fromDate <= cut) ? tSettleOpen(o, c.id, side) : 0;
+            const docs = db.trade.docs.filter(d => d.contractor === c.id && d.status === 'posted' && DEBT_TYPES[side][d.type] && (!toDate || d.date <= toDate) && (!fromDate || d.date >= fromDate) && (!cut || d.date > cut));
+            let charged = 0, returned = 0;
+            docs.forEach(d => { const a = tDebtAmount(d, side); if (a > 0) charged += a; else returned -= a; });
+            const paid = tContractorPayments(c, side === 'sale' ? MONEY_IN_TYPES : MONEY_OUT_TYPES, toDate, fromDate, cut);
+            return { opening, charged, returned, paid, debt: opening + charged - returned - paid, docs: docs.filter(d => tDebtAmount(d, side) > 0), cut };
+        }
+        function renderSettleOpenings() {
+            const list = ((db.trade && db.trade.settlementOpenings) || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+            if (!list.length) return '<div class="empty-state">Ввод остатков по расчетам ещё не выполнялся</div>';
+            const cName = id => tContractorName(id) || id;
+            return list.map(o => {
+                const rows = (o.rows || []).slice().sort((a, b) => cName(a.contractor).localeCompare(cName(b.contractor), 'ru'));
+                const sumS = rows.reduce((s, r) => s + (Number(r.sale) || 0), 0), sumP = rows.reduce((s, r) => s + (Number(r.purchase) || 0), 0);
+                const cur = (r, k) => r.currency && r[k + 'Cur'] ? ' <span style="color:var(--text-secondary)">(' + formatAmount(r[k + 'Cur']) + ' ' + esc(r.currency) + ' × ' + esc(r.rate) + ')</span>' : '';
+                return `<div class="table-container" style="margin-bottom:16px"><div style="padding:10px 15px;display:flex;justify-content:space-between;background:var(--bg-table-head);border-bottom:1px solid var(--border-input)"><b>Остатки по расчетам на ${formatDate(o.date)}</b><span style="color:var(--text-secondary)">${esc(o.comment || '')}</span></div>
+                <table><thead><tr><th>Контрагент</th><th style="text-align:right">Нам должны</th><th style="text-align:right">Мы должны</th></tr></thead><tbody>
+                ${rows.map(r => `<tr><td>${esc(cName(r.contractor))}</td><td class="num">${Number(r.sale) ? formatAmount(r.sale) + cur(r, 'sale') : ''}</td><td class="num">${Number(r.purchase) ? formatAmount(r.purchase) + cur(r, 'purchase') : ''}</td></tr>`).join('')}
+                </tbody><tfoot><tr><td><b>Итого</b></td><td class="num"><b>${formatAmount(sumS)}</b></td><td class="num"><b>${formatAmount(sumP)}</b></td></tr></tfoot></table>
+                <div style="padding:8px 15px;font-size:12px;color:var(--text-secondary)">Долги считаются от этих сумм плюс документы и оплаты после ${formatDate(o.date)}. Контрагенты, которых нет в списке, на эту дату имели нулевой долг. Минус в «Мы должны» — выданный аванс.</div></div>`;
+            }).join('');
         }
 
         // ---------- Проводки Дт/Кт ----------
@@ -4635,14 +4676,21 @@
         }
         function tReconRows(d) {
             const r = d.recon; const cname = tContractorName(d.contractor); const rows = [];
+            // Ввод остатков по расчетам: операции до даты ввода заменяются начальным остатком
+            const o = tSettleCut(r.to); const cut = o ? o.date : '';
+            if (o && o.date >= r.from && o.date <= r.to) {
+                const s = tSettleOpen(o, d.contractor, 'sale'), p = tSettleOpen(o, d.contractor, 'purchase');
+                const net = s - p;
+                if (Math.abs(net) > 0.004) rows.push({ date: o.date, doc: 'Остаток по расчетам на ' + formatDate(o.date), dt: net > 0 ? net : 0, kt: net < 0 ? -net : 0 });
+            }
             // Дебет — увеличивает долг контрагента перед нами (отгрузка, наша оплата), кредит — уменьшает (оплата от него, поступление от него)
-            db.trade.docs.filter(x => x.contractor === d.contractor && x.status === 'posted' && x.date >= r.from && x.date <= r.to).forEach(x => {
+            db.trade.docs.filter(x => x.contractor === d.contractor && x.status === 'posted' && x.date >= r.from && x.date <= r.to && (!cut || x.date > cut)).forEach(x => {
                 const s = tDebtAmount(x, 'sale'), p = tDebtAmount(x, 'purchase');
                 if (!s && !p) return; // счета, доверенности и т.п. не влияют на расчёты
                 const dt = Math.max(0, s) + Math.max(0, -p), kt = Math.max(0, -s) + Math.max(0, p);
                 rows.push({ date: x.date, doc: tDocTitle(x), dt, kt });
             });
-            [...db.bankDocuments, ...db.cashDocuments].filter(p => p.status === 'posted' && !MONEY_TRANSFER_TYPES.includes(p.type) && (p.contractorId === d.contractor || matchContractor(p.contractor, cname)) && p.date >= r.from && p.date <= r.to).forEach(p => {
+            [...db.bankDocuments, ...db.cashDocuments].filter(p => p.status === 'posted' && !MONEY_TRANSFER_TYPES.includes(p.type) && (p.contractorId === d.contractor || matchContractor(p.contractor, cname)) && (!cut || p.date > cut) && p.date >= r.from && p.date <= r.to).forEach(p => {
                 const inc = MONEY_IN_TYPES.includes(p.type);
                 const sum = Math.round(Number(p.sum || 0) * (Number(p.rate) || 1) * 100) / 100;
                 rows.push({ date: p.date, doc: getDocTypeLabel(p.type) + ' ' + p.number, dt: inc ? 0 : sum, kt: inc ? sum : 0 });
@@ -4804,18 +4852,13 @@
             const side = isSale ? 'sale' : 'purchase';
             const payTypes = isSale ? MONEY_IN_TYPES : MONEY_OUT_TYPES;
             const today = localISODate(new Date());
-            const sideDocs = tPosted(Object.keys(DEBT_TYPES[side]));
             const rows = db.trade.contractors.map(c => {
-                const mine = sideDocs.filter(d => d.contractor === c.id);
-                const cDocs = mine.filter(d => tDebtAmount(d, side) > 0);
-                const charged = mine.reduce((s, d) => { const a = tDebtAmount(d, side); return s + (a > 0 ? a : 0); }, 0);
-                const returned = mine.reduce((s, d) => { const a = tDebtAmount(d, side); return s + (a < 0 ? -a : 0); }, 0);
-                const paid = tContractorPayments(c, payTypes, rFilters.to, rFilters.from);
-                const debt = charged - returned - paid;
+                const D = tContractorDebt(c, side, rFilters.to || today, rFilters.from);
+                const cDocs = D.docs, opening = D.opening, charged = D.charged, returned = D.returned, paid = D.paid, debt = D.debt;
                 const lastDate = cDocs.length ? cDocs.sort((a, b) => b.date.localeCompare(a.date))[0].date : '';
                 const overdue = lastDate && debt > 0 ? Math.max(0, Math.floor((new Date(today) - new Date(lastDate)) / 86400000)) : 0;
-                return { c, charged, returned, paid, debt, lastDate, overdue };
-            }).filter(r => r.charged || r.paid || r.returned);
+                return { c, opening, charged, returned, paid, debt, lastDate, overdue };
+            }).filter(r => r.opening || r.charged || r.paid || r.returned);
             const tot = (k) => formatAmount(rows.reduce((s, r) => s + r[k], 0));
             const overdueClass = (days) => days > 30 ? 'color:var(--danger);font-weight:bold' : days > 14 ? 'color:var(--warning)' : '';
             const _debtGroup = group;
@@ -4825,10 +4868,10 @@
                 <div class="stat-card"><div class="stat-label">ОПЛАЧЕНО</div><div class="stat-value">${tot('paid')}</div></div>
                 <div class="stat-card"><div class="stat-label">${isSale ? 'ДОЛГ ПОКУПАТЕЛЕЙ' : 'ДОЛГ ПОСТАВЩИКАМ'}</div><div class="stat-value" style="color:${rows.reduce((s, r) => s + r.debt, 0) > 0 ? 'var(--danger)' : 'var(--success)'}">${tot('debt')}</div></div></div>
             <div style="margin-bottom:8px;text-align:right"><button class="btn" onclick="exportDebtExcel()">📥 Excel</button></div>
-            <div class="table-container"><table><thead><tr><th>Контрагент</th><th>ИНН</th><th style="text-align:right">${isSale ? 'Отгружено' : 'Поступило'}</th><th style="text-align:right">Возвраты</th><th style="text-align:right">Оплачено</th><th style="text-align:right">${isSale ? 'Долг покупателя' : 'Наш долг'}</th><th style="text-align:right">Аванс</th><th>Последний док.</th><th style="text-align:right">Просрочка</th></tr></thead>
-            <tbody>${rows.map(r => `<tr><td><a href="#" onclick="event.preventDefault();tFilters.contractor='${r.c.id}';selectPageById('${isSale ? 'p_sale' : 'p_purchase'}')">${esc(r.c.name)}</a></td><td>${esc(r.c.inn)}</td><td class="num">${formatAmount(r.charged)}</td><td class="num">${formatAmount(r.returned)}</td><td class="num">${formatAmount(r.paid)}</td><td class="num amount ${r.debt > 0 ? 'out' : ''}">${r.debt > 0 ? formatAmount(r.debt) : '—'}</td><td class="num">${r.debt < 0 ? formatAmount(-r.debt) : '—'}</td><td>${r.lastDate ? formatDate(r.lastDate) : '—'}</td><td class="num" style="${overdueClass(r.overdue)}">${r.overdue > 0 ? r.overdue + ' дн.' : '—'}</td></tr>`).join('')}
-            ${rows.length ? '' : '<tr><td colspan="9" class="empty-state">Нет данных за период</td></tr>'}</tbody>
-            <tfoot><tr><td colspan="2"><b>Итого</b></td><td class="num"><b>${tot('charged')}</b></td><td class="num"><b>${tot('returned')}</b></td><td class="num"><b>${tot('paid')}</b></td><td class="num"><b>${formatAmount(rows.reduce((s, r) => s + Math.max(0, r.debt), 0))}</b></td><td class="num"><b>${formatAmount(rows.reduce((s, r) => s + Math.max(0, -r.debt), 0))}</b></td><td colspan="2"></td></tr></tfoot></table></div></div>`;
+            <div class="table-container"><table><thead><tr><th>Контрагент</th><th>ИНН</th><th style="text-align:right" title="Остаток по вводу остатков по расчетам">Нач. остаток</th><th style="text-align:right">${isSale ? 'Отгружено' : 'Поступило'}</th><th style="text-align:right">Возвраты</th><th style="text-align:right">Оплачено</th><th style="text-align:right">${isSale ? 'Долг покупателя' : 'Наш долг'}</th><th style="text-align:right">Аванс</th><th>Последний док.</th><th style="text-align:right">Просрочка</th></tr></thead>
+            <tbody>${rows.map(r => `<tr><td><a href="#" onclick="event.preventDefault();tFilters.contractor='${r.c.id}';selectPageById('${isSale ? 'p_sale' : 'p_purchase'}')">${esc(r.c.name)}</a></td><td>${esc(r.c.inn)}</td><td class="num">${r.opening ? formatAmount(r.opening) : ''}</td><td class="num">${formatAmount(r.charged)}</td><td class="num">${formatAmount(r.returned)}</td><td class="num">${formatAmount(r.paid)}</td><td class="num amount ${r.debt > 0 ? 'out' : ''}">${r.debt > 0 ? formatAmount(r.debt) : '—'}</td><td class="num">${r.debt < 0 ? formatAmount(-r.debt) : '—'}</td><td>${r.lastDate ? formatDate(r.lastDate) : '—'}</td><td class="num" style="${overdueClass(r.overdue)}">${r.overdue > 0 ? r.overdue + ' дн.' : '—'}</td></tr>`).join('')}
+            ${rows.length ? '' : '<tr><td colspan="10" class="empty-state">Нет данных за период</td></tr>'}</tbody>
+            <tfoot><tr><td colspan="2"><b>Итого</b></td><td class="num"><b>${tot('opening')}</b></td><td class="num"><b>${tot('charged')}</b></td><td class="num"><b>${tot('returned')}</b></td><td class="num"><b>${tot('paid')}</b></td><td class="num"><b>${formatAmount(rows.reduce((s, r) => s + Math.max(0, r.debt), 0))}</b></td><td class="num"><b>${formatAmount(rows.reduce((s, r) => s + Math.max(0, -r.debt), 0))}</b></td><td colspan="2"></td></tr></tfoot></table></div></div>`;
         }
         function renderSalesReport() {
             const docs = tPosted(['sale', 'production_services', 'commission_report', 'retail_report']);
@@ -6419,9 +6462,8 @@
             const receivables = [];
             if (db.trade && db.trade.contractors) {
                 db.trade.contractors.forEach(c => {
-                    let sold = 0, paid = 0;
-                    (db.trade.docs || []).filter(d => d.contractor === c.id && d.status === 'posted' && d.date <= to).forEach(d => { sold += tDebtAmount(d, 'sale'); });
-                    paid = tContractorPayments(c, MONEY_IN_TYPES, to);
+                    const D = tContractorDebt(c, 'sale', to);
+                    const sold = D.opening + D.charged - D.returned, paid = D.paid;
                     const debt = sold - paid;
                     if (Math.abs(debt) > 0.01) receivables.push({ name: c.name, sold, paid, debt });
                 });
@@ -6430,9 +6472,8 @@
             const payables = [];
             if (db.trade && db.trade.contractors) {
                 db.trade.contractors.forEach(c => {
-                    let bought = 0, paid = 0;
-                    (db.trade.docs || []).filter(d => d.contractor === c.id && d.status === 'posted' && d.date <= to).forEach(d => { bought += tDebtAmount(d, 'purchase'); });
-                    paid = tContractorPayments(c, MONEY_OUT_TYPES, to);
+                    const D = tContractorDebt(c, 'purchase', to);
+                    const bought = D.opening + D.charged - D.returned, paid = D.paid;
                     const debt = bought - paid;
                     if (Math.abs(debt) > 0.01) payables.push({ name: c.name, bought, paid, debt });
                 });
@@ -6651,16 +6692,12 @@
             const result = {};
             db.trade.contractors.forEach(c => { result[c.id] = { name: c.name, sales: 0, purchases: 0, paymentsIn: 0, paymentsOut: 0 }; });
             // Trade docs
-            (db.trade.docs || []).filter(d => d.status === 'posted' && d.date <= asOf && d.contractor).forEach(d => {
-                const r = result[d.contractor]; if (!r) return;
-                r.sales += tDebtAmount(d, 'sale');
-                r.purchases += tDebtAmount(d, 'purchase');
-            });
-            // Проведённые оплаты контрагентов
+            // С учётом ввода остатков по расчетам (начальный долг + операции после даты ввода)
             db.trade.contractors.forEach(c => {
                 const r = result[c.id];
-                r.paymentsIn += tContractorPayments(c, MONEY_IN_TYPES, asOf);
-                r.paymentsOut += tContractorPayments(c, MONEY_OUT_TYPES, asOf);
+                const S = tContractorDebt(c, 'sale', asOf), P = tContractorDebt(c, 'purchase', asOf);
+                r.sales += S.opening + S.charged - S.returned; r.paymentsIn += S.paid;
+                r.purchases += P.opening + P.charged - P.returned; r.paymentsOut += P.paid;
             });
             const rows = Object.values(result).filter(r => r.sales || r.purchases || r.paymentsIn || r.paymentsOut).map(r => {
                 const rawDebit = r.sales - r.paymentsIn; // they owe us (negative = they overpaid)
