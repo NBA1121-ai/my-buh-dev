@@ -1243,11 +1243,29 @@
             `;
         }
 
+
+        // ---------- Ввод остатков по денежным счетам ----------
+        // db.accountOpenings = [{ id, date, comment, rows: [{ account, amount, currency, amountCur, rate, note }] }]
+        // Полный список на дату: остаток счёта = введённая сумма (нет в списке — 0) + документы ПОСЛЕ этой даты.
+        function tAccCut(asOf) {
+            const list = (db.accountOpenings || []).filter(o => !asOf || o.date <= asOf).sort((a, b) => a.date.localeCompare(b.date));
+            return list.length ? list[list.length - 1] : null;
+        }
+        function tAccOpen(o, accId) {
+            if (!o) return 0;
+            const r = (o.rows || []).find(x => x.account === accId);
+            return r ? (Number(r.amount) || 0) : 0;
+        }
+
         function renderCashbook() {
             const podIds = new Set((db.accounts || []).filter(isPodAccount).map(a => a.id));
             const cashDocs = db.cashDocuments.filter(d => (d.type === 'pko' || d.type === 'rko') && d.status === 'posted' && !podIds.has(d.account)).sort((a, b) => docCmp(a, b));
             const byDay = {};
             cashDocs.forEach(d => { (byDay[d.date] = byDay[d.date] || []).push(d); });
+            // Ввод остатков по счетам: в день ввода остаток кассы приводится к введённой сумме
+            const _co = tAccCut();
+            const _coSum = _co ? (db.accounts || []).filter(a => a.type === 'cash' && !isPodAccount(a) && accCurCode(a) === 'KGS').reduce((s, a) => s + tAccOpen(_co, a.id), 0) : 0;
+            if (_co && !byDay[_co.date]) byDay[_co.date] = [];
             const days = Object.keys(byDay).sort();
             let balance = (db.accounts || []).filter(a => a.type === 'cash' && !isPodAccount(a) && accCurCode(a) === 'KGS').reduce((s, a) => s + Number(a.openingBalance || 0), 0);
             let pageNo = 0;
@@ -1262,6 +1280,8 @@
                     const inSum = docs.filter(d => d.type === 'pko').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
                     const outSum = docs.filter(d => d.type === 'rko').reduce((s, d) => s + Number(d.sum || 0) * (Number(d.rate) || 1), 0);
                     balance = opening + inSum - outSum;
+                    const corr = (_co && date === _co.date) ? Math.round((_coSum - balance) * 100) / 100 : 0;
+                    if (_co && date === _co.date) balance = _coSum;
                     return `
                     <div class="table-container" style="margin-bottom:15px">
                     <div style="padding:10px 15px;display:flex;justify-content:space-between;background:var(--bg-table-head);border-bottom:1px solid var(--border-input);font-size:13px"><b>Касса за ${formatDate(date)}</b><span>Лист ${pageNo}</span></div>
@@ -1275,6 +1295,7 @@
                                 <td>${art ? (art.type === 'in' ? '62.01' : '60.01') : (d.type === 'pko' ? '62.01' : '71.01')}</td>
                                 <td class="num">${d.type === 'pko' ? formatAmount(Number(d.sum || 0) * (Number(d.rate) || 1)) : ''}</td><td class="num">${d.type === 'rko' ? formatAmount(Number(d.sum || 0) * (Number(d.rate) || 1)) : ''}</td></tr>`; }).join('')}
                             <tr style="background:var(--bg-table-hover)"><td colspan="3"><b>Итого за день</b></td><td class="num"><b>${formatAmount(inSum)}</b></td><td class="num"><b>${formatAmount(outSum)}</b></td></tr>
+                            ${corr ? `<tr><td colspan="3"><i>Ввод остатков по кассе на ${formatDate(date)}</i></td><td class="num">${corr > 0 ? formatAmount(corr) : ''}</td><td class="num">${corr < 0 ? formatAmount(-corr) : ''}</td></tr>` : ''}
                             <tr><td colspan="3"><b>Остаток на конец дня</b></td><td class="num amount">${formatAmount(balance)}</td><td></td></tr>
                         </tbody>
                     </table></div>`;
@@ -2017,8 +2038,10 @@
 
             // Calculate account balances from documents (only posted)
             const accBalances = {};
-            (db.accounts || []).forEach(a => { accBalances[a.id] = Number(a.openingBalance || 0); });
-            const allFinDocs = [...(db.bankDocuments || []), ...(db.cashDocuments || [])].filter(d => d.status === 'posted');
+            // С учётом ввода остатков по счетам: введённая сумма + документы после даты ввода
+            const _ao = tAccCut(localISODate(new Date()));
+            (db.accounts || []).forEach(a => { accBalances[a.id] = _ao ? tAccOpen(_ao, a.id) : Number(a.openingBalance || 0); });
+            const allFinDocs = [...(db.bankDocuments || []), ...(db.cashDocuments || [])].filter(d => d.status === 'posted' && (!_ao || d.date > _ao.date));
             allFinDocs.forEach(d => {
                 if (!d.account || accBalances[d.account] === undefined) return;
                 const sum = Number(d.sum || 0);
@@ -3566,9 +3589,25 @@
             const paid = tContractorPayments(c, side === 'sale' ? MONEY_IN_TYPES : MONEY_OUT_TYPES, toDate, fromDate, cut);
             return { opening, charged, returned, paid, debt: opening + charged - returned - paid, docs: docs.filter(d => tDebtAmount(d, side) > 0), cut };
         }
+        function renderAccOpeningsHtml() {
+            const list = (db.accountOpenings || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+            const aName = id => ((db.accounts || []).find(a => a.id === id) || {}).name || id;
+            return list.map(o => {
+                const rows = o.rows || [];
+                return `<div class="table-container" style="margin-bottom:16px"><div style="padding:10px 15px;display:flex;justify-content:space-between;border-bottom:1px solid #ddd"><b>Остатки денежных средств на ${formatDate(o.date)}</b><span style="color:#888">${esc(o.comment || '')}</span></div>
+                <table><thead><tr><th>Счёт / касса / подотчётное лицо</th><th style="text-align:right">Остаток</th><th>Валюта</th><th>Примечание</th></tr></thead><tbody>
+                ${rows.map(r => `<tr><td>${esc(aName(r.account))}</td><td class="num">${formatAmount(r.currency && r.currency !== 'KGS' && r.amountCur == null ? r.amount : r.amount)}</td><td>${esc(r.currency || 'KGS')}</td><td style="color:#888">${esc(r.note || '')}</td></tr>`).join('')}
+                </tbody></table>
+                <div style="padding:8px 15px;font-size:12px;color:#888">Остатки на главной и в кассовой книге считаются от этих сумм плюс документы после ${formatDate(o.date)}. Счета, которых нет в списке, на эту дату имели нулевой остаток.</div></div>`;
+            }).join('');
+        }
         function renderSettleOpenings() {
+            const accHtml = renderAccOpeningsHtml();
             const list = ((db.trade && db.trade.settlementOpenings) || []).slice().sort((a, b) => b.date.localeCompare(a.date));
-            if (!list.length) return '<div class="empty-state">Ввод остатков по расчетам ещё не выполнялся</div>';
+            if (!list.length) return accHtml || '<div class="empty-state">Ввод остатков по расчетам ещё не выполнялся</div>';
+            return accHtml + renderSettleOpeningsList(list);
+        }
+        function renderSettleOpeningsList(list) {
             const cName = id => tContractorName(id) || id;
             return list.map(o => {
                 const rows = (o.rows || []).slice().sort((a, b) => cName(a.contractor).localeCompare(cName(b.contractor), 'ru'));
