@@ -1,0 +1,25 @@
+# Cloudflare Worker для Telegram-бота EsepOnline
+name = "esep-bot"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+compatibility_flags = ["nodejs_compat"]
+minify = true
+
+# Шрифты для PDF (кириллица) подключаются как бинарные данные
+rules = [{ type = "Data", globs = ["**/*.ttf"], fallthrough = false }]
+
+[vars]
+# База сайта: тестовый — my-buh-dev-data, основной — my-buh (ветка data)
+DATA_OWNER = "NBA1121-ai"
+DATA_REPO = "my-buh-dev-data"
+DATA_BRANCH = "data"
+DATA_FILE = "db.json"
+
+# Хранилище сессий и списка сотрудников. database_id вставить после создания базы в Cloudflare (D1 → esep-bot)
+[[d1_databases]]
+binding = "DB"
+database_name = "esep-bot"
+database_id = "ВСТАВИТЬ_ID_БАЗЫ_D1"
+
+[observability]
+enabled = true

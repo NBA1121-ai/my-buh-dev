@@ -1,0 +1,18 @@
+{
+  "name": "esep-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Telegram-бот EsepOnline: остатки, долги, счета, накладные, акты, счета-фактуры в PDF",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "test": "node test/run.mjs"
+  },
+  "dependencies": {
+    "@pdf-lib/fontkit": "1.1.1",
+    "pdf-lib": "1.17.1"
+  },
+  "devDependencies": {
+    "wrangler": "4.20.0"
+  }
+}
